@@ -26,11 +26,10 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Create evaluation rubric | Coordinator Panel | Define grading criteria per deliverable. |
-| Set story point requirements | System | Set minimum story points per sprint. |
-| Configure sprint weights | Database | Assign percentage contribution of each sprint to deliverables. |
-| Map deliverable percentages | System | Total deliverable weights must equal 100%. |
-| Save rubric configuration | Database | Process and update database in under 2 seconds. |
+| Create evaluation rubric | Frontend: Coordinator Panel, Backend: Rubric API | Define grading criteria per deliverable. |
+| Set story point requirements | Frontend: Coordinator Panel, Backend: Rubric Service | Set minimum story points per sprint. |
+| Configure sprint weights | Frontend: Coordinator Panel, Backend: Rubric API, Database: Rubric Tables | Assign percentage contribution of each sprint to deliverables. |
+| Map deliverable percentages | Frontend: Coordinator Panel, Backend: Validation Service | Total deliverable weights must equal 100%. |
 
 ---
 
@@ -38,12 +37,12 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Student self-registration | System | Validate email domain and unique user. |
-| Connect GitHub account | NextAuth.js | Fetch user data via GitHub OAuth. |
-| Admin registers professor | Admin Panel | Restrict to authenticated "Admin" role. |
-| Coordinator manages students | Coordinator Panel | Add/remove students to groups. |
-| Team Leader sets integrations | Team Panel | Configure JIRA/GitHub project links. |
-| Generate password reset link | System | One-time-use token, expires in 24 hours. |
+| Student self-registration | Frontend: Registration Form, Backend: Auth API, Database: Users | Validate email domain and unique user. |
+| Connect GitHub account | Frontend: OAuth Login UI, Backend: NextAuth.js/Auth Service, External: GitHub OAuth API | Fetch user data via GitHub OAuth. |
+| Admin registers professor | Frontend: Admin Panel, Backend: User Management API | Restrict to authenticated "Admin" role. |
+| Coordinator manages students | Frontend: Coordinator Panel, Backend: Group/User API, Database: Group Membership | Add/remove students to groups. |
+| Team Leader sets integrations | Frontend: Team Panel, Backend: Integration API, External: JIRA API + GitHub API | Configure JIRA/GitHub project links. |
+| Generate password reset link | Frontend: Admin/Coordinator UI, Backend: Auth API + Token Service, Database: Reset Tokens | One-time-use token, expires in 24 hours. |
 
 ---
 
@@ -51,11 +50,11 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Student creates group | Database | Process and update database in under 2 seconds. |
-| Leader adds members | System | Maximum group size enforced. |
-| Deliver group invites | Notification Service | Deliver in-app notifications within 3 seconds. |
-| Validate group advisor | System | Check advisor assignment before deadline. |
-| Disband groups without advisor | Scheduled Job | Run sanitization after advisor deadline. |
+| Student creates group | Frontend: Group Management UI, Backend: Group API, Database: Groups | Create a new group with valid group metadata. |
+| Leader adds members | Frontend: Team Panel, Backend: Group Membership API, Database: Group Membership | Maximum group size enforced. |
+| Deliver group invites | Frontend: In-app Notification Center, Backend: Notification Service, Database: Notifications | Send invite notifications to selected members. |
+| Validate group advisor | Backend: Advisor Validation Service, Database: Advisor Assignments | Check advisor assignment before deadline. |
+| Disband groups without advisor | Backend: Scheduled Job Worker, Database: Groups + Advisor Assignments | Run sanitization after advisor deadline. |
 
 ---
 
@@ -63,12 +62,12 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Set advisor request schedule | Coordinator Panel | Define start and end dates for requests. |
-| Leader requests advisor | System | Bound by Coordinator schedule. |
-| Deliver advisee requests | Professor Dashboard | Process and deliver within 3 seconds. |
-| Advisor approves/rejects | Professor Dashboard | Notify group of decision. |
-| Coordinator transfers advisor | API Gateway | Restrict exclusively to authenticated "Coordinator" role. |
-| Notify advisor on approval | Notification Service | Send notification within 3 seconds. |
+| Set advisor request schedule | Frontend: Coordinator Panel, Backend: Advisor Schedule API, Database: Schedule Config | Define start and end dates for requests. |
+| Leader requests advisor | Frontend: Team Panel, Backend: Advisor Request API, Database: Advisor Requests | Bound by Coordinator schedule. |
+| Deliver advisee requests | Frontend: Professor Dashboard, Backend: Notification/Inbox API | Make advisor requests visible to professors. |
+| Advisor approves/rejects | Frontend: Professor Dashboard, Backend: Advisor Decision API, Database: Advisor Requests | Notify group of decision. |
+| Coordinator transfers advisor | Frontend: Coordinator Panel, Backend: API Gateway + Advisor Transfer API, Database: Group-Advisor Mapping | Restrict exclusively to authenticated "Coordinator" role. |
+| Notify advisor on approval | Frontend: Notification Center, Backend: Notification Service, External: Email/SMS (optional) | Send approval notification to advisor. |
 
 ---
 
@@ -76,11 +75,10 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Create committee | Coordinator Panel | Define committee name and type. |
-| Assign jury members | Coordinator Panel | Add professors as committee members. |
-| Assign advisors to committees | System | Advisor automatically joins committee. |
-| Assign groups to committees | Coordinator Panel | Distribute groups across committees. |
-| Handle concurrent traffic | Infrastructure | 99.9% uptime, handle load during grading. |
+| Create committee | Frontend: Coordinator Panel, Backend: Committee API, Database: Committees | Define committee name and type. |
+| Assign jury members | Frontend: Coordinator Panel, Backend: Committee Membership API, Database: Committee Members | Add professors as committee members. |
+| Assign advisors to committees | Backend: Committee Assignment Service, Database: Advisor-Committee Mapping | Advisor automatically joins committee. |
+| Assign groups to committees | Frontend: Coordinator Panel, Backend: Committee Assignment API, Database: Group-Committee Mapping | Distribute groups across committees. |
 
 ---
 
@@ -88,12 +86,12 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Set submission schedule | Coordinator Panel | Define start and end dates per phase. |
-| Enforce schedules | Time Server | Sync with centralized server time (UTC). |
-| Restrict to groups only | System Auth | Only group members can submit. |
-| Upload proposal document | Backend | Validate file type and size limits. |
-| Verify submission completeness | Backend | Check required fields before acceptance. |
-| Validate SoW Submission | Backend | Prevent submission until "Revised Proposal Submission" is complete. |
+| Set submission schedule | Frontend: Coordinator Panel, Backend: Submission Schedule API, Database: Schedule Config | Define start and end dates per phase. |
+| Enforce schedules | Backend: Submission Validation Service, External/Infra: Central Time Server (UTC) | Sync with centralized server time (UTC). |
+| Restrict to groups only | Frontend: Submission Form Guard, Backend: AuthZ Middleware, Database: Group Membership | Only group members can submit. |
+| Upload proposal document | Frontend: Upload UI, Backend: File Upload API, Storage: Object Storage | Validate file type and size limits. |
+| Verify submission completeness | Frontend: Form Validation, Backend: Submission Validation API, Database: Submission Metadata | Check required fields before acceptance. |
+| Validate SoW Submission | Backend: Workflow Validation Service, Database: Submission Status | Prevent submission until "Revised Proposal Submission" is complete. |
 
 ---
 
@@ -101,12 +99,12 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Limit grading access | System Auth | Strictly bounded by schedules set by the Coordinator. |
-| Committee views submission | Committee Panel | Load submission documents for review. |
-| Leave review comments | System Database | Provide stable environment for persistent comments. |
-| Request revision | Committee Panel | Require revised proposals before grading. |
-| Grade submission | Committee Panel | Enter numeric grade with optional feedback. |
-| Grade SoW submissions | Committee Panel | Separate grading for Statement of Work. |
+| Limit grading access | Frontend: Committee Panel Access Guard, Backend: AuthZ + Schedule Check Middleware | Strictly bounded by schedules set by the Coordinator. |
+| Committee views submission | Frontend: Committee Panel, Backend: Submission Retrieval API, Storage: Document Storage | Load submission documents for review. |
+| Leave review comments | Frontend: Review UI, Backend: Comment API, Database: Review Comments | Store and display comments for each submission. |
+| Request revision | Frontend: Committee Panel, Backend: Review Workflow API, Database: Revision Requests | Require revised proposals before grading. |
+| Grade submission | Frontend: Grading Form UI, Backend: Grading API, Database: Grades | Enter numeric grade with optional feedback. |
+| Grade SoW submissions | Frontend: Committee Panel, Backend: SoW Grading API, Database: SoW Grades | Separate grading for Statement of Work. |
 
 ---
 
@@ -114,13 +112,12 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Fetch deliverable weights | Database | Retrieve rubric configuration. |
-| Calculate sprint contribution | System | Sum story points × sprint weight percentage. |
-| Aggregate committee grades | System | Average grades from all committee members. |
-| Apply deliverable percentages | System | Proposal, SoW, Final weighted calculation. |
-| Calculate final grade | Backend | Total = Σ(deliverable × weight). |
-| Display live grades | Advisor Panel | Display team grades in real-time for immediate feedback. |
-| Store grade history | Database | Maintain audit log of grade changes. |
+| Fetch deliverable weights | Backend: Rubric Service, Database: Rubric Tables | Retrieve rubric configuration. |
+| Calculate sprint contribution | Backend: Grade Calculation Engine, External: JIRA/GitHub Integration Data | Sum story points × sprint weight percentage. |
+| Aggregate committee grades | Backend: Aggregation Service, Database: Committee Grades | Average grades from all committee members. |
+| Apply deliverable percentages | Backend: Weighting Service, Database: Deliverable Weights | Proposal, SoW, Final weighted calculation. |
+| Calculate final grade | Backend: Final Grade Engine, Database: Final Grades | Total = Σ(deliverable × weight). |
+| Store grade history | Backend: Audit Log Service, Database: Grade History | Maintain audit log of grade changes. |
 
 ---
 
@@ -128,18 +125,12 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Set scrum schedule | Coordinator Panel | Define after Group-Advisor association. |
-| Configure JIRA integration | Team Panel | Connect project board. |
-| Configure GitHub integration | Team Panel | Link repository for validation. |
-| Refresh sprint stories | Backend + GitHub/JIRA | Execute data refresh at end of each sprint. |
-| Validate stories with GitHub | Backend | Cross-reference commits and PRs. |
-| Calculate sprint story points | System | Sum completed story points per sprint. |
-| Display live grades | Advisor Panel | Display team grades in real-time for immediate feedback. |
+| Set scrum schedule | Frontend: Coordinator Panel, Backend: Scrum Schedule API, Database: Scrum Config | Define after Group-Advisor association. |
+| Configure JIRA integration | Frontend: Team Panel, Backend: Integration API, External: JIRA API | Connect project board. |
+| Configure GitHub integration | Frontend: Team Panel, Backend: Integration API, External: GitHub API | Link repository for validation. |
+| Refresh sprint stories | Backend: Sync Worker + Sprint Service, External: GitHub API + JIRA API, Database: Sprint Cache | Execute data refresh at end of each sprint. |
+| Validate stories with GitHub | Backend: Validation Service, External: GitHub API | Cross-reference commits and PRs. |
+| Calculate sprint story points | Backend: Story Point Calculator, Database: Sprint Stories | Sum completed story points per sprint. |
 
 ---
 
-## Key Insight
-
-Each table represents strict performance metrics, role-based access controls, or external API integrations that must be implemented to satisfy both functional and non-functional system requirements.
-
-Understanding these functional processes is essential for defining the core user flows, database schemas, and necessary system integrations.

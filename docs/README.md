@@ -1,9 +1,9 @@
-# Dokümantasyon
+# Documentation
 
-Bu klasör proje dokümantasyonunu içerir.
+This folder contains the project documentation.
 
-## İçerik
+## Contents
 
-- [API Dokümantasyonu](api/)
-- [Kullanıcı Kılavuzu](guides/)
-- [Mimari Tasarım](architecture/)
+- [API Documentation](api/)
+- [User Guide](guides/)
+- [Architecture Design](architecture/)

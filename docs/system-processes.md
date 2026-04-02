@@ -75,7 +75,7 @@ A system process is a series of steps performed by users, committees, or the sys
 
 | Process Step | System Component | Constraint / Data Required |
 |--------------|------------------|---------------------------|
-| Create committee | Frontend, Backend, Database | Committee ID, Committee Name, Committee Type |
+| Create committee | Frontend, Backend, Database | Committee ID, Committee Name |
 | Assign jury members | Frontend, Backend, Database | Committee ID, Jury Member User ID, Assignment Datetime |
 | Assign advisors to committees | Backend, Database | Committee ID, Advisor User ID, Assignment Source |
 | Assign groups to committees | Frontend, Backend, Database | Committee ID, Group ID, Assignment Datetime |

@@ -1,111 +1,111 @@
-# Katkida Bulunma Rehberi
+# Contributing Guide
 
-Bu depoya katkida bulunmak istediginiz icin tesekkurler.
-Bu rehber, kod degisikliklerinin daha hizli incelenmesi ve guvenli sekilde birlestirilmesi icin izlenecek standartlari aciklar.
+Thank you for contributing to this repository.
+This guide explains the standards to follow so changes can be reviewed quickly and merged safely.
 
-## Kapsam
+## Scope
 
 - Backend: NestJS (`backend/`)
 - Frontend: `frontend/`
-- Dokumantasyon: `docs/`
+- Documentation: `docs/`
 
-## Gereksinimler
+## Requirements
 
 - Node.js 18+
 - npm
-- Docker (MongoDB icin)
+- Docker (for MongoDB)
 
-## Yerel Ortam Kurulumu
+## Local Setup
 
-1. Depoyu klonlayin ve klasore girin.
-2. Backend bagimliliklarini yukleyin:
+1. Clone the repository and enter the project folder.
+2. Install backend dependencies:
 
 ```bash
 cd backend
 npm install
 ```
 
-3. MongoDB servisini kaldirin:
+3. Start the MongoDB service:
 
 ```bash
 cd ..
 docker compose up -d
 ```
 
-4. Uygulamayi gelistirme modunda calistirin:
+4. Run the backend in development mode:
 
 ```bash
 cd backend
 npm run start:dev
 ```
 
-## Branch Stratejisi
+## Branch Strategy
 
-- Ana gelistirme dali: `main`
-- Her is icin yeni bir branch acin:
-  - `feature/<kisa-aciklama>`
-  - `fix/<kisa-aciklama>`
-  - `docs/<kisa-aciklama>`
+- Main development branch: `main`
+- Create a new branch for each task:
+  - `feature/<short-description>`
+  - `fix/<short-description>`
+  - `docs/<short-description>`
 
-Ornek:
+Example:
 
 ```bash
 git checkout -b feature/auth-refresh-token
 ```
 
-## Kod Standartlari
+## Code Standards
 
-- Mevcut proje yapisini ve isimlendirme stilini koruyun.
-- Degisikligi minimum kapsamda tutun; ilgisiz refactor eklemeyin.
-- Gerekmedikce genel API davranisini degistirmeyin.
-- Kodunuz acik degilse kisa ve amac odakli yorumlar ekleyin.
+- Keep the existing project structure and naming style.
+- Keep changes minimal in scope; avoid unrelated refactors.
+- Do not change API behavior unless required.
+- Add short, purpose-driven comments only when code is not self-explanatory.
 
-## Commit Kurallari
+## Commit Rules
 
-Kisa, acik ve amac belirten commit mesajlari kullanin.
+Use concise commit messages that clearly describe intent.
 
-Onerilen format:
+Recommended format:
 
 ```text
-<tur>: <kisa-aciklama>
+<type>: <short-description>
 ```
 
-Ornekler:
+Examples:
 
 - `feat: add jwt refresh token endpoint`
 - `fix: validate login payload`
 - `docs: update process5 API spec`
 
-## PR Acmadan Once
+## Before Opening a PR
 
-Degisiklik yaptiginiz bolumde asagidakileri calistirin.
+Run the following commands for the area you changed.
 
-Backend icin (`backend/`):
+For backend changes (`backend/`):
 
 ```bash
 npm run lint
 npm run test
 ```
 
-Eger endpoint, is akislar veya sozlesme degisti ise ilgili dokumani da guncelleyin:
+If endpoints, flows, or contracts changed, update related docs as well:
 
-- API spesifikasyonlari: `docs/api/api-specs/`
-- Sistem surecleri: `docs/system-processes.md`
+- API specifications: `docs/api/api-specs/`
+- System processes: `docs/system-processes.md`
 
-## Pull Request Kurallari
+## Pull Request Guidelines
 
-PR acarken asagidaki bilgileri ekleyin:
+When opening a PR, include:
 
-- Degisikligin amaci
-- Yapilan degisikliklerin ozeti
-- Test kaniti (komut ciktilari veya ekran goruntusu)
-- Varsa kirilim riski ve geri donus plani
+- Purpose of the change
+- Summary of what was changed
+- Test evidence (command output or screenshots)
+- Potential breaking risk and rollback plan (if any)
 
-PR kapsamini kucuk tutmaya calisin. Buyuk degisiklikleri birden fazla PR'a bolmek inceleme hizini artirir.
+Try to keep PR scope small. Splitting large changes into multiple PRs speeds up review.
 
-## Issue ve Iletisim
+## Issues and Communication
 
-- Yeni bir ozellik veya buyuk refactor oncesi issue acip kapsam belirleyin.
-- Mevcut bir issue uzerinde calisiyorsaniz PR aciklamasina issue numarasini ekleyin.
+- For new features or large refactors, open an issue first to align on scope.
+- If you are working on an existing issue, include the issue number in the PR description.
 
-Katkiniz icin tesekkurler.
+Thanks again for your contribution.

@@ -1,0 +1,184 @@
+openapi: 3.0.3
+info:
+  title: Group Lifecycle and Sanitization API
+  description: API based on Process 3 specifications for Group Creation, Membership, and Advisor Sanitization.
+  version: 1.0.0
+
+tags:
+  - name: "Group Management"
+    description: "Processes 3.1 and 3.2: Group and member initialization."
+  - name: "Messaging & Invites"
+    description: "Process 3.3: Delivery of notifications to students."
+  - name: "Administrative Tasks"
+    description: "Processes 3.4 and 3.5: Advisor validation and automated cleanup."
+
+paths:
+  # Process 3.1: Student creates group
+  /groups:
+    post:
+      tags:
+        - "Group Management"
+      summary: "Register a new group (Process 3.1)"
+      operationId: createGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [groupName, leaderUserId]
+              properties:
+                groupName:
+                  type: string
+                leaderUserId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: "New Group ID and Status generated in D2."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+
+  # Process 3.2: Leader adds members
+  /groups/{groupId}/members:
+    post:
+      tags:
+        - "Group Management"
+      summary: "Assign members to group (Process 3.2)"
+      description: "Updates D2 with member user IDs and increments group member count."
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memberUserId]
+              properties:
+                memberUserId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: "Member added; triggers invite process."
+
+  # Process 3.3: Deliver group invites
+  /invites/deliver:
+    post:
+      tags:
+        - "Messaging & Invites"
+      summary: "Dispatch group invites (Process 3.3)"
+      description: "Creates notification records in D5 for the recipient user."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [groupId, recipientUserId]
+              properties:
+                groupId:
+                  type: string
+                  format: uuid
+                recipientUserId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: "Notification ID generated and delivered to D5."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+
+  # Process 3.4: Validate group advisor
+  /admin/advisor-validation:
+    get:
+      tags:
+        - "Administrative Tasks"
+      summary: "Validate group advisor status (Process 3.4)"
+      description: "Checks D2 for groups missing advisor assignment before the deadline."
+      responses:
+        '200':
+          description: "List of groups failing validation."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidationResult'
+
+  # Process 3.5: Disband groups without advisor
+  /admin/sanitization/execute:
+    post:
+      tags:
+        - "Administrative Tasks"
+      summary: "Execute group disbandment (Process 3.5)"
+      description: "Updates D2 status to Disbanded and triggers D5 alerts."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sanitizationRunDateTime]
+              properties:
+                sanitizationRunDateTime:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: "Sanitization complete; group statuses updated."
+
+components:
+  schemas:
+    Group:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        groupName:
+          type: string
+        leaderUserId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: "Active"
+
+    Notification:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          format: uuid
+        recipientUserId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [GroupInvite, DisbandmentAlert]
+
+    ValidationResult:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        advisorAssignmentStatus:
+          type: string
+        advisorDeadline:
+          type: string
+          format: date-time

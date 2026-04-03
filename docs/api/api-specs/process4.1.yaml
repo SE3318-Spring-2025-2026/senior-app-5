@@ -1,0 +1,728 @@
+openapi: 3.0.3
+info:
+  title: Advisor Assignment Management API
+  description: |
+    This API manages the full lifecycle of advisor-team assignments including 
+    schedule management, request submission/withdrawal, approval/rejection, 
+    team release, and advisor transfer operations.
+  version: 1.0.0
+  contact:
+    name: Backend Service Layer
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+
+tags:
+  - name: Advisors
+    description: "4.0 – Fetch available advisors"
+  - name: Schedule
+    description: "4.1 – Set schedule constraints"
+  - name: Requests
+    description: "4.2 – Submit or withdraw advisor requests"
+  - name: Approval
+    description: "4.3 – Approve or reject advisor requests"
+  - name: Release
+    description: "4.4 – Release a team from an advisor"
+  - name: Transfer
+    description: "4.5 – Transfer advisor to another group"
+  - name: Groups
+    description: "4.6 – Group assignment status and lifecycle"
+
+paths:
+  # ─────────────────────────────────────────────
+  # 4.0 Fetch Advisors
+  # ─────────────────────────────────────────────
+  /advisors:
+    get:
+      tags: [Advisors]
+      summary: Query available advisors (role = PROFESSOR)
+      operationId: fetchAdvisors
+      description: |
+        Fetches users from the Users Database where role == PROFESSOR.
+        Called by the Coordinator to see who is available. Includes pagination.
+      parameters:
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PROFESSOR]
+            default: PROFESSOR
+          description: Filter users by role.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: The page number to retrieve.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: The number of advisors to return per page.
+      responses:
+        "200":
+          description: List of available advisors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Advisor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 4.1 Set Schedule
+  # ─────────────────────────────────────────────
+  /schedules:
+    post:
+      tags: [Schedule]
+      summary: Set a schedule with start/end datetime
+      operationId: setSchedule
+      description: |
+        Coordinator sets the schedule window. Persists schedule constraints 
+        to the Association Database (D1).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetScheduleRequest"
+      responses:
+        "201":
+          description: Schedule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /schedules/active:
+    get:
+      tags: [Schedule]
+      summary: Get the currently active schedule window
+      operationId: getActiveSchedule
+      description: |
+        Returns the currently active schedule window if one exists.
+        Used by Team Leaders to check whether the advisor request window
+        is currently open before attempting to submit a request.
+      responses:
+        "200":
+          description: The active schedule window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveSchedule"
+        "404":
+          description: No active schedule window found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 4.2 Submit / Withdraw Request
+  # ─────────────────────────────────────────────
+  /requests:
+    get:
+      tags: [Requests]
+      summary: Retrieve a list of advisor requests
+      operationId: getRequests
+      description: |
+        Fetches a list of advisor requests. Supports query parameters for filtering.
+        - Team Leaders can filter by their `groupId` to see their pending/past requests.
+        - Advisors can filter by `requestedAdvisorId` to see requests assigned to them.
+        - Coordinators can omit all filters to retrieve all requests across every group.
+      parameters:
+        - name: groupId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter requests by the requesting group's ID
+        - name: requestedAdvisorId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter requests assigned to a specific advisor
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, WITHDRAWN]
+          description: Filter requests by their current status
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for paginated results
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of results per page
+      responses:
+        "200":
+          description: A list of requests matching the filters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdvisorRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Requests]
+      summary: Submit an advisor request
+      operationId: submitRequest
+      description: |
+        Team Leader submits a request for a specific advisor. 
+        Inserts a pending request record in the Association Database (D1)
+        and triggers a notification via 4.6 Dispatch Notifications.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitRequestBody"
+      responses:
+        "201":
+          description: Request submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisorRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Conflict – a pending request already exists for this group
+        "423":
+          description: Locked – group is currently assigned to an advisor. The advisor must release the group before a new request can be submitted.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /requests/{requestId}:
+    delete:
+      tags: [Requests]
+      summary: Withdraw (delete) a pending advisor request
+      operationId: withdrawRequest
+      description: |
+        Team Leader withdraws a previously submitted request by Request ID. 
+        Deletes the pending request record from the Association Database (D1).
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the request to withdraw
+      responses:
+        "204":
+          description: Request withdrawn successfully (no content)
+        "404":
+          description: Request not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 4.3 Approve / Reject Request
+  # ─────────────────────────────────────────────
+  /requests/{requestId}/decision:
+    patch:
+      tags: [Approval]
+      summary: Approve or reject an advisor request
+      operationId: decideRequest
+      description: |
+        An Advisor approves or rejects a pending request.
+        Identity is verified via the Bearer token to ensure they own the request.
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisorRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Request not found
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 4.4 Release Team
+  # ─────────────────────────────────────────────
+  /advisors/{advisorId}/groups/{groupId}/release:
+    post:
+      tags: [Release]
+      summary: Release a group from an advisor
+      operationId: releaseTeam
+      description: |
+        Coordinator (or system) releases a group from its current advisor. 
+        Updates group status to UNASSIGNED in the Association Database (D1).
+      parameters:
+        - name: advisorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the advisor currently assigned
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the group to be released
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                releaseCommand:
+                  type: string
+                  description: Optional release reason or command identifier
+      responses:
+        "200":
+          description: Group released – status set to UNASSIGNED
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Advisor or group not found
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 4.5 Transfer Advisor
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/transfer-advisor:
+    patch:
+      tags: [Transfer]
+      summary: Transfer a group to a new advisor
+      operationId: transferAdvisor
+      description: |
+        Coordinator transfers a group's association from the current advisor 
+        to a new advisor. Updates the Association Record in D1.
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the group being transferred
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferAdvisorRequest"
+      responses:
+        "200":
+          description: Advisor transferred successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssociationRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Group or advisor not found
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 4.6 Group Assignment Status & Lifecycle
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/status:
+    get:
+      tags: [Groups]
+      summary: Get the current assignment status of a group
+      operationId: getGroupStatus
+      description: |
+        Returns the current advisor assignment status for a group.
+        Used by Team Leaders to check whether their group is currently
+        ASSIGNED (and therefore blocked from submitting a new request)
+        or UNASSIGNED (and therefore eligible to submit a request).
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the group to query
+      responses:
+        "200":
+          description: Current assignment status of the group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupAssignmentStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Group not found
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /groups/{groupId}/disband:
+    post:
+      tags: [Groups]
+      summary: Disband a group that has no advisor
+      operationId: disbandGroup
+      description: |
+        Coordinator disbands a group that remains UNASSIGNED (no advisor).
+        Per project rules, groups without an advisor must be disbanded.
+        This endpoint can be triggered manually by the Coordinator or called
+        by the system after a release leaves a group without an advisor.
+        Marks the group as DISBANDED in the Association Database (D1).
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the group to disband
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Optional reason for disbanding the group
+      responses:
+        "200":
+          description: Group disbanded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupAssignmentStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Group not found
+        "409":
+          description: Conflict – group is currently ASSIGNED to an advisor and cannot be disbanded
+        "500":
+          $ref: "#/components/responses/InternalError"
+components:
+  schemas:
+    Advisor:
+      type: object
+      properties:
+        advisorId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [PROFESSOR]
+      required: [advisorId, name, role]
+
+    SetScheduleRequest:
+      type: object
+      properties:
+        startDatetime:
+          type: string
+          format: date-time
+          description: Schedule window start
+        endDatetime:
+          type: string
+          format: date-time
+          description: Schedule window end
+      required: [startDatetime, endDatetime]
+
+    Schedule:
+      type: object
+      properties:
+        scheduleId:
+          type: string
+          format: uuid
+        coordinatorId:
+          type: string
+          format: uuid
+        startDatetime:
+          type: string
+          format: date-time
+        endDatetime:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    ActiveSchedule:
+      type: object
+      description: The currently active schedule window, including whether it is open for requests right now.
+      properties:
+        scheduleId:
+          type: string
+          format: uuid
+        coordinatorId:
+          type: string
+          format: uuid
+        startDatetime:
+          type: string
+          format: date-time
+        endDatetime:
+          type: string
+          format: date-time
+        isOpen:
+          type: boolean
+          description: True if the current server time falls within the start/end window
+        createdAt:
+          type: string
+          format: date-time
+      required: [scheduleId, startDatetime, endDatetime, isOpen]
+
+    SubmitRequestBody:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+          description: ID of the team/group making the request
+        requestedAdvisorId:
+          type: string
+          format: uuid
+          description: ID of the advisor being requested
+      required: [groupId, requestedAdvisorId]
+
+    AdvisorRequest:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        requestedAdvisorId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, WITHDRAWN]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DecisionRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, REJECT]
+          description: The advisor's decision on the request
+      required: [decision]
+
+    GroupStatus:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [ASSIGNED, UNASSIGNED, DISBANDED]
+        advisorId:
+          type: string
+          format: uuid
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+
+    GroupAssignmentStatus:
+      type: object
+      description: Detailed assignment status of a group, including blocking reason if applicable.
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [ASSIGNED, UNASSIGNED, DISBANDED]
+          description: Current assignment status of the group
+        advisorId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the currently assigned advisor, or null if unassigned
+        advisorName:
+          type: string
+          nullable: true
+          description: Display name of the currently assigned advisor, or null if unassigned
+        canSubmitRequest:
+          type: boolean
+          description: Whether the group is currently eligible to submit a new advisor request
+        blockedReason:
+          type: string
+          nullable: true
+          description: Human-readable reason why canSubmitRequest is false, if applicable
+        updatedAt:
+          type: string
+          format: date-time
+      required: [groupId, status, canSubmitRequest]
+
+    TransferAdvisorRequest:
+      type: object
+      properties:
+        currentAdvisorId:
+          type: string
+          format: uuid
+          description: ID of the advisor being replaced
+        newAdvisorId:
+          type: string
+          format: uuid
+          description: ID of the new advisor to assign
+      required: [currentAdvisorId, newAdvisorId]
+
+    AssociationRecord:
+      type: object
+      properties:
+        associationId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        advisorId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [ASSIGNED, UNASSIGNED]
+        transferredAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+
+  responses:
+    BadRequest:
+      description: Bad request – invalid or missing parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Unauthorized:
+      description: Unauthorized – missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Forbidden:
+      description: Forbidden – authenticated, but lacks permissions to access or modify this resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

@@ -1,19 +1,12 @@
 openapi: 3.0.3
 info:
   title: Senior App — Process 5 Committee Assignment
-  version: 1.0.0
-  contact:
-    name: Backend Service Layer
+  version: 1.3.1
   description: |
     Committee lifecycle and member assignments (docs/system-processes.md — Process 5).
     Rules: no committee type on API; no PATCH for rename/retype; advisor links have no assignment source;
     remove group with DELETE on /groups and groupId in JSON body.
     Nested assignment objects omit committeeId in responses (context from path or parent Committee.id).
-
-    Cross-service dependency: This service relies on the Advisor Assignment API (Process 4)
-    for schedule window management. Specifically, POST /committees/{committeeId}/groups returns
-    423 Locked when the assignment window is closed — callers should query
-    GET /schedules/active on the Advisor Assignment API to check window status.
 
 servers:
   - url: http://localhost:3000
@@ -32,9 +25,6 @@ tags:
     description: Per-advisor grading scope within a committee (which groups each advisor is responsible for grading)
 
 paths:
-  # ─────────────────────────────────────────────
-  # 5.1 Committees – CRUD
-  # ─────────────────────────────────────────────
   /committees:
     get:
       tags: [committees]
@@ -42,7 +32,7 @@ paths:
       description: Returns a paginated list. Optional name filter is implementation-defined (e.g. case-insensitive substring).
       operationId: listCommittees
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - name: page
           in: query
@@ -73,8 +63,6 @@ paths:
                 $ref: "#/components/schemas/CommitteePage"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
     post:
       tags: [committees]
@@ -82,7 +70,7 @@ paths:
       description: Creates a committee with a display name only (no committee type in this API).
       operationId: createCommittee
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -114,7 +102,7 @@ paths:
         Embedded assignment items do not repeat committeeId; use path parameter or top-level id.
       operationId: getCommittee
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       responses:
@@ -137,7 +125,7 @@ paths:
       description: Removes the committee. Cascading deletion of assignments depends on implementation and business rules.
       operationId: deleteCommittee
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       responses:
@@ -160,7 +148,7 @@ paths:
       description: Updates committee metadata (e.g., fixing a typo in the name). Does not affect assignments.
       operationId: updateCommittee
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       requestBody:
@@ -193,9 +181,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  # ─────────────────────────────────────────────
-  # 5.2 Jury Members
-  # ─────────────────────────────────────────────
   /committees/{committeeId}/jury-members:
     get:
       tags: [committee-jury]
@@ -203,7 +188,7 @@ paths:
       description: Returns assignments for this committee. Each item has userId and assignedAt only (no committeeId).
       operationId: listJuryMembers
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       responses:
@@ -230,7 +215,7 @@ paths:
         Only Coordinators may add jury members.
       operationId: addJuryMember
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       requestBody:
@@ -266,7 +251,7 @@ paths:
       description: Removes the given user from the committee jury list.
       operationId: removeJuryMember
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
         - $ref: "#/components/parameters/UserId"
@@ -282,9 +267,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  # ─────────────────────────────────────────────
-  # 5.3 Committee Advisors
-  # ─────────────────────────────────────────────
   /committees/{committeeId}/advisors:
     get:
       tags: [committee-advisors]
@@ -292,7 +274,7 @@ paths:
       description: Returns advisor links with advisorUserId and assignedAt only (no assignment source in this API).
       operationId: listCommitteeAdvisors
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       responses:
@@ -319,7 +301,7 @@ paths:
         If assignedAt is omitted, server may default to now.
       operationId: addCommitteeAdvisor
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       requestBody:
@@ -355,7 +337,7 @@ paths:
       description: Removes the advisor from this committee.
       operationId: removeCommitteeAdvisor
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
         - name: advisorUserId
@@ -376,9 +358,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  # ─────────────────────────────────────────────
-  # 5.4 Committee Groups
-  # ─────────────────────────────────────────────
   /committees/{committeeId}/groups:
     get:
       tags: [committee-groups]
@@ -386,7 +365,7 @@ paths:
       description: Returns groupId and assignedAt per row (no committeeId on each item).
       operationId: listCommitteeGroups
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       responses:
@@ -418,7 +397,7 @@ paths:
         If assignedAt is omitted, server may default to now.
       operationId: assignGroupToCommittee
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       requestBody:
@@ -462,7 +441,7 @@ paths:
       description: Removes the given group from this committee using a proper RESTful path parameter.
       operationId: removeGroupFromCommittee
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
         - name: groupId
@@ -501,7 +480,7 @@ paths:
         can display the correct group list to each advisor.
       operationId: listAdvisorGradingScope
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
         - name: advisorUserId
@@ -530,7 +509,7 @@ paths:
 
 components:
   securitySchemes:
-    BearerAuth:
+    bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
@@ -541,10 +520,9 @@ components:
       name: committeeId
       in: path
       required: true
-      description: Committee primary key (UUID)
+      description: Committee primary key (e.g. MongoDB ObjectId as string)
       schema:
         type: string
-        format: uuid
     UserId:
       name: userId
       in: path
@@ -552,7 +530,6 @@ components:
       description: User primary key for jury removal
       schema:
         type: string
-        format: uuid
 
   responses:
     BadRequest:
@@ -560,44 +537,33 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: "#/components/schemas/ErrorBody"
     Unauthorized:
       description: Missing or invalid JWT
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
     Forbidden:
       description: Authenticated but insufficient permissions
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
     NotFound:
       description: Committee or related resource not found
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
     InternalError:
       description: Unexpected server error
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: "#/components/schemas/ErrorBody"
 
   schemas:
-    Error:
+    ErrorBody:
       type: object
-      description: Standard error payload
-      required: [code, message]
+      description: Typical NestJS-style error payload (shape may vary)
       properties:
-        code:
-          type: string
-          description: Machine-readable error code
+        statusCode:
+          type: integer
+          example: 400
         message:
           type: string
-          description: Human-readable error description
+        error:
+          type: string
+          example: Bad Request
 
     CommitteeCreate:
       type: object
@@ -617,7 +583,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
           description: Committee id
         name:
           type: string
@@ -664,7 +629,6 @@ components:
       properties:
         userId:
           type: string
-          format: uuid
         assignedAt:
           type: string
           format: date-time
@@ -677,13 +641,11 @@ components:
       properties:
         userId:
           type: string
-          format: uuid
         assignedAt:
           type: string
           format: date-time
         assignedByUserId:
           type: string
-          format: uuid
           description: ID of the user (e.g., Coordinator) who made this assignment
 
     CommitteeAdvisorInvite:
@@ -692,7 +654,6 @@ components:
       properties:
         advisorUserId:
           type: string
-          format: uuid
         assignedAt:
           type: string
           format: date-time
@@ -705,13 +666,11 @@ components:
       properties:
         advisorUserId:
           type: string
-          format: uuid
         assignedAt:
           type: string
           format: date-time
         assignedByUserId:
           type: string
-          format: uuid
           description: ID of the user who made this assignment
 
     CommitteeGroupInvite:
@@ -720,7 +679,6 @@ components:
       properties:
         groupId:
           type: string
-          format: uuid
         assignedAt:
           type: string
           format: date-time
@@ -733,13 +691,11 @@ components:
       properties:
         groupId:
           type: string
-          format: uuid
         assignedAt:
           type: string
           format: date-time
         assignedByUserId:
           type: string
-          format: uuid
           description: ID of the user who made this assignment
 
     AdvisorGradingScopeItem:
@@ -752,7 +708,6 @@ components:
       properties:
         groupId:
           type: string
-          format: uuid
           description: ID of the group this advisor must grade
         assignedAt:
           type: string
@@ -766,9 +721,5 @@ components:
             that this advisor must also grade per committee rules).
         originalAdvisorUserId:
           type: string
-          format: uuid
           nullable: true
           description: The advisor who owns this group (null if isOwnGroup is true)
-
-security:
-  - BearerAuth: []

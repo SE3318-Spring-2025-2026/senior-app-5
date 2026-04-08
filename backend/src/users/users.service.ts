@@ -21,4 +21,12 @@ export class UsersService {
       role: params.role, 
     });
   }
+
+  async linkGithubAccount(userId: string, githubAccountId: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { githubAccountId },
+      { new: true }
+    ).exec();
+  }
 }

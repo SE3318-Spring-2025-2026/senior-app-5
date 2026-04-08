@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards, ForbiddenException, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express'; // 'type' kelimesini kaldırmak bazen tip tanımını netleştirir
 import { AuthService } from './auth.service';
@@ -21,6 +21,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
     
     return this.authService.register(dto.email, dto.password);

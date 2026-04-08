@@ -19,4 +19,12 @@ export class UsersService {
       passwordHash: params.passwordHash,
     });
   }
+
+  async linkGithubAccount(userId: string, githubAccountId: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { githubAccountId },
+      { new: true }
+    ).exec();
+  }
 }

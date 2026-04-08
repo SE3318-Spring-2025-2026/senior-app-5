@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   ConflictException,
@@ -18,8 +19,7 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async register(email: string, password: string, role: string = 'STUDENT') {
-    
+  async register(email: string, password: string, role: string = 'Student') {
     if (!email || !password) {
       throw new BadRequestException('Email and password are required');
     }
@@ -32,22 +32,21 @@ export class AuthService {
 
     try {
       const passwordHash = await bcrypt.hash(password, 12);
-      
+
       this.logger.debug(`Creating user with email: ${email} and role: ${role}`);
-      
-      
-      const user = await this.usersService.createUser({ 
-        email, 
-        passwordHash, 
-        role 
-      }) as any;
+
+      const user = (await this.usersService.createUser({
+        email,
+        passwordHash,
+        role,
+      })) as any;
 
       this.logger.log(`User registered successfully: ${email} as ${role}`);
 
-      return { 
-        id: user._id || user.id, 
-        email: user.email, 
-        role: user.role 
+      return {
+        id: user._id || user.id,
+        email: user.email,
+        role: user.role,
       };
     } catch (error) {
       this.logger.error(`Registration failed for email: ${email}`);
@@ -56,10 +55,9 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.usersService.findByEmail(email) as any;
-    
+    const user = (await this.usersService.findByEmail(email)) as any;
+
     if (!user) {
-      
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -69,11 +67,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    
     const accessToken = await this.jwt.signAsync({
       sub: (user._id || user.id).toString(),
       email: user.email,
-      role: user.role, 
+      role: user.role,
     });
 
     this.logger.log(`User logged in successfully: ${email}`);

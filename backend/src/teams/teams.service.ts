@@ -59,4 +59,8 @@ export class TeamsService {
       data: updatedTeam
     };
   }
+
+  findById(id: string) {
+    return this.teamModel.findById(id).exec();
+  }
 }

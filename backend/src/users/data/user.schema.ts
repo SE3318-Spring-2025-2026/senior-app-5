@@ -10,6 +10,12 @@ export class User {
 
   @Prop({ required: true })
   passwordHash!: string;
+
+  @Prop({ required: true, enum: ['Student', 'Coordinator', 'Admin'] })
+  role!: string;
+
+  @Prop()
+  teamId?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

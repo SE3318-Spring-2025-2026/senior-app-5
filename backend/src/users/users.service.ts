@@ -13,10 +13,19 @@ export class UsersService {
     return this.userModel.findOne({ email: email.toLowerCase().trim() }).exec();
   }
 
-  createUser(params: { email: string; passwordHash: string }) {
+  findById(id: string) {
+    return this.userModel.findById(id).exec();
+  }
+
+  createUser(params: { email: string; passwordHash: string; role?: string }) {
     return this.userModel.create({
       email: params.email.toLowerCase().trim(),
       passwordHash: params.passwordHash,
+      role: params.role || 'Student',
     });
+  }
+
+  async updateUserTeam(studentId: string, teamId: string) {
+    return this.userModel.findByIdAndUpdate(studentId, { teamId }, { new: true }).exec();
   }
 }

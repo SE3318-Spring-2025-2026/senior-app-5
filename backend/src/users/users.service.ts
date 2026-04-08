@@ -13,10 +13,12 @@ export class UsersService {
     return this.userModel.findOne({ email: email.toLowerCase().trim() }).exec();
   }
 
-  createUser(params: { email: string; passwordHash: string }) {
+  // params içine 'role' ekledik
+  createUser(params: { email: string; passwordHash: string; role: string }) {
     return this.userModel.create({
       email: params.email.toLowerCase().trim(),
       passwordHash: params.passwordHash,
+      role: params.role, 
     });
   }
 }

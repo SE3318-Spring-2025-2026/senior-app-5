@@ -14,26 +14,37 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async register(email: string, password: string) {
+  async register(email: string, password: string, role: string = 'STUDENT') {
     const existing = await this.usersService.findByEmail(email);
     if (existing) throw new ConflictException('Email already in use');
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await this.usersService.createUser({ email, passwordHash });
 
-    return { id: user.id, email: user.email };
+    
+    const user = await this.usersService.createUser({ 
+      email, 
+      passwordHash, 
+      role 
+    }) as any;
+
+    return { 
+      id: user._id || user.id, 
+      email: user.email, 
+      role: user.role 
+    };
   }
 
   async login(email: string, password: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmail(email) as any;
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
     const accessToken = await this.jwt.signAsync({
-      sub: user.id,
+      sub: (user._id || user.id).toString(),
       email: user.email,
+      role: user.role, 
     });
 
     return { accessToken };

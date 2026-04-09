@@ -1,10 +1,10 @@
-import RegisterPage from './pages/RegisterPage'
+import GroupLifecyclePage from './pages/GroupLifecyclePage'
 import './App.css'
 
 function App() {
   return (
     <div className="app">
-      <RegisterPage />
+      <GroupLifecyclePage />
     </div>
   )
 }

@@ -1,0 +1,200 @@
+.pageContainer {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hero {
+  text-align: left;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f7f7ff 0%, #eef3ff 100%);
+  border: 1px solid #dde2f0;
+  border-radius: 20px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 14px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.lead {
+  max-width: 760px;
+  margin-top: 12px;
+  color: #4b5563;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sectionCard {
+  background: white;
+  border-radius: 24px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.05);
+  padding: 24px;
+}
+
+.sectionHeader h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.sectionHeader p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.sectionBody {
+  margin-top: 18px;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.form label {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  color: #262626;
+  font-size: 14px;
+}
+
+.form input,
+.form button {
+  width: 100%;
+}
+
+.form input {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+  color: #111827;
+  background: #f9fafb;
+}
+
+.form button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  color: white;
+  background: #4338ca;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.form button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.form button:hover:not(:disabled) {
+  background: #3730a3;
+}
+
+.controlRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statusBlock {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.success {
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.error {
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.resultBox {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.resultBox pre {
+  margin: 12px 0 0;
+  font-size: 13px;
+  overflow-x: auto;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.resultList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.resultList li {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  display: grid;
+  gap: 4px;
+}
+
+.resultList small {
+  color: #6b7280;
+}
+
+.emptyState {
+  color: #6b7280;
+}
+
+.actionLog {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.actionLog li {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

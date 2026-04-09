@@ -12,6 +12,11 @@ export const apiConfig = {
       login: '/auth/login',
       me: '/auth/me',
     },
+    groups: '/groups',
+    groupMembers: (groupId) => `/groups/${groupId}/members`,
+    invites: '/invites/deliver',
+    advisorValidation: '/admin/advisor-validation',
+    sanitizationExecute: '/admin/sanitization/execute',
   },
 };
 

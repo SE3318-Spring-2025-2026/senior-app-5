@@ -8,11 +8,9 @@ export class Team {
   @Prop({ required: true })
   name: string;
 
-  
   @Prop({ required: true })
   leaderId: string;
 
-  
   @Prop()
   jiraProjectKey: string;
 

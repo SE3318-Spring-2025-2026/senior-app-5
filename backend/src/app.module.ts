@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { TeamsModule } from './teams/teams.module';
 import { AdminModule } from './admin/admin.module';
 import { GroupsModule } from './groups/groups.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { GroupsModule } from './groups/groups.module';
     TeamsModule,
     AdminModule,
     GroupsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,4 +1,4 @@
-# Password Reset UI Implementation - Issue #11
+# Password Reset UI Implementation - Issue #13
 
 ## Overview
 This implementation provides the frontend UI components for the password reset flow, including email submission (forgot password) and password update forms. These components integrate with the backend API endpoints for secure password reset functionality.

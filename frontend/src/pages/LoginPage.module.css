@@ -135,6 +135,25 @@
   cursor: not-allowed;
 }
 
+.forgotPasswordLink {
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  margin-top: 15px;
+}
+
+.forgotPasswordLink a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.forgotPasswordLink a:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
 .registerLink {
   text-align: center;
   font-size: 14px;

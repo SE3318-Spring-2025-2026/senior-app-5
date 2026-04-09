@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { TeamsService } from '../teams/teams.service';
 
@@ -23,7 +27,10 @@ export class AdminService {
     }
 
     // Update student's teamId
-    const updatedUser = await this.usersService.updateUserTeam(studentId, groupId);
+    const updatedUser = await this.usersService.updateUserTeam(
+      studentId,
+      groupId,
+    );
     if (!updatedUser) {
       throw new NotFoundException('Student not found');
     }

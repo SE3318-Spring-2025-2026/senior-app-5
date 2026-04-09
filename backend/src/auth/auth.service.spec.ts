@@ -7,7 +7,6 @@ import { JwtService } from '@nestjs/jwt';
 describe('AuthService', () => {
   let service: AuthService;
 
-  
   const mockUsersService = {
     findByEmail: jest.fn(),
     createUser: jest.fn(),

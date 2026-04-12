@@ -134,18 +134,15 @@ paths:
   /schedules/active:
     get:
       tags: [schedule]
-      summary: Get the currently active schedule window for a phase
+      summary: Get the currently active schedule window
       operationId: getActiveSchedule
       security:
         - BearerAuth: []
       description: |
-        **Requires Role:** [ANY]
-
-        Returns the currently active schedule window for the requested phase.
-        This is a convenience endpoint so clients don't have to fetch all historical schedules.
-        
-        - Team Leaders use `?phase=ADVISOR_SELECTION` before sending advisor requests.
-        - Coordinators use `?phase=COMMITTEE_ASSIGNMENT` before assigning groups to committees.
+        Returns the currently active schedule window for the given phase, if one exists.
+        Used by Team Leaders to check whether the advisor request window is open
+        (phase=ADVISOR_SELECTION), and by Process 5 internally to check whether
+        the committee assignment window is open (phase=COMMITTEE_ASSIGNMENT).
       parameters:
         - name: phase
           in: query
@@ -153,7 +150,7 @@ paths:
           schema:
             type: string
             enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
-          description: Specify which schedule phase you are querying.
+          description: The phase to query the active schedule for.
       responses:
         "200":
           description: The active schedule window for the requested phase
@@ -161,12 +158,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ActiveSchedule"
-        "400":
-          description: Bad Request – Phase parameter is missing or invalid.
+        "404":
+          $ref: "#/components/responses/NotFound"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "404":
-          description: Not Found – No active schedule window currently exists for this phase.
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -607,8 +604,10 @@ components:
         phase:
           type: string
           enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
-          description: Indicates which process this schedule applies to.
-          example: "ADVISOR_SELECTION"
+          description: |
+            The phase this schedule window applies to.
+            - ADVISOR_SELECTION: controls the window for Process 4 advisor requests.
+            - COMMITTEE_ASSIGNMENT: controls the window for Process 5 group-to-committee assignments.
       required: [startDatetime, endDatetime, phase]
 
     Schedule:
@@ -620,20 +619,20 @@ components:
         coordinatorId:
           type: string
           format: uuid
+        phase:
+          type: string
+          enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
+          description: The phase this schedule window applies to.
         startDatetime:
           type: string
           format: date-time
         endDatetime:
           type: string
           format: date-time
-        phase:
-          type: string
-          enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
-          description: The specific project phase this schedule dictates.
         createdAt:
           type: string
           format: date-time
-      required: [scheduleId, coordinatorId, startDatetime, endDatetime, phase, createdAt]
+      required: [scheduleId, coordinatorId, phase, startDatetime, endDatetime, createdAt]
 
     ActiveSchedule:
       type: object
@@ -645,23 +644,24 @@ components:
         coordinatorId:
           type: string
           format: uuid
+        phase:
+          type: string
+          enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
+          description: The phase this schedule window applies to.
         startDatetime:
           type: string
           format: date-time
         endDatetime:
           type: string
           format: date-time
-        phase:
-          type: string
-          enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
         isOpen:
           type: boolean
           description: True if the current server time falls within the start/end window
         createdAt:
           type: string
           format: date-time
-      required: [scheduleId, startDatetime, endDatetime, phase, isOpen]
-
+      required: [scheduleId, coordinatorId, phase, startDatetime, endDatetime, isOpen]
+      
     SubmitRequestBody:
       type: object
       properties:

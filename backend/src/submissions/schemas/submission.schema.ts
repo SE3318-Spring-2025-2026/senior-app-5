@@ -9,6 +9,13 @@ export class Submission extends Document {
   @Prop({ default: 'Pending' })
   status!: string;
 
+
+  @Prop({ required: true })
+  groupId!: string;
+
+  @Prop({ required: true })
+  type!: string;
+
   //Array to hold metadata of documents
   @Prop([{
     originalName: { type: String, required: true },

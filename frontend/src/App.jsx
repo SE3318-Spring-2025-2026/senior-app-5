@@ -1,47 +1,27 @@
-import StudentDashboard from './pages/StudentDashboard'
-import './App.css'
-
-function App() {
-  return (
-    <div className="app">
-      
-      <StudentDashboard />
-    </div>
-  )
-}
-
-export default App
-
-
-/* =========================================
-   ORİJİNAL KOD
-   =========================================
 import RegisterPage from './pages/RegisterPage'
+import StudentDashboard from './pages/StudentDashboard' // Senin yeni sayfan
 import './App.css'
 
 function App() {
   return (
     <div className="app">
+      {/* ŞİMDİLİK ORİJİNAL KAYIT SAYFASI AKTİF */}
       <RegisterPage />
+
+      {/* TEST ETMEK İÇİN: 
+          Yukarıdaki <RegisterPage /> satırını yoruma alıp, 
+          aşağıdaki <StudentDashboard /> satırını açabilirsiniz.
+      */}
+      {/* <StudentDashboard /> */}
     </div>
   )
 }
+
 export default App
-*/
 
-
-/* =========================================
-   TEST: ISSUE #60 (Coordinator Dashboard)
-   =========================================
-import CoordinatorDashboard from './pages/CoordinatorDashboard';
-import './App.css'
-
-function App() {
-  return (
-    <div className="app">
-      <CoordinatorDashboard />
-    </div>
-  );
-}
-export default App
-*/
+/* ==========================================================
+   DEVELOPER TEST NOTLARI (Issue #63)
+   ----------------------------------------------------------
+   Bu PR ile StudentDashboard.tsx ve DocumentStatusBanner.tsx 
+   bileşenleri eklenmiştir. 
+   ========================================================== */

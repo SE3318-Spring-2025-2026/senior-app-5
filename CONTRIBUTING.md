@@ -92,8 +92,16 @@ If endpoints, flows, or contracts changed, update related docs as well:
 - API specifications: `docs/api/api-specs/`
 - System processes: `docs/system-processes.md`
 
+## Pull Request Guidelines
 
+When opening a PR, include:
 
+- Purpose of the change
+- Summary of what was changed
+- Test evidence (command output or screenshots)
+- Potential breaking risk and rollback plan (if any)
+
+Try to keep PR scope small. Splitting large changes into multiple PRs speeds up review.
 
 ## Issues and Communication
 

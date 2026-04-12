@@ -53,19 +53,6 @@ Example:
 git checkout -b feature/auth-refresh-token
 ```
 
-# Issue and Task Management Policy
-
-To ensure predictable development cycles, clear communication, and efficient workload distribution, this project strictly separates **Effort (Story Points)** from **Urgency (Priority)**. 
-
-All GitHub Issues and Pull Requests must be tagged with both a Story Point label and a Priority label before being assigned to a sprint.
-
----
-
-
-
-
-
-
 
 ## Code Standards
 

@@ -53,7 +53,6 @@ Example:
 git checkout -b feature/auth-refresh-token
 ```
 
-
 ## Code Standards
 
 - Keep the existing project structure and naming style.
@@ -92,15 +91,6 @@ If endpoints, flows, or contracts changed, update related docs as well:
 
 - API specifications: `docs/api/api-specs/`
 - System processes: `docs/system-processes.md`
-
-
-
-
-
-
-
-
-
 
 
 

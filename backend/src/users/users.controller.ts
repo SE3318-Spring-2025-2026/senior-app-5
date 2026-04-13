@@ -10,11 +10,15 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Link authenticated user account to GitHub' })
   @UseGuards(AuthGuard('jwt'))
   @Post(':userId/integrations/github')
   async linkGithub(

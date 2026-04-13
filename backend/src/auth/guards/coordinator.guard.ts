@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 
 @Injectable()
 export class CoordinatorGuard implements CanActivate {
@@ -7,7 +12,9 @@ export class CoordinatorGuard implements CanActivate {
     const user = request.user; // JWT'den gelen kullanıcı
 
     if (user?.role !== 'COORDINATOR') {
-      throw new ForbiddenException('Only coordinators can perform this action.');
+      throw new ForbiddenException(
+        'Only coordinators can perform this action.',
+      );
     }
     return true;
   }

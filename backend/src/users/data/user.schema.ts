@@ -11,10 +11,14 @@ export class User {
   @Prop({ required: true })
   passwordHash!: string;
 
-  
-  
-  @Prop({ required: true, default: 'STUDENT' })
+  @Prop({ required: true, enum: ['Student', 'Coordinator', 'Admin'] })
   role!: string;
+
+  @Prop()
+  teamId?: string;
+
+  @Prop()
+  githubAccountId?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

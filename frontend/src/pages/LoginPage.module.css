@@ -79,6 +79,7 @@
   font-family: inherit;
   transition: all 0.2s ease;
   background-color: #fff;
+  color: #1a1a1a;
 }
 
 .input:focus {

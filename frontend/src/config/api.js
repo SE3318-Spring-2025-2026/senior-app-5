@@ -11,6 +11,8 @@ export const apiConfig = {
       register: '/auth/register',
       login: '/auth/login',
       me: '/auth/me',
+      passwordResetRequest: '/auth/password-reset/request',
+      passwordResetConfirm: '/auth/password-reset/confirm',
     },
     groups: '/groups',
     groupMembers: (groupId) => `/groups/${groupId}/members`,

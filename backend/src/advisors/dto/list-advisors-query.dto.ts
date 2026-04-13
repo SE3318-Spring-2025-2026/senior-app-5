@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class ListAdvisorsQueryDto {
   @IsOptional()
@@ -14,9 +14,4 @@ export class ListAdvisorsQueryDto {
   @Min(1)
   @Max(100)
   limit = 20;
-
-  // TODO - Standardize role values to uppercase in the database and remove the lowercase check
-  @IsOptional()
-  @IsIn(['PROFESSOR'])
-  role = 'PROFESSOR';
 }

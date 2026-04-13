@@ -17,6 +17,7 @@ describe('AdvisorsService', () => {
 
   const mockUserModel = {
     find: jest.fn(),
+    countDocuments: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -35,12 +36,15 @@ describe('AdvisorsService', () => {
     service = module.get<AdvisorsService>(AdvisorsService);
   });
 
-  it('should return only professors from the users collection', async () => {
+  it('should return paginated advisors from advisor-compatible role records', async () => {
+    mockUserModel.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(1),
+    });
     mockUserModel.find.mockReturnValue(mockQuery);
     mockQuery.exec.mockResolvedValue([
       {
         _id: 'advisor-1',
-        email: 'professor@example.com',
+        email: 'advisor@example.com',
         role: 'PROFESSOR',
       },
     ]);
@@ -48,32 +52,43 @@ describe('AdvisorsService', () => {
     const query: ListAdvisorsQueryDto = {
       page: 2,
       limit: 10,
-      role: 'PROFESSOR',
     };
 
     const result = await service.listAdvisors(query);
 
-    expect(mockUserModel.find).toHaveBeenCalledWith({ role: 'PROFESSOR' });
+    expect(mockUserModel.countDocuments).toHaveBeenCalledWith({
+      role: { $in: ['ADVISOR', 'PROFESSOR'] },
+    });
+    expect(mockUserModel.find).toHaveBeenCalledWith({
+      role: { $in: ['ADVISOR', 'PROFESSOR'] },
+    });
     expect(mockQuery.skip).toHaveBeenCalledWith(10);
     expect(mockQuery.limit).toHaveBeenCalledWith(10);
-    expect(result).toEqual([
-      {
-        advisorId: 'advisor-1',
-        name: 'professor@example.com',
-        email: 'professor@example.com',
-        role: 'PROFESSOR',
-      },
-    ]);
+    expect(result).toEqual({
+      data: [
+        {
+          advisorId: 'advisor-1',
+          name: 'advisor@example.com',
+          email: 'advisor@example.com',
+          role: 'ADVISOR',
+        },
+      ],
+      total: 1,
+      page: 2,
+      limit: 10,
+    });
   });
 
   it('should map repository failures to an internal server error', async () => {
+    mockUserModel.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(1),
+    });
     mockUserModel.find.mockReturnValue(mockQuery);
     mockQuery.exec.mockRejectedValue(new Error('database failure'));
 
     const query: ListAdvisorsQueryDto = {
       page: 1,
       limit: 20,
-      role: 'PROFESSOR',
     };
 
     await expect(service.listAdvisors(query)).rejects.toBeInstanceOf(
@@ -82,36 +97,49 @@ describe('AdvisorsService', () => {
   });
 
   it('should use default role and pagination values when omitted', async () => {
+    mockUserModel.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(1),
+    });
     mockUserModel.find.mockReturnValue(mockQuery);
     mockQuery.exec.mockResolvedValue([
       {
         _id: 'advisor-1',
-        email: 'professor@example.com',
-        role: 'PROFESSOR',
+        email: 'advisor@example.com',
+        role: 'ADVISOR',
       },
     ]);
 
     const result = await service.listAdvisors({} as ListAdvisorsQueryDto);
 
-    expect(mockUserModel.find).toHaveBeenCalledWith({ role: 'PROFESSOR' });
+    expect(mockUserModel.find).toHaveBeenCalledWith({
+      role: { $in: ['ADVISOR', 'PROFESSOR'] },
+    });
     expect(mockQuery.skip).toHaveBeenCalledWith(0);
     expect(mockQuery.limit).toHaveBeenCalledWith(20);
-    expect(result).toEqual([
-      {
-        advisorId: 'advisor-1',
-        name: 'professor@example.com',
-        email: 'professor@example.com',
-        role: 'PROFESSOR',
-      },
-    ]);
+    expect(result).toEqual({
+      data: [
+        {
+          advisorId: 'advisor-1',
+          name: 'advisor@example.com',
+          email: 'advisor@example.com',
+          role: 'ADVISOR',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
   });
 
   it('should return advisor response fields in API contract shape', async () => {
+    mockUserModel.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(1),
+    });
     mockUserModel.find.mockReturnValue(mockQuery);
     mockQuery.exec.mockResolvedValue([
       {
         _id: 'advisor-1',
-        email: 'professor@example.com',
+        email: 'advisor@example.com',
         role: 'PROFESSOR',
       },
     ]);
@@ -119,13 +147,18 @@ describe('AdvisorsService', () => {
     const query: ListAdvisorsQueryDto = {
       page: 1,
       limit: 20,
-      role: 'PROFESSOR',
     };
 
     const result = await service.listAdvisors(query);
 
-    expect(result).toHaveLength(1);
-    expect(Object.keys(result[0]).sort()).toEqual([
+    expect(Object.keys(result).sort()).toEqual([
+      'data',
+      'limit',
+      'page',
+      'total',
+    ]);
+    expect(result.data).toHaveLength(1);
+    expect(Object.keys(result.data[0]).sort()).toEqual([
       'advisorId',
       'email',
       'name',

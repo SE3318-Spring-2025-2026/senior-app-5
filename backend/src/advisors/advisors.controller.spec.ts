@@ -35,16 +35,20 @@ describe('AdvisorsController', () => {
     const query: ListAdvisorsQueryArg = {
       page: 1,
       limit: 20,
-      role: 'PROFESSOR',
     };
-    const expected = [
-      {
-        advisorId: 'advisor-1',
-        name: 'professor@example.com',
-        email: 'professor@example.com',
-        role: 'PROFESSOR',
-      },
-    ];
+    const expected = {
+      data: [
+        {
+          advisorId: 'advisor-1',
+          name: 'advisor@example.com',
+          email: 'advisor@example.com',
+          role: 'ADVISOR',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    };
 
     mockAdvisorsService.listAdvisors.mockResolvedValue(expected);
 
@@ -62,7 +66,6 @@ describe('AdvisorsController', () => {
     const query: ListAdvisorsQueryArg = {
       page: 1,
       limit: 20,
-      role: 'PROFESSOR',
     };
 
     const request: ListAdvisorsRequestArg = {
@@ -74,26 +77,30 @@ describe('AdvisorsController', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('should accept legacy Coordinator role casing', async () => {
+  it('should allow team leader role', async () => {
     const query: ListAdvisorsQueryArg = {
       page: 1,
       limit: 20,
-      role: 'PROFESSOR',
     };
 
-    const expected = [
-      {
-        advisorId: 'advisor-1',
-        name: 'professor@example.com',
-        email: 'professor@example.com',
-        role: 'PROFESSOR',
-      },
-    ];
+    const expected = {
+      data: [
+        {
+          advisorId: 'advisor-1',
+          name: 'advisor@example.com',
+          email: 'advisor@example.com',
+          role: 'ADVISOR',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    };
 
     mockAdvisorsService.listAdvisors.mockResolvedValue(expected);
 
     const request: ListAdvisorsRequestArg = {
-      user: { role: 'Coordinator' },
+      user: { role: 'TEAM_LEADER' },
     } as ListAdvisorsRequestArg;
 
     const result = await controller.listAdvisors(request, query);

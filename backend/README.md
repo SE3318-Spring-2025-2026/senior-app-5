@@ -57,6 +57,19 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Test Users Seed
+
+To prepare local test accounts automatically, run:
+
+```bash
+cd backend
+npm run seed:test-users
+```
+
+This seeds the local database with repeatable test accounts for the advisor flow, including the roles needed for `/advisors` access checks.
+
+For the smoothest setup, run MongoDB through the repository's Docker compose file from the project root before seeding. That gives you a clean, reproducible database state for local testing and Postman/manual validation.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

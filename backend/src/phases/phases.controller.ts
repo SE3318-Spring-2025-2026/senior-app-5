@@ -5,7 +5,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { PhasesService } from './phases.service';
 import { UpdatePhaseScheduleDto } from './dto/update-phase-schedule.dto';
 
-@Controller('api/v1/phases')
+@Controller('phases')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('Coordinator')
 export class PhasesController {

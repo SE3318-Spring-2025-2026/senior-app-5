@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-
-
+import React, { useState, useEffect } from 'react';
+import GithubConnect from './GithubConnect';
+import authService from '../utils/authService'; // Backend ile konuşan servis eklendi
 
 const TEAM_ID = 'your_mongo_id_here'; 
 
@@ -10,13 +10,30 @@ export const IntegrationSettings: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // EKLENEN ADIM 1: Gerçek kullanıcı ID'sini tutacağımız State
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // EKLENEN ADIM 2: Sayfa açılır açılmaz kullanıcının ID'sini çekiyoruz
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await authService.getCurrentUser();
+        // auth/me endpoint'inden gelen id değerini state'e kaydediyoruz
+        setCurrentUserId(userData?.id || userData?._id); 
+      } catch (error) {
+        console.error("Kullanıcı bilgisi alınamadı:", error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setStatusMessage(null);
 
     try {
-      // Sending PUT request to the backend endpoint we just created
       const response = await fetch(`http://localhost:3001/teams/${TEAM_ID}/integrations`, {
         method: 'PUT',
         headers: {
@@ -80,7 +97,6 @@ export const IntegrationSettings: React.FC = () => {
         </div>
 
         {/* Status Messages */}
-        {/* Status Messages */}
         {statusMessage && (
           <div className={`p-3 rounded-lg text-sm transition-all ${
             statusMessage.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
@@ -100,6 +116,15 @@ export const IntegrationSettings: React.FC = () => {
           {isLoading ? 'Verifying...' : 'Save Integrations'}
         </button>
       </form>
+      
+      {currentUserId ? (
+        <GithubConnect userId={currentUserId} initialIsLinked={false} />
+      ) : (
+        <div className="mt-8 pt-6 border-t border-gray-200 text-sm text-gray-500 text-center">
+          Loading user data...
+        </div>
+      )}
+      
     </div>
   );
 };

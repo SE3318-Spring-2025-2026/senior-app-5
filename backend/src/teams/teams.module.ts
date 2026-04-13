@@ -8,7 +8,7 @@ import { Team, TeamSchema } from './schemas/team.schema';
 @Module({
   imports: [
     HttpModule,
-    
+
     MongooseModule.forFeature([{ name: Team.name, schema: TeamSchema }]),
   ],
   controllers: [TeamsController],

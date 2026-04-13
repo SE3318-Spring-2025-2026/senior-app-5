@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
-import authService from '../utils/authService';
+import { useAuth } from '../contexts/useAuth';
 import styles from './LoginPage.module.css';
 
 // Define validation schema for login
@@ -18,6 +18,7 @@ const loginSchema = z.object({
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
 
@@ -35,8 +36,7 @@ export function LoginPage() {
     setApiError('');
 
     try {
-      const result = await authService.login(data.email, data.password);
-      // Successfully logged in, can redirect to dashboard
+      await login(data.email, data.password);
       navigate('/groups');
     } catch (error) {
       setApiError(error.message || 'Login failed. Please try again.');

@@ -17,6 +17,22 @@
   padding: 40px;
   width: 100%;
   max-width: 450px;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  margin-bottom: 28px;
 }
 
 .title {
@@ -30,7 +46,7 @@
 .subtitle {
   font-size: 14px;
   color: #666;
-  margin: 0 0 24px 0;
+  margin: 0;
   text-align: center;
 }
 
@@ -40,6 +56,28 @@
   margin-bottom: 20px;
   font-size: 14px;
   line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.messageIcon {
+  font-size: 16px;
+  font-weight: bold;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .success {
@@ -58,6 +96,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  margin-bottom: 20px;
 }
 
 .formGroup {
@@ -85,6 +124,9 @@
   font-family: inherit;
   transition: all 0.2s ease;
   background-color: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  color: #1a1a1a;
 }
 
 .input:focus {
@@ -106,6 +148,40 @@
 
 .inputError:focus {
   box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+}
+
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInputWrapper .input {
+  padding-right: 40px;
+}
+
+.togglePassword {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  color: #666;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.togglePassword:hover:not(:disabled) {
+  color: #667eea;
+}
+
+.togglePassword:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .errorText {
@@ -135,10 +211,17 @@
   font-size: 13px;
   color: #555;
   line-height: 1.6;
+  list-style: none;
 }
 
 .hintList li {
   margin: 4px 0;
+  transition: color 0.2s ease;
+}
+
+.hintList li.checkPassed {
+  color: #27ae60;
+  font-weight: 500;
 }
 
 .button {
@@ -152,6 +235,11 @@
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
 }
 
 .button:hover:not(:disabled) {
@@ -168,38 +256,129 @@
   cursor: not-allowed;
 }
 
-.loginLink {
-  text-align: center;
-  font-size: 14px;
-  color: #666;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #e0e0e0;
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
-.loginLink a {
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.divider {
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+  margin: 16px 0;
+  padding: 16px 0;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.loginLink {
+  display: block;
+  text-align: center;
+  padding: 12px 16px;
   color: #667eea;
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.2s ease;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background-color: #f9f9f9;
 }
 
-.loginLink a:hover {
+.loginLink:hover {
+  background-color: #f0f0f0;
   color: #764ba2;
   text-decoration: underline;
 }
 
 /* Responsive design */
 @media (max-width: 480px) {
+  .container {
+    padding: 16px;
+  }
+
   .formWrapper {
     padding: 30px 20px;
+    border-radius: 16px;
   }
 
   .title {
     font-size: 24px;
+    margin-bottom: 4px;
   }
+
+  .subtitle {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .form {
+    gap: 16px;
+  }
+
+  .formGroup {
+    gap: 5px;
+  }
+
+  .label {
+    font-size: 13px;
+  }
+
+  .input {
+    padding: 11px 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .button {
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+
+  .passwordHint {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .hintTitle {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .hintList {
+    padding-left: 14px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 360px) {
+  .formWrapper {
+    padding: 24px 16px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .form {
+    gap: 14px;
+  }
+
+  .togglePassword {
+    right: 8px;
+  }
+}
+
 
   .passwordHint {
     font-size: 12px;
   }
-}

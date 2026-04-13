@@ -1,0 +1,58 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { getModelToken } from '@nestjs/mongoose';
+import { GroupsService } from './groups.service';
+import { Group, GroupStatus } from './group.entity';
+
+describe('GroupsService', () => {
+  let service: GroupsService;
+  let mockGroupModel: any;
+
+  beforeEach(async () => {
+    const mockGroup = {
+      groupId: 'test-uuid',
+      groupName: 'Test Group',
+      leaderUserId: '123e4567-e89b-12d3-a456-426614174000',
+      status: GroupStatus.ACTIVE,
+      save: jest.fn().mockResolvedValue({
+        groupId: 'test-uuid',
+        groupName: 'Test Group',
+        leaderUserId: '123e4567-e89b-12d3-a456-426614174000',
+        status: GroupStatus.ACTIVE,
+      }),
+    };
+
+    mockGroupModel = jest.fn().mockImplementation(() => mockGroup);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        GroupsService,
+        {
+          provide: getModelToken(Group.name),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          useValue: mockGroupModel,
+        },
+      ],
+    }).compile();
+
+    service = module.get<GroupsService>(GroupsService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  it('should create a group', async () => {
+    const createGroupDto = {
+      groupName: 'Test Group',
+      leaderUserId: '123e4567-e89b-12d3-a456-426614174000',
+    };
+
+    const result = await service.createGroup(createGroupDto);
+
+    expect(result).toBeDefined();
+    expect(result.groupName).toBe('Test Group');
+    expect(result.leaderUserId).toBe('123e4567-e89b-12d3-a456-426614174000');
+    expect(result.status).toBe(GroupStatus.ACTIVE);
+    expect(result.groupId).toBeDefined();
+  });
+});

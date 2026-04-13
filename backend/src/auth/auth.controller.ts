@@ -14,10 +14,13 @@ import { Request } from 'express'; // 'type' kelimesini kaldırmak bazen tip tan
 import { AuthService } from './auth.service';
 import { RegisterDto } from '../users/data/dto/register.dto';
 import { LoginDto } from '../users/data/dto/login.dto';
+import { CreateProfessorDto } from './dto/create-professor.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOperation,
+  ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -46,8 +49,9 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Login and receive JWT access token' })
-  @ApiCreatedResponse({ description: 'User logged in successfully' })
+  @ApiOkResponse({ type: LoginResponseDto, description: 'User logged in successfully' })
   @ApiUnauthorizedResponse({ description: 'Invalid login credentials' })
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
@@ -60,7 +64,7 @@ export class AuthController {
   @Post('admin/professors')
   async registerProfessor(
     @Req() req: RequestWithUser,
-    @Body() body: { email: string; password: string; role: string },
+    @Body() body: CreateProfessorDto,
   ) {
     if (req.user.role !== 'COORDINATOR') {
       throw new ForbiddenException(

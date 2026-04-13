@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
+import { LinkGithubDto } from './dto/link-github.dto';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Users')
@@ -24,8 +25,9 @@ export class UsersController {
   async linkGithub(
     @Param('userId') userId: string,
     @Request() req: any,
-    @Body('oauthAccessToken') oauthAccessToken: string,
+    @Body() body: LinkGithubDto,
   ) {
+    const oauthAccessToken = body.oauthAccessToken;
     const tokenUserId = req.user.userId || req.user.sub || req.user._id;
     if (tokenUserId !== userId) {
       throw new ForbiddenException(

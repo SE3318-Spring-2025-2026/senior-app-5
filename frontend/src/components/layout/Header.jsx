@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 export const Header = () => {
   const navigate = useNavigate();
 
-  
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : { firstName: 'USER' };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('user'); 
     navigate('/login');
   };
@@ -21,8 +21,6 @@ export const Header = () => {
         <span style={styles.logoText}>SENIOR<span style={styles.logoHighlight}>APP</span></span>
       </div>
 
-      
-      
       <div style={styles.userActionArea}>
         <div style={styles.userInfo}>
           <span style={styles.welcomeLabel}>WELCOME</span>
@@ -42,7 +40,6 @@ export const Header = () => {
     </header>
   );
 };
-
 
 const styles = {
   header: {

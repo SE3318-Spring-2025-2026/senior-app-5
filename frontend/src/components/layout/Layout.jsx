@@ -1,33 +1,29 @@
 import { useEffect } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
 export const Layout = () => {
   const navigate = useNavigate();
-  const location = useLocation(); 
 
+  
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     const user = localStorage.getItem('user');
 
-    
-    if (location.pathname === '/login' || location.pathname === '/register') {
-      return;
-    }
-
-    
     if (!token || !user) {
       console.log("Unauthorized access attempt. Redirecting to login...");
       navigate('/login');
     }
-  }, [navigate, location.pathname]); 
+  }, [navigate]);
 
   return (
     <div style={styles.container}>
+      
       <Header />
 
       <div style={styles.mainWrapper}>
+        
         <Sidebar />
 
         <main style={styles.content}>

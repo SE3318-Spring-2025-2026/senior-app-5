@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
+import { Role } from './enums/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -19,7 +20,7 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async register(email: string, password: string, role: string = 'Student') {
+  async register(email: string, password: string, role: Role = Role.Student) {
     if (!email || !password) {
       throw new BadRequestException('Email and password are required');
     }

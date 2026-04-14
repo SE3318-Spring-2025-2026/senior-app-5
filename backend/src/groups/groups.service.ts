@@ -1,13 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Group, GroupDocument, GroupStatus } from './group.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { Submission } from '../submissions/schemas/submission.schema';
 
 @Injectable()
 export class GroupsService {
   constructor(
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
+    @InjectModel(Submission.name) private submissionModel: Model<Submission>,
   ) {}
 
   async createGroup(createGroupDto: CreateGroupDto): Promise<Group> {
@@ -21,5 +23,42 @@ export class GroupsService {
 
   async findGroupById(groupId: string): Promise<Group | null> {
     return this.groupModel.findOne({ groupId }).exec();
+  }
+
+  async validateStatementOfWork(groupId: string) {
+    const submissions = await this.submissionModel.find({ 
+      groupId: groupId,
+      type: { $in: ['SOW', 'RevisedProposal'] }
+    });
+
+    if (!submissions || submissions.length === 0) {
+      throw new NotFoundException(`No submission records found for group ID: ${groupId}`);
+    }
+
+    const sow = submissions.find(sub => sub.type === 'SOW');
+    const revisedProposal = submissions.find(sub => sub.type === 'RevisedProposal');
+
+    const sowStatus = sow ? sow.status : 'Not Submitted';
+    const revisedStatus = revisedProposal ? revisedProposal.status : 'Not Required';
+
+    let validationState = 'Pending';
+
+    if (sowStatus === 'Approved' && (revisedStatus === 'Approved' || revisedStatus === 'Not Required')) {
+      validationState = 'Approved';
+    } else if (sowStatus === 'Needs Revision' || revisedStatus === 'Needs Revision') {
+      validationState = 'Needs Revision';
+    } else if (sowStatus === 'Submitted' || revisedStatus === 'Submitted') {
+      validationState = 'Submitted';
+    }
+
+    return {
+      groupId,
+      documents: {
+        statementOfWork: sowStatus,
+        revisedProposal: revisedStatus,
+      },
+      overallValidationStatus: validationState,
+      canClearSowStatus: validationState === 'Approved'
+    };
   }
 }

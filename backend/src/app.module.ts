@@ -9,6 +9,7 @@ import { TeamsModule } from './teams/teams.module';
 import { AdminModule } from './admin/admin.module';
 import { GroupsModule } from './groups/groups.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SubmissionsModule } from './submissions/submissions.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     AdminModule,
     GroupsModule,
     NotificationsModule,
+    SubmissionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

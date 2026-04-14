@@ -28,11 +28,11 @@ const DashboardPage = () => {
   
   const renderContent = () => {
     switch (user.role) {
-      case 'student':
+      case 'Student':
         return <StudentView user={user} />;
-      case 'professor':
+      case 'Professor':
         return <ProfessorView user={user} />;
-      case 'coordinator':
+      case 'Coordinator':
         return <CoordinatorView user={user} />;
       default:
         return (

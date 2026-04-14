@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import authService from '../utils/authService';
 import apiClient from '../utils/apiClient'; 
-import { useAuth } from '../context/AuthContext'; 
+
 import styles from './LoginPage.module.css';
 
 const loginSchema = z.object({
@@ -22,11 +22,11 @@ const loginSchema = z.object({
 export const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
 
-  
   useEffect(() => {
     if (searchParams.get('expired') === 'true') {
       setApiError('Your session has expired. Please log in again.');
@@ -42,7 +42,6 @@ export const LoginPage = () => {
     mode: 'onBlur',
   });
 
-  
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     setApiError(null);
@@ -65,7 +64,6 @@ export const LoginPage = () => {
       localStorage.setItem('user', JSON.stringify(realUser));
 
       
-      login();
       navigate('/groups'); 
 
     } catch (error) {

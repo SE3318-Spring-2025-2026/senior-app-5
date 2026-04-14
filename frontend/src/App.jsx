@@ -4,6 +4,7 @@ import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import ActivityPage from './pages/ActivityPage';
 import './App.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/groups" element={<GroupLifecyclePage />} />
+        <Route path="/admin/activity" element={<ActivityPage />} />
         <Route path="/" element={<Navigate to="/register" replace />} />
       </Routes>
     </Router>

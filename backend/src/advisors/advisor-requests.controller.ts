@@ -12,6 +12,7 @@ import { hasAnyRole, normalizeRole, ROLES } from '../auth/constants/roles';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdvisorsService } from './advisors.service';
 import { SubmitRequestDto } from './dto/submit-request.dto';
+import { AdvisorRequestStatus } from './schemas/advisor-request.schema';
 
 interface RequestWithUser extends Request {
   user?: {
@@ -35,7 +36,10 @@ export class AdvisorRequestsController {
   }
 
   @Post()
-  async submitRequest(@Req() req: RequestWithUser, @Body() body: SubmitRequestDto) {
+  async submitRequest(
+    @Req() req: RequestWithUser,
+    @Body() body: SubmitRequestDto,
+  ) {
     const role = req.user?.role;
     const userId = req.user?.userId;
     const correlationId = this.getCorrelationId(req);
@@ -61,17 +65,37 @@ export class AdvisorRequestsController {
       submittedBy: userId ?? '',
     });
 
+    const requestRecord = result as unknown as {
+      requestId: string;
+      groupId: string;
+      submittedBy: string;
+      requestedAdvisorId: string;
+      status?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    };
+
+    const response = {
+      requestId: requestRecord.requestId,
+      groupId: requestRecord.groupId,
+      submittedBy: requestRecord.submittedBy,
+      requestedAdvisorId: requestRecord.requestedAdvisorId,
+      status: requestRecord.status ?? AdvisorRequestStatus.PENDING,
+      createdAt: requestRecord.createdAt,
+      updatedAt: requestRecord.updatedAt,
+    };
+
     this.logger.log(
       JSON.stringify({
         event: 'advisor_request_submitted',
-        requestId: result.requestId,
-        groupId: result.groupId,
-        requestedAdvisorId: result.requestedAdvisorId,
+        requestId: response.requestId,
+        groupId: response.groupId,
+        requestedAdvisorId: response.requestedAdvisorId,
         callerRole,
         correlationId,
       }),
     );
 
-    return result;
+    return response;
   }
 }

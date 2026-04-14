@@ -1,7 +1,7 @@
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { IsMongoId, IsNotEmpty } from 'class-validator';
 
 export class SubmitRequestDto {
   @IsNotEmpty()
-  @IsUUID()
+  @IsMongoId()
   requestedAdvisorId!: string;
 }

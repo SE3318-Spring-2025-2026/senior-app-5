@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -38,6 +39,26 @@ export interface PaginatedAdvisorsResponse {
   limit: number;
 }
 
+export interface SetScheduleInput {
+  phase: SchedulePhase;
+  startDatetime: string;
+  endDatetime: string;
+  coordinatorId: string;
+}
+
+export interface ScheduleResponse {
+  scheduleId: string;
+  coordinatorId: string;
+  phase: SchedulePhase;
+  startDatetime: string;
+  endDatetime: string;
+  createdAt: string;
+}
+
+export interface ActiveScheduleResponse extends ScheduleResponse {
+  isOpen: boolean;
+}
+
 interface AdvisorRecord {
   _id?: { toString(): string } | string;
   id?: string;
@@ -47,8 +68,12 @@ interface AdvisorRecord {
 }
 
 interface ScheduleRecord {
+  scheduleId?: string;
+  coordinatorId: string;
+  phase: SchedulePhase;
   startDatetime: Date;
   endDatetime: Date;
+  createdAt?: Date;
 }
 
 export interface SubmitRequestInput {
@@ -100,6 +125,84 @@ export class AdvisorsService {
     } catch {
       throw new InternalServerErrorException('Failed to fetch advisors.');
     }
+  }
+
+  async setSchedule(input: SetScheduleInput): Promise<ScheduleResponse> {
+    if (!input.coordinatorId) {
+      throw new ForbiddenException('Invalid authenticated user.');
+    }
+
+    const start = new Date(input.startDatetime);
+    const end = new Date(input.endDatetime);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException('Schedule datetimes must be valid dates.');
+    }
+
+    if (end.getTime() <= start.getTime()) {
+      throw new BadRequestException(
+        'endDatetime must be greater than startDatetime.',
+      );
+    }
+
+    try {
+      await this.scheduleModel
+        .updateMany(
+          { phase: input.phase, isActive: true },
+          { $set: { isActive: false } },
+        )
+        .exec();
+
+      const createdSchedule = await this.scheduleModel.create({
+        coordinatorId: input.coordinatorId,
+        phase: input.phase,
+        startDatetime: start,
+        endDatetime: end,
+        isActive: true,
+      });
+      const createdScheduleWithTimestamp = createdSchedule as unknown as {
+        createdAt?: Date;
+      };
+      const createdAt =
+        createdScheduleWithTimestamp.createdAt instanceof Date
+          ? createdScheduleWithTimestamp.createdAt
+          : new Date();
+
+      return {
+        scheduleId: createdSchedule.scheduleId,
+        coordinatorId: createdSchedule.coordinatorId,
+        phase: createdSchedule.phase,
+        startDatetime: createdSchedule.startDatetime.toISOString(),
+        endDatetime: createdSchedule.endDatetime.toISOString(),
+        createdAt: createdAt.toISOString(),
+      };
+    } catch {
+      throw new InternalServerErrorException('Failed to set schedule.');
+    }
+  }
+
+  async getActiveSchedule(
+    phase: SchedulePhase,
+  ): Promise<ActiveScheduleResponse> {
+    const schedule = await this.getLatestScheduleByPhase(phase);
+
+    if (!schedule) {
+      throw new NotFoundException(`No schedule found for phase ${phase}.`);
+    }
+
+    const now = Date.now();
+    const start = new Date(schedule.startDatetime).getTime();
+    const end = new Date(schedule.endDatetime).getTime();
+
+    return {
+      scheduleId: schedule.scheduleId ?? '',
+      coordinatorId: schedule.coordinatorId,
+      phase: schedule.phase,
+      startDatetime: new Date(schedule.startDatetime).toISOString(),
+      endDatetime: new Date(schedule.endDatetime).toISOString(),
+      createdAt: (schedule.createdAt ?? new Date()).toISOString(),
+      isOpen: now >= start && now <= end,
+    };
   }
 
   async submitRequest(input: SubmitRequestInput): Promise<AdvisorRequest> {
@@ -203,11 +306,9 @@ export class AdvisorsService {
   }
 
   private async isAdvisorSelectionOpen(): Promise<boolean> {
-    const schedule = await this.scheduleModel
-      .findOne({ phase: SchedulePhase.ADVISOR_SELECTION })
-      .sort({ createdAt: -1 })
-      .lean<ScheduleRecord>()
-      .exec();
+    const schedule = await this.getLatestScheduleByPhase(
+      SchedulePhase.ADVISOR_SELECTION,
+    );
 
     if (!schedule) {
       return false;
@@ -218,5 +319,15 @@ export class AdvisorsService {
     const end = new Date(schedule.endDatetime).getTime();
 
     return now >= start && now <= end;
+  }
+
+  private async getLatestScheduleByPhase(
+    phase: SchedulePhase,
+  ): Promise<ScheduleRecord | null> {
+    return this.scheduleModel
+      .findOne({ phase, isActive: true })
+      .sort({ createdAt: -1 })
+      .lean<ScheduleRecord>()
+      .exec();
   }
 }

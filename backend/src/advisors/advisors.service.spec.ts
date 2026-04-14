@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   InternalServerErrorException,
@@ -63,6 +64,10 @@ describe('AdvisorsService', () => {
   };
 
   const mockScheduleModel = {
+    create: jest.fn(),
+    updateMany: jest.fn(() => ({
+      exec: jest.fn().mockResolvedValue({ acknowledged: true }),
+    })),
     findOne: jest.fn(),
   };
 
@@ -195,6 +200,80 @@ describe('AdvisorsService', () => {
       page: 1,
       limit: 20,
     });
+  });
+
+  it('should set schedule for valid coordinator and datetime range', async () => {
+    mockScheduleModel.create.mockResolvedValue({
+      scheduleId: 'schedule-1',
+      coordinatorId: 'coordinator-1',
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date('2026-04-14T10:00:00.000Z'),
+      endDatetime: new Date('2026-04-14T12:00:00.000Z'),
+      createdAt: new Date('2026-04-14T09:00:00.000Z'),
+    });
+
+    const result = await service.setSchedule({
+      coordinatorId: 'coordinator-1',
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: '2026-04-14T10:00:00.000Z',
+      endDatetime: '2026-04-14T12:00:00.000Z',
+    });
+
+    expect(mockScheduleModel.create).toHaveBeenCalledWith({
+      coordinatorId: 'coordinator-1',
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date('2026-04-14T10:00:00.000Z'),
+      endDatetime: new Date('2026-04-14T12:00:00.000Z'),
+      isActive: true,
+    });
+    expect(result).toEqual({
+      scheduleId: 'schedule-1',
+      coordinatorId: 'coordinator-1',
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: '2026-04-14T10:00:00.000Z',
+      endDatetime: '2026-04-14T12:00:00.000Z',
+      createdAt: '2026-04-14T09:00:00.000Z',
+    });
+  });
+
+  it('should reject schedule when endDatetime is not after startDatetime', async () => {
+    await expect(
+      service.setSchedule({
+        coordinatorId: 'coordinator-1',
+        phase: SchedulePhase.ADVISOR_SELECTION,
+        startDatetime: '2026-04-14T12:00:00.000Z',
+        endDatetime: '2026-04-14T10:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('should return active schedule with computed isOpen', async () => {
+    mockScheduleModel.findOne.mockReturnValue(mockScheduleFindOneQuery);
+    mockScheduleFindOneQuery.exec.mockResolvedValue({
+      scheduleId: 'schedule-1',
+      coordinatorId: 'coordinator-1',
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date(Date.now() - 1000 * 60),
+      endDatetime: new Date(Date.now() + 1000 * 60),
+      createdAt: new Date('2026-04-14T09:00:00.000Z'),
+    });
+
+    const result = await service.getActiveSchedule(
+      SchedulePhase.ADVISOR_SELECTION,
+    );
+
+    expect(result.scheduleId).toBe('schedule-1');
+    expect(result.phase).toBe(SchedulePhase.ADVISOR_SELECTION);
+    expect(result.isOpen).toBe(true);
+  });
+
+  it('should return 404 when active schedule does not exist for phase', async () => {
+    mockScheduleModel.findOne.mockReturnValue(mockScheduleFindOneQuery);
+    mockScheduleFindOneQuery.exec.mockResolvedValue(null);
+
+    await expect(
+      service.getActiveSchedule(SchedulePhase.COMMITTEE_ASSIGNMENT),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('should create pending advisor request and dispatch notification', async () => {

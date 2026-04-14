@@ -5,8 +5,18 @@ info:
   description: |
     Committee lifecycle and member assignments (docs/system-processes.md — Process 5).
     Rules: no committee type on API; no PATCH for rename/retype; advisor links have no assignment source;
-    remove group with DELETE on /groups and groupId in JSON body.
+    remove group with DELETE /committees/{committeeId}/groups/{groupId} using path parameter.
     Nested assignment objects omit committeeId in responses (context from path or parent Committee.id).
+
+    Cross-service dependency: This service relies on the Advisor Assignment API (Process 4)
+    for schedule window management. Specifically, POST /committees/{committeeId}/groups returns
+    423 Locked when the assignment window is closed — callers should query
+    GET /schedules/active on the Advisor Assignment API to check window status.
+
+    Authorization policy: canonical role names are uppercase
+    (COORDINATOR, TEAM_LEADER, ADVISOR, ADMIN, STUDENT).
+    [ANY] means any authenticated role with a valid JWT.
+    Schedule ownership is in Process 4; this API does not define a local POST /schedules endpoint.
 
 servers:
   - url: http://localhost:3000
@@ -21,8 +31,97 @@ tags:
     description: Advisors linked to a committee (list, add, remove)
   - name: committee-groups
     description: Groups assigned to a committee (list, add, remove via body)
+  - name: committee-grading-scope
+    description: Per-advisor grading scope within a committee (which groups each advisor is responsible for grading)
 
 paths:
+  # ─────────────────────────────────────────────
+  # Schedule Management
+  # ─────────────────────────────────────────────
+  /schedules:
+    post:
+      tags: [schedule]
+      summary: Set a schedule window for a specific phase
+      operationId: setSchedule
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Sets the schedule window (start and end dates) for a specific system phase 
+        (e.g., ADVISOR_SELECTION or COMMITTEE_ASSIGNMENT).
+        
+        **Preconditions (_requires_):**
+        - The `endDatetime` MUST be strictly after the `startDatetime`.
+        - Caller must have the COORDINATOR role.
+        
+        **Postconditions (_effects_):**
+        - The new schedule is persisted in the Database.
+        - Any previously active schedule for this specific `phase` is overridden or marked as historical.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetScheduleRequest"
+      responses:
+        "201":
+          description: Schedule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+        "400":
+          description: Bad Request – e.g., end date is before start date.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden – Caller does not have the COORDINATOR role.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /schedules/active:
+    get:
+      tags: [schedule]
+      summary: Get the currently active schedule window for a phase
+      operationId: getActiveSchedule
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [ANY AUTHENTICATED USER]
+
+        Returns the currently active schedule window for the requested phase.
+        This is a convenience endpoint so clients don't have to fetch all historical schedules.
+        
+        - Team Leaders use `?phase=ADVISOR_SELECTION` before sending advisor requests.
+        - Coordinators use `?phase=COMMITTEE_ASSIGNMENT` before assigning groups to committees.
+      parameters:
+        - name: phase
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
+          description: Specify which schedule phase you are querying.
+      responses:
+        "200":
+          description: The active schedule window for the requested phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveSchedule"
+        "400":
+          description: Bad Request – Phase parameter is missing or invalid.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not Found – No active schedule window currently exists for this phase.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 5.1 Committees – CRUD
+  # ─────────────────────────────────────────────
   /committees:
     get:
       tags: [committees]
@@ -30,7 +129,7 @@ paths:
       description: Returns a paginated list. Optional name filter is implementation-defined (e.g. case-insensitive substring).
       operationId: listCommittees
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - name: page
           in: query
@@ -61,14 +160,21 @@ paths:
                 $ref: "#/components/schemas/CommitteePage"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     post:
       tags: [committees]
       summary: Create committee
-      description: Creates a committee with a display name only (no committee type in this API).
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Creates a committee.
       operationId: createCommittee
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -87,7 +193,9 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Authenticated user is not allowed to create committees
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /committees/{committeeId}:
     get:
@@ -98,7 +206,7 @@ paths:
         Embedded assignment items do not repeat committeeId; use path parameter or top-level id.
       operationId: getCommittee
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       responses:
@@ -110,60 +218,135 @@ paths:
                 $ref: "#/components/schemas/Committee"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     delete:
       tags: [committees]
-      summary: Delete committee
-      description: Removes the committee. Cascading deletion of assignments depends on implementation and business rules.
+      summary: Delete a committee
       operationId: deleteCommittee
       security:
-        - bearerAuth: []
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Deletes a committee entity.
+        
+        **Postconditions (_effects_ - Cascade Rules):**
+        - The Committee record is deleted.
+        - ALL `Advisor-Committee` link records are permanently deleted.
+        - ALL `Group-Committee` link records are permanently deleted. 
+        - **Crucial:** The actual Advisor and Group entities are NOT deleted. Groups are simply returned to the pool of groups needing committee assignment.
       parameters:
-        - $ref: "#/components/parameters/CommitteeId"
+        - name: committeeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         "204":
-          description: Committee deleted; no response body
+          description: Committee and all associated assignment links successfully deleted.
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           description: Cannot delete (e.g. active grading or locked state)
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      tags: [committees]
+      summary: Update committee details
+      description: Updates committee metadata (e.g., fixing a typo in the name). Does not affect assignments. Only Coordinators may perform this action.
+      operationId: updateCommittee
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CommitteeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitteeUpdate"
+      responses:
+        "200":
+          description: Committee updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Committee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /committees/{committeeId}/jury-members:
     get:
       tags: [committee-jury]
       summary: List jury members
-      description: Returns assignments for this committee. Each item has userId and assignedAt only (no committeeId).
+      description: Returns paginated jury assignments for this committee. Each item has userId and assignedAt only (no committeeId).
       operationId: listJuryMembers
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 1-based page index
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Page size
       responses:
         "200":
-          description: List of jury assignments
+          description: Paginated list of jury assignments
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/JuryMemberResponse"
+                $ref: "#/components/schemas/JuryMemberPage"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     post:
       tags: [committee-jury]
       summary: Add jury member
       description: |
         Assigns a user as jury. If assignedAt is omitted, server may set it to current time.
+        Only Coordinators may add jury members.
       operationId: addJuryMember
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       requestBody:
@@ -183,10 +366,14 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           description: User is already a jury member on this committee
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /committees/{committeeId}/jury-members/{userId}:
     delete:
@@ -195,7 +382,7 @@ paths:
       description: Removes the given user from the committee jury list.
       operationId: removeJuryMember
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
         - $ref: "#/components/parameters/UserId"
@@ -204,51 +391,89 @@ paths:
           description: Removed; no response body
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /committees/{committeeId}/advisors:
     get:
       tags: [committee-advisors]
       summary: List committee advisors
-      description: Returns advisor links with advisorUserId and assignedAt only (no assignment source in this API).
+      description: Returns paginated advisor links for this committee. Each item has advisorUserId and assignedAt only (no assignment source).
       operationId: listCommitteeAdvisors
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 1-based page index
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Page size
       responses:
         "200":
-          description: List of advisor assignments
+          description: Paginated list of advisor assignments
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CommitteeAdvisorResponse"
+                $ref: "#/components/schemas/CommitteeAdvisorPage"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     post:
       tags: [committee-advisors]
-      summary: Link advisor to committee
-      description: If assignedAt is omitted, server may default to now.
+      summary: Assign an advisor to a committee
       operationId: addCommitteeAdvisor
       security:
-        - bearerAuth: []
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Adds an advisor to a committee.
+        
+        **Preconditions (_requires_):**
+        - The Committee Assignment schedule window MUST be active.
+        
+        **Postconditions (_effects_):**
+        - Creates a link record with the specified `assignmentSource`.
+        - Triggers an internal notification to the assigned Advisor indicating their jury duties.
       parameters:
-        - $ref: "#/components/parameters/CommitteeId"
+        - name: committeeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CommitteeAdvisorInvite"
+              $ref: "#/components/schemas/AssignAdvisorRequest"
       responses:
         "201":
-          description: Advisor linked
+          description: Advisor successfully assigned to committee
           content:
             application/json:
               schema:
@@ -257,10 +482,14 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           description: Duplicate advisor link or other conflict
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /committees/{committeeId}/advisors/{advisorUserId}:
     delete:
@@ -269,7 +498,7 @@ paths:
       description: Removes the advisor from this committee.
       operationId: removeCommitteeAdvisor
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
         - name: advisorUserId
@@ -278,45 +507,81 @@ paths:
           description: User id of the advisor to remove
           schema:
             type: string
+            format: uuid
       responses:
         "204":
           description: Removed; no response body
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /committees/{committeeId}/groups:
     get:
       tags: [committee-groups]
       summary: List assigned groups
-      description: Returns groupId and assignedAt per row (no committeeId on each item).
+      description: Returns paginated group assignments for this committee. Each item has groupId and assignedAt only (no committeeId).
       operationId: listCommitteeGroups
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 1-based page index
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Page size
       responses:
         "200":
-          description: List of group assignments
+          description: Paginated list of group assignments
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CommitteeGroupResponse"
+                $ref: "#/components/schemas/CommitteeGroupPage"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     post:
       tags: [committee-groups]
       summary: Assign group to committee
-      description: If assignedAt is omitted, server may default to now.
       operationId: assignGroupToCommittee
       security:
-        - bearerAuth: []
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Assigns a group to this committee.
+        
+        **Preconditions (_requires_):**
+        1. The group must have completed Group Creation.
+        2. The group must have completed Group-Advisor Association (i.e., have an assigned advisor).
+        3. The Committee Assignment schedule window MUST be open.
+        
+        **Postconditions (_effects_):**
+        - Group is successfully linked to the committee.
+        - **Auto-Link:** The system automatically identifies the group's Primary Advisor (established in Process 4) and silently adds them to this Committee's advisor list, if they are not already present.
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
       requestBody:
@@ -327,7 +592,7 @@ paths:
               $ref: "#/components/schemas/CommitteeGroupInvite"
       responses:
         "201":
-          description: Group assigned
+          description: Group assigned successfully. Primary advisor auto-linked if applicable.
           content:
             application/json:
               schema:
@@ -336,33 +601,40 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden – Caller does not have the COORDINATOR role.
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: Group already assigned or rule violation
+          description: Conflict – Group is already assigned to a committee.
+        "422":
+          description: |
+            Unprocessable — prerequisite not met. The group does not have a confirmed
+            advisor assignment (Group-Advisor Association must be completed first).
+        "423":
+          description: |
+            Locked — the committee assignment schedule window is not currently open.
+            Check GET /schedules/active to see when the window opens.
+        "500":
+          $ref: "#/components/responses/InternalError"
 
+  /committees/{committeeId}/groups/{groupId}:
     delete:
       tags: [committee-groups]
       summary: Remove group from committee
-      description: |
-        Identifies the group via JSON body (not path). Some HTTP clients ignore DELETE bodies;
-        if that is a concern, use an alternate sub-resource POST (e.g. /groups/removals) in implementation.
+      description: Removes the given group from this committee using a proper RESTful path parameter.
       operationId: removeGroupFromCommittee
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CommitteeId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [groupId]
-              properties:
-                groupId:
-                  type: string
-                  description: Group to remove from this committee
+        - name: groupId
+          in: path
+          required: true
+          description: ID of the group to remove from this committee
+          schema:
+            type: string
+            format: uuid
       responses:
         "204":
           description: Removed; no response body
@@ -370,12 +642,108 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 5.5 Reverse Lookup: Group's Committee
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/committee:
+    get:
+      tags: [groups, committees]
+      summary: Get the committee assigned to a specific group
+      operationId: getGroupCommittee
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [ANY]
+
+        Returns the committee details that a specific group has been assigned to. 
+        Used by Team Leaders and Students to see their jury members.
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The committee assigned to this group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Committee" # Assuming you have a basic Committee schema
+        "404":
+          description: Group not found, or Group is not currently assigned to any committee.
+
+  # ─────────────────────────────────────────────
+  # Per-advisor grading scope within a committee
+  # ─────────────────────────────────────────────
+  /committees/{committeeId}/advisors/{advisorUserId}/groups:
+    get:
+      tags: [committee-grading-scope]
+      summary: List groups an advisor is responsible for grading in this committee
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR]
+
+        Returns the paginated set of groups this advisor must grade within the committee.
+        Per project definition, each advisor in a committee grades their own
+        groups AND the groups of other advisors in the same committee.
+        This endpoint exposes the resolved grading scope so the system and UI
+        can display the correct group list to each advisor.
+      operationId: listAdvisorGradingScope
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CommitteeId"
+        - name: advisorUserId
+          in: path
+          required: true
+          description: User ID of the advisor whose grading scope is being queried
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 1-based page index
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Page size
+      responses:
+        "200":
+          description: Paginated list of groups this advisor is responsible for grading
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisorGradingScopePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
 components:
   securitySchemes:
-    bearerAuth:
+    BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
@@ -410,6 +778,12 @@ components:
       description: Authenticated but insufficient permissions
     NotFound:
       description: Committee or related resource not found
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
 
   schemas:
     ErrorBody:
@@ -452,7 +826,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-          description: Present if updates occur (e.g. name change via future API)
+          description: Timestamp of the last update to this committee, if any updates have occurred.
         jury:
           type: array
           description: Optional embed; may be omitted in list responses to reduce payload
@@ -467,11 +841,21 @@ components:
           items:
             $ref: "#/components/schemas/CommitteeGroupResponse"
 
+    CommitteeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Updated display name of the committee
+      minProperties: 1
+
     CommitteePage:
       type: object
-      required: [items, total, page, limit]
+      required: [data, total, page, limit]
       properties:
-        items:
+        data:
           type: array
           items:
             $ref: "#/components/schemas/Committee"
@@ -489,40 +873,40 @@ components:
       properties:
         userId:
           type: string
+          format: uuid
+          description: ID of the user to assign as jury member
         assignedAt:
           type: string
           format: date-time
-          description: Optional; server may default to current time
+          description: Optional; server may default to current time. assignedByUserId is derived from JWT — do not send in body.
 
     JuryMemberResponse:
       type: object
-      required: [userId, assignedAt]
+      required: [userId, assignedAt, assignedByUserId]
       description: Jury row without redundant committeeId
       properties:
         userId:
           type: string
+          format: uuid
         assignedAt:
           type: string
           format: date-time
-
-    CommitteeAdvisorInvite:
-      type: object
-      required: [advisorUserId]
-      properties:
-        advisorUserId:
+        assignedByUserId:
           type: string
-        assignedAt:
-          type: string
-          format: date-time
-          description: Optional; server may default to current time
+          description: ID of the user (e.g., Coordinator) who made this assignment
 
     CommitteeAdvisorResponse:
       type: object
-      required: [advisorUserId, assignedAt]
-      description: Advisor link without committeeId or assignment source
       properties:
-        advisorUserId:
+        committeeId:
           type: string
+          format: uuid
+        advisorId:
+          type: string
+          format: uuid
+        assignmentSource:
+          type: string
+          enum: [PRIMARY_ADVISOR, JURY_MEMBER]
         assignedAt:
           type: string
           format: date-time
@@ -536,11 +920,11 @@ components:
         assignedAt:
           type: string
           format: date-time
-          description: Optional; server may default to current time
+          description: Optional; server may default to current time. assignedByUserId is derived from JWT — do not send in body.
 
     CommitteeGroupResponse:
       type: object
-      required: [groupId, assignedAt]
+      required: [groupId, assignedAt, assignedByUserId]
       description: Group assignment without redundant committeeId
       properties:
         groupId:
@@ -548,3 +932,178 @@ components:
         assignedAt:
           type: string
           format: date-time
+        assignedByUserId:
+          type: string
+          description: ID of the user who made this assignment
+
+    AssignAdvisorRequest:
+      type: object
+      properties:
+        advisorId:
+          type: string
+          format: uuid
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        assignmentSource:
+          type: string
+          enum: [PRIMARY_ADVISOR, JURY_MEMBER]
+          description: Indicates if they are auto-assigned via their group, or manually added as a jury member.
+          example: "JURY_MEMBER"
+      required: [advisorId, assignmentSource]
+
+    AdvisorGradingScopeItem:
+      type: object
+      description: |
+        A single group entry in an advisor's grading scope within a committee.
+        Includes whether the group belongs to this advisor's own advisees or
+        to another advisor's advisees (cross-grading).
+      required: [groupId, assignedAt, isOwnGroup]
+      properties:
+        groupId:
+          type: string
+          description: ID of the group this advisor must grade
+        assignedAt:
+          type: string
+          format: date-time
+          description: When the group was assigned to the committee
+        isOwnGroup:
+          type: boolean
+          description: |
+            True if this group is directly advised by this advisor.
+            False if this is a cross-grading assignment (another advisor's group
+            that this advisor must also grade per committee rules).
+        originalAdvisorUserId:
+          type: string
+          nullable: true
+          description: The advisor who owns this group (null if isOwnGroup is true)
+    
+    JuryMemberPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/JuryMemberResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    CommitteeAdvisorPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommitteeAdvisorResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    CommitteeGroupPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommitteeGroupResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    AdvisorGradingScopePage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisorGradingScopeItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    SetScheduleRequest:
+      type: object
+      properties:
+        startDatetime:
+          type: string
+          format: date-time
+          description: Schedule window start
+        endDatetime:
+          type: string
+          format: date-time
+          description: Schedule window end
+        phase:
+          type: string
+          enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
+          description: Indicates which process this schedule applies to.
+          example: "COMMITTEE_ASSIGNMENT"
+      required: [startDatetime, endDatetime, phase]
+
+    Schedule:
+      type: object
+      properties:
+        scheduleId:
+          type: string
+          format: uuid
+        coordinatorId:
+          type: string
+          format: uuid
+        startDatetime:
+          type: string
+          format: date-time
+        endDatetime:
+          type: string
+          format: date-time
+        phase:
+          type: string
+          enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
+          description: The specific project phase this schedule dictates.
+        createdAt:
+          type: string
+          format: date-time
+      required: [scheduleId, coordinatorId, startDatetime, endDatetime, phase]
+
+    ActiveSchedule:
+      type: object
+      description: The currently active schedule window for a specific phase.
+      properties:
+        scheduleId:
+          type: string
+          format: uuid
+        coordinatorId:
+          type: string
+          format: uuid
+        startDatetime:
+          type: string
+          format: date-time
+        endDatetime:
+          type: string
+          format: date-time
+        phase:
+          type: string
+          enum: [ADVISOR_SELECTION, COMMITTEE_ASSIGNMENT]
+        isOpen:
+          type: boolean
+          description: True if the current server time falls within the start/end window
+        createdAt:
+          type: string
+          format: date-time
+      required: [scheduleId, startDatetime, endDatetime, phase, isOpen]
+      
+security:
+  - BearerAuth: []

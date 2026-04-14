@@ -6,6 +6,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { TeamsModule } from './teams/teams.module';
+import { AdminModule } from './admin/admin.module';
+import { GroupsModule } from './groups/groups.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +17,9 @@ import { TeamsModule } from './teams/teams.module';
     UsersModule,
     AuthModule,
     TeamsModule,
+    AdminModule,
+    GroupsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -10,6 +10,7 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN as string,
     credentials: true,
   });
+  app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.use(helmet());
   app.use(bodyParser.json());

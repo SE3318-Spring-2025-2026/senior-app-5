@@ -22,7 +22,7 @@ function App() {
           
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           
-          {/* 3. EXISTING ROUTES */}
+          
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

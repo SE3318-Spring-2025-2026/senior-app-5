@@ -6,7 +6,6 @@ import { TeamLeaderGuard } from './guards/team-leader.guard';
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
-  
   @UseGuards(TeamLeaderGuard)
   @Put(':teamId/integrations')
   async updateIntegrations(

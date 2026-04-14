@@ -1,8 +1,22 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
 export const Layout = () => {
+  const navigate = useNavigate();
+
+  
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    const user = localStorage.getItem('user');
+
+    if (!token || !user) {
+      console.log("Unauthorized access attempt. Redirecting to login...");
+      navigate('/login');
+    }
+  }, [navigate]);
+
   return (
     <div style={styles.container}>
       
@@ -12,7 +26,6 @@ export const Layout = () => {
         
         <Sidebar />
 
-        
         <main style={styles.content}>
           <div style={styles.pageCard}>
             <Outlet />
@@ -22,7 +35,6 @@ export const Layout = () => {
     </div>
   );
 };
-
 
 const styles = {
   container: {

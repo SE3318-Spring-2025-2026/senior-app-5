@@ -4,6 +4,11 @@ import { Model } from 'mongoose';
 import { Notification } from './schemas/notification.schema';
 import { DeliverInviteDto } from './dto/deliver-invite.dto';
 
+interface AdvisorRequestNotificationInput {
+  recipientUserId: string;
+  groupId: string;
+}
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -17,6 +22,17 @@ export class NotificationsService {
       groupId: deliverInviteDto.groupId,
       type: 'GroupInvite',
     });
+    const savedNotification = await notification.save();
+    return { notificationId: savedNotification._id.toString() };
+  }
+
+  async notifyAdvisorRequestSubmitted(input: AdvisorRequestNotificationInput) {
+    const notification = new this.notificationModel({
+      recipientUserId: input.recipientUserId,
+      groupId: input.groupId,
+      type: 'AdvisorRequestSubmitted',
+    });
+
     const savedNotification = await notification.save();
     return { notificationId: savedNotification._id.toString() };
   }

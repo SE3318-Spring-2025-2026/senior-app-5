@@ -1,9 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { InternalServerErrorException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AdvisorsService } from './advisors.service';
 import { User } from '../users/data/user.schema';
 import { ListAdvisorsQueryDto } from './dto/list-advisors-query.dto';
+import { Group, GroupStatus } from '../groups/group.entity';
+import {
+  AdvisorRequest,
+  AdvisorRequestStatus,
+} from './schemas/advisor-request.schema';
+import { Schedule, SchedulePhase } from './schemas/schedule.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('AdvisorsService', () => {
   let service: AdvisorsService;
@@ -15,9 +27,47 @@ describe('AdvisorsService', () => {
     exec: jest.fn(),
   };
 
+  const mockUserFindOneQuery = {
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
+  const mockGroupFindOneQuery = {
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
+  const mockScheduleFindOneQuery = {
+    sort: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
+  const mockExistsQuery = {
+    exec: jest.fn(),
+  };
+
   const mockUserModel = {
     find: jest.fn(),
+    findOne: jest.fn(),
     countDocuments: jest.fn(),
+  };
+
+  const mockGroupModel = {
+    findOne: jest.fn(),
+  };
+
+  const mockAdvisorRequestModel = {
+    exists: jest.fn(),
+    create: jest.fn(),
+  };
+
+  const mockScheduleModel = {
+    findOne: jest.fn(),
+  };
+
+  const mockNotificationsService = {
+    notifyAdvisorRequestSubmitted: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -29,6 +79,22 @@ describe('AdvisorsService', () => {
         {
           provide: getModelToken(User.name),
           useValue: mockUserModel,
+        },
+        {
+          provide: getModelToken(Group.name),
+          useValue: mockGroupModel,
+        },
+        {
+          provide: getModelToken(AdvisorRequest.name),
+          useValue: mockAdvisorRequestModel,
+        },
+        {
+          provide: getModelToken(Schedule.name),
+          useValue: mockScheduleModel,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
@@ -79,7 +145,7 @@ describe('AdvisorsService', () => {
     });
   });
 
-  it('should map repository failures to an internal server error', async () => {
+  it('should map advisor list repository failures to an internal server error', async () => {
     mockUserModel.countDocuments.mockReturnValue({
       exec: jest.fn().mockResolvedValue(1),
     });
@@ -129,6 +195,209 @@ describe('AdvisorsService', () => {
       page: 1,
       limit: 20,
     });
+  });
+
+  it('should create pending advisor request and dispatch notification', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      leaderUserId: 'leader-1',
+      status: GroupStatus.ACTIVE,
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue({
+      _id: 'advisor-1',
+      role: 'ADVISOR',
+    });
+
+    mockScheduleModel.findOne.mockReturnValue(mockScheduleFindOneQuery);
+    mockScheduleFindOneQuery.exec.mockResolvedValue({
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date(Date.now() - 1000 * 60),
+      endDatetime: new Date(Date.now() + 1000 * 60),
+    });
+
+    mockAdvisorRequestModel.exists.mockReturnValue(mockExistsQuery);
+    mockExistsQuery.exec.mockResolvedValue(null);
+
+    mockAdvisorRequestModel.create.mockResolvedValue({
+      requestId: 'request-1',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    const result = await service.submitRequest({
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+    });
+
+    expect(result.requestId).toBe('request-1');
+    expect(mockAdvisorRequestModel.create).toHaveBeenCalledWith({
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+    expect(
+      mockNotificationsService.notifyAdvisorRequestSubmitted,
+    ).toHaveBeenCalledWith({
+      recipientUserId: 'advisor-1',
+      groupId: 'group-1',
+    });
+  });
+
+  it('should return 403 when advisor selection window is closed', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      leaderUserId: 'leader-1',
+      status: GroupStatus.ACTIVE,
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue({
+      _id: 'advisor-1',
+      role: 'ADVISOR',
+    });
+
+    mockScheduleModel.findOne.mockReturnValue(mockScheduleFindOneQuery);
+    mockScheduleFindOneQuery.exec.mockResolvedValue({
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date(Date.now() - 1000 * 120),
+      endDatetime: new Date(Date.now() - 1000 * 60),
+    });
+
+    await expect(
+      service.submitRequest({
+        submittedBy: 'leader-1',
+        requestedAdvisorId: 'advisor-1',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('should return 409 when duplicate pending request exists', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      leaderUserId: 'leader-1',
+      status: GroupStatus.ACTIVE,
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue({
+      _id: 'advisor-1',
+      role: 'ADVISOR',
+    });
+
+    mockScheduleModel.findOne.mockReturnValue(mockScheduleFindOneQuery);
+    mockScheduleFindOneQuery.exec.mockResolvedValue({
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date(Date.now() - 1000 * 60),
+      endDatetime: new Date(Date.now() + 1000 * 60),
+    });
+
+    mockAdvisorRequestModel.exists.mockReturnValue(mockExistsQuery);
+    mockExistsQuery.exec.mockResolvedValue(null);
+
+    const duplicateError = { code: 11000 };
+    mockAdvisorRequestModel.create.mockRejectedValue(duplicateError);
+
+    await expect(
+      service.submitRequest({
+        submittedBy: 'leader-1',
+        requestedAdvisorId: 'advisor-1',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('should return 423 when group is already assigned', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      leaderUserId: 'leader-1',
+      status: GroupStatus.ACTIVE,
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue({
+      _id: 'advisor-1',
+      role: 'ADVISOR',
+    });
+
+    mockScheduleModel.findOne.mockReturnValue(mockScheduleFindOneQuery);
+    mockScheduleFindOneQuery.exec.mockResolvedValue({
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date(Date.now() - 1000 * 60),
+      endDatetime: new Date(Date.now() + 1000 * 60),
+    });
+
+    mockAdvisorRequestModel.exists.mockReturnValue(mockExistsQuery);
+    mockExistsQuery.exec.mockResolvedValue(true);
+
+    await expect(
+      service.submitRequest({
+        submittedBy: 'leader-1',
+        requestedAdvisorId: 'advisor-1',
+      }),
+    ).rejects.toMatchObject({
+      status: 423,
+    });
+  });
+
+  it('should return 404 when requested advisor does not exist', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      leaderUserId: 'leader-1',
+      status: GroupStatus.ACTIVE,
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue(null);
+
+    await expect(
+      service.submitRequest({
+        submittedBy: 'leader-1',
+        requestedAdvisorId: 'advisor-1',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should map unknown failures in submit request to internal server error', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      leaderUserId: 'leader-1',
+      status: GroupStatus.ACTIVE,
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue({
+      _id: 'advisor-1',
+      role: 'ADVISOR',
+    });
+
+    mockScheduleModel.findOne.mockReturnValue(mockScheduleFindOneQuery);
+    mockScheduleFindOneQuery.exec.mockResolvedValue({
+      phase: SchedulePhase.ADVISOR_SELECTION,
+      startDatetime: new Date(Date.now() - 1000 * 60),
+      endDatetime: new Date(Date.now() + 1000 * 60),
+    });
+
+    mockAdvisorRequestModel.exists.mockReturnValue(mockExistsQuery);
+    mockExistsQuery.exec.mockResolvedValue(null);
+
+    mockAdvisorRequestModel.create.mockRejectedValue(new Error('db down'));
+
+    await expect(
+      service.submitRequest({
+        submittedBy: 'leader-1',
+        requestedAdvisorId: 'advisor-1',
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 
   it('should return advisor response fields in API contract shape', async () => {

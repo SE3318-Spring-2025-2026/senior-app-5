@@ -1,0 +1,538 @@
+{
+  "info": {
+    "name": "Issue 19 - Advisor Request and Schedule Flow",
+    "description": "Manual verification flow for issue 19. Run in order: login, capture advisor id, create schedule, verify active schedule, submit advisor request, then negative scenarios.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1) Login Team Leader",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{teamLeaderEmail}}\",\n  \"password\": \"{{teamLeaderPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.accessToken).to.be.a('string');",
+              "pm.environment.set('teamLeaderToken', body.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2) Login Coordinator",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{coordinatorEmail}}\",\n  \"password\": \"{{coordinatorPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.accessToken).to.be.a('string');",
+              "pm.environment.set('coordinatorToken', body.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3) Login Student",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.accessToken).to.be.a('string');",
+              "pm.environment.set('studentToken', body.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4) List Advisors and Capture advisorId (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          },
+          {
+            "key": "x-correlation-id",
+            "value": "issue19-list-advisors-001"
+          }
+        ],
+        "url": "{{baseUrl}}/advisors?page=1&limit=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const body = pm.response.json();",
+              "pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+              "const advisor = body.data.find(function (item) {",
+              "  return item.role === 'ADVISOR';",
+              "}) || body.data[0];",
+              "pm.expect(advisor.advisorId).to.be.a('string');",
+              "pm.environment.set('advisorId', advisor.advisorId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5) Set Open Advisor Selection Schedule (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{coordinatorToken}}"
+          },
+          {
+            "key": "x-correlation-id",
+            "value": "issue19-set-open-schedule-001"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phase\": \"ADVISOR_SELECTION\",\n  \"startDatetime\": \"2026-01-01T00:00:00.000Z\",\n  \"endDatetime\": \"2099-01-01T00:00:00.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/schedules"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(201);",
+              "const body = pm.response.json();",
+              "pm.expect(body.phase).to.eql('ADVISOR_SELECTION');",
+              "pm.expect(body.scheduleId).to.be.a('string');",
+              "pm.environment.set('scheduleId', body.scheduleId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6) Get Active Advisor Selection Schedule (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          },
+          {
+            "key": "x-correlation-id",
+            "value": "issue19-get-active-schedule-001"
+          }
+        ],
+        "url": "{{baseUrl}}/schedules/active?phase=ADVISOR_SELECTION"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const body = pm.response.json();",
+              "pm.expect(body.phase).to.eql('ADVISOR_SELECTION');",
+              "pm.expect(body.isOpen).to.eql(true);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7) Submit Advisor Request (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          },
+          {
+            "key": "x-correlation-id",
+            "value": "issue19-submit-request-001"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedAdvisorId\": \"{{advisorId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/requests"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(201);",
+              "const body = pm.response.json();",
+              "pm.expect(body.status).to.eql('PENDING');",
+              "pm.expect(body.requestedAdvisorId).to.eql(pm.environment.get('advisorId'));",
+              "pm.expect(body.requestId).to.be.a('string');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8) Submit Duplicate Advisor Request (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          },
+          {
+            "key": "x-correlation-id",
+            "value": "issue19-submit-request-002"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedAdvisorId\": \"{{advisorId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/requests"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(409);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9) Submit Advisor Request as Student (403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{studentToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedAdvisorId\": \"{{advisorId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/requests"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(403);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10) Submit Advisor Request Without Token (401)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedAdvisorId\": \"{{advisorId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/requests"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(401);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11) Submit Advisor Request with Invalid ID Format (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedAdvisorId\": \"not-a-mongo-id\"\n}"
+        },
+        "url": "{{baseUrl}}/requests"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(400);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12) Submit Advisor Request with Unknown Advisor (404)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedAdvisorId\": \"507f1f77bcf86cd799439011\"\n}"
+        },
+        "url": "{{baseUrl}}/requests"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(404);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13) Set Closed Advisor Selection Schedule (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{coordinatorToken}}"
+          },
+          {
+            "key": "x-correlation-id",
+            "value": "issue19-set-closed-schedule-001"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phase\": \"ADVISOR_SELECTION\",\n  \"startDatetime\": \"2000-01-01T00:00:00.000Z\",\n  \"endDatetime\": \"2000-01-02T00:00:00.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/schedules"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(201);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14) Submit Advisor Request While Schedule Closed (403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestedAdvisorId\": \"507f1f77bcf86cd799439011\"\n}"
+        },
+        "url": "{{baseUrl}}/requests"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(403);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15) Get Active Schedule with Invalid Phase (400)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/schedules/active?phase=INVALID"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(400);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16) Set Schedule as Team Leader (403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{teamLeaderToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phase\": \"ADVISOR_SELECTION\",\n  \"startDatetime\": \"2026-01-01T00:00:00.000Z\",\n  \"endDatetime\": \"2099-01-01T00:00:00.000Z\"\n}"
+        },
+        "url": "{{baseUrl}}/schedules"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(403);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

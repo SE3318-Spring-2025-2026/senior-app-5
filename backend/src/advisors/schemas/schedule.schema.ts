@@ -29,6 +29,9 @@ export class Schedule {
 
   @Prop({ type: Date, required: true })
   endDatetime!: Date;
+
+  @Prop({ default: true })
+  isActive!: boolean;
 }
 
 export const ScheduleSchema = SchemaFactory.createForClass(Schedule);

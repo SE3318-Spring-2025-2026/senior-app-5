@@ -1,4 +1,10 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PassportModule } from '@nestjs/passport';
@@ -121,5 +127,72 @@ describe('Advisor Requests (e2e)', () => {
       requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       status: 'PENDING',
     });
+  });
+
+  it('POST /requests should return 403 when schedule window is closed', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.submitRequest.mockRejectedValueOnce(
+      new ForbiddenException(
+        'Advisor selection schedule window is not currently open.',
+      ),
+    );
+
+    return request(app.getHttpServer())
+      .post('/requests')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .expect(403);
+  });
+
+  it('POST /requests should return 404 when advisor is not found', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.submitRequest.mockRejectedValueOnce(
+      new NotFoundException('Requested advisor was not found.'),
+    );
+
+    return request(app.getHttpServer())
+      .post('/requests')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .expect(404);
+  });
+
+  it('POST /requests should return 409 when duplicate pending request exists', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.submitRequest.mockRejectedValueOnce(
+      new ConflictException(
+        'A pending advisor request already exists for this group.',
+      ),
+    );
+
+    return request(app.getHttpServer())
+      .post('/requests')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .expect(409);
+  });
+
+  it('POST /requests should return 423 when group is already assigned', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.submitRequest.mockRejectedValueOnce(
+      new HttpException('Group is already assigned to an advisor.', 423),
+    );
+
+    return request(app.getHttpServer())
+      .post('/requests')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .expect(423);
+  });
+
+  it('POST /requests should return 500 on unexpected errors', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.submitRequest.mockRejectedValueOnce(new Error('boom'));
+
+    return request(app.getHttpServer())
+      .post('/requests')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .expect(500);
   });
 });

@@ -4,6 +4,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { AppModule } from '../src/app.module';
+import { Group, GroupDocument, GroupStatus } from '../src/groups/group.entity';
 import { User, UserDocument } from '../src/users/data/user.schema';
 import { ROLES } from '../src/auth/constants/roles';
 
@@ -25,6 +26,11 @@ const seedUsers = [
     password: 'SecurePass123',
     role: ROLES.STUDENT,
   },
+  {
+    email: 'advisor@example.com',
+    password: 'SecurePass123',
+    role: ROLES.ADVISOR,
+  },
 ];
 
 async function main(): Promise<void> {
@@ -40,6 +46,7 @@ async function main(): Promise<void> {
 
   try {
     const userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    const groupModel = app.get<Model<GroupDocument>>(getModelToken(Group.name));
 
     for (const user of seedUsers) {
       const passwordHash = await bcrypt.hash(user.password, 12);
@@ -57,6 +64,26 @@ async function main(): Promise<void> {
       );
 
       logger.log(`Seeded ${user.email} as ${user.role}`);
+    }
+
+    const teamLeader = await userModel
+      .findOne({ email: 'teamleader@example.com' })
+      .exec();
+
+    if (teamLeader?._id) {
+      await groupModel.updateOne(
+        { leaderUserId: teamLeader._id.toString() },
+        {
+          $set: {
+            groupName: 'Seeded Team Leader Group',
+            leaderUserId: teamLeader._id.toString(),
+            status: GroupStatus.ACTIVE,
+          },
+        },
+        { upsert: true },
+      );
+
+      logger.log('Seeded active group for teamleader@example.com');
     }
 
     logger.log('Test users seeded successfully.');

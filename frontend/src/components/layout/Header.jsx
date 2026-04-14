@@ -5,7 +5,7 @@ export const Header = () => {
 
   
   const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { firstName: 'Kullanıcı' };
+  const user = userStr ? JSON.parse(userStr) : { firstName: 'USER' };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -22,10 +22,11 @@ export const Header = () => {
       </div>
 
       
+      
       <div style={styles.userActionArea}>
         <div style={styles.userInfo}>
-          <span style={styles.welcomeLabel}>HOŞ GELDİN</span>
-          <span style={styles.userName}>{user.firstName}</span>
+          <span style={styles.welcomeLabel}>WELCOME</span>
+          <span style={styles.userName}>{user.firstName || 'User'}</span>
         </div>
         
         <button 
@@ -34,9 +35,10 @@ export const Header = () => {
           onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
           onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
-          ÇIKIŞ YAP
+          LOGOUT
         </button>
       </div>
+
     </header>
   );
 };

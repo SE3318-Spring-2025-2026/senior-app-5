@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { ROLES } from './constants/roles';
 import { UsersService } from '../users/users.service';
+import { Role } from './enums/role.enum';
 
 @Injectable()
 export class AuthService {

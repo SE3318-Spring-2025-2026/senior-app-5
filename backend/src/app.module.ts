@@ -10,6 +10,7 @@ import { AdminModule } from './admin/admin.module';
 import { GroupsModule } from './groups/groups.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdvisorsModule } from './advisors/advisors.module';
+import { SubmissionsModule } from './submissions/submissions.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AdvisorsModule } from './advisors/advisors.module';
     GroupsModule,
     NotificationsModule,
     AdvisorsModule,
+    SubmissionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

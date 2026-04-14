@@ -8,7 +8,10 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'user@example.com', description: 'User email address' })
+  @ApiProperty({
+    example: 'user@example.com',
+    description: 'User email address',
+  })
   @IsEmail({}, { message: 'Email must be a valid email address' })
   email!: string;
 

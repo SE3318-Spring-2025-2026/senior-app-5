@@ -17,7 +17,10 @@ async function bootstrap() {
     .setTitle('Senior App API')
     .setDescription('OpenAPI documentation for the Senior App backend')
     .setVersion('1.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'access-token',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

@@ -22,13 +22,17 @@ async function generateSwagger() {
     .setTitle('Senior App API')
     .setDescription('OpenAPI spec generated from backend routes')
     .setVersion('1.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'access-token',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   writeFileSync('swagger.json', JSON.stringify(document, null, 2), 'utf-8');
   await app.close();
   console.log('Swagger spec generated at backend/swagger.json');
+  process.exit(0);
 }
 
 generateSwagger().catch((error) => {

@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import authService from '../utils/authService';
+import apiClient from '../utils/apiClient'; 
+import { useAuth } from '../context/AuthContext'; 
 import styles from './LoginPage.module.css';
-
 
 const loginSchema = z.object({
   email: z
@@ -20,8 +21,17 @@ const loginSchema = z.object({
 
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
+
+  
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      setApiError('Your session has expired. Please log in again.');
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -32,38 +42,36 @@ export const LoginPage = () => {
     mode: 'onBlur',
   });
 
-  /**
-   * @function handleAuthentication
-   * @param {Object} data 
-   * @description 
-   */
+  
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     setApiError(null);
 
     try {
-      const response = await authService.login(data.email, data.password);
-
       
+      const response = await authService.login(data.email, data.password);
       const token = response.accessToken || response.token;
-      const userPayload = {
-        firstName: response.user?.firstName || 'User',
-        lastName: response.user?.lastName || '',
-        role: response.user?.role || response.role || 'STUDENT', 
-        email: data.email,
-        lastLogin: new Date().toISOString()
-      };
-
+      
       if (!token) throw new Error("Authentication token missing from server response.");
 
+      
       localStorage.setItem('accessToken', token);
-      localStorage.setItem('user', JSON.stringify(userPayload));
 
       
-      navigate('/dashboard');
+      const meResponse = await apiClient.get('/auth/me'); 
+      const realUser = meResponse.data;
+
+      
+      localStorage.setItem('user', JSON.stringify(realUser));
+
+      
+      login();
+      navigate('/groups'); 
 
     } catch (error) {
       console.error("[AuthError]:", error);
+      
+      localStorage.removeItem('accessToken');
       setApiError(error.response?.data?.message || error.message || 'Authentication failed.');
     } finally {
       setIsSubmitting(false);
@@ -127,7 +135,7 @@ export const LoginPage = () => {
             <a href="/forgot-password">Trouble signing in?</a>
           </p>
           <p className={styles.registerLink}>
-            New to the platform? <a href="/register">Request Access</a>
+            <a href="/register">Request Access</a>
           </p>
         </footer>
       </div>

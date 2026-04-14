@@ -24,6 +24,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/groups" element={<GroupLifecyclePage />} />
           
+
           <Route path="/all-groups" element={<GroupLifecyclePage />} />
           
           <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />

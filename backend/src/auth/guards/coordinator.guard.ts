@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
+import { Role } from '../enums/role.enum';
 
 @Injectable()
 export class CoordinatorGuard implements CanActivate {
@@ -11,11 +12,12 @@ export class CoordinatorGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user; // JWT'den gelen kullanıcı
 
-    if (user?.role !== 'COORDINATOR') {
+    if (user?.role !== Role.Coordinator) {
       throw new ForbiddenException(
         'Only coordinators can perform this action.',
       );
     }
+
     return true;
   }
 }

@@ -5,8 +5,10 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import GroupLifecyclePage from './pages/GroupLifecyclePage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { Layout } from './components/layout/Layout';
 import './App.css';
 
 function App() {
@@ -14,22 +16,28 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          {/* Public Routes (Unprotected) */}
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           
-          {/* Protected Routes */}
+          {/* Protected Routes (Layout Protected by Firewall) */}
           <Route 
-            path="/groups" 
             element={
               <ProtectedRoute>
-                <GroupLifecyclePage />
+                <Layout />
               </ProtectedRoute>
-            } 
-          />
-          
-          <Route path="/" element={<Navigate to="/register" replace />} />
+            }
+          >
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/groups" element={<GroupLifecyclePage />} />
+            <Route path="/all-groups" element={<GroupLifecyclePage />} />
+            <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
+          </Route>
+
+          {/* Default Routing */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

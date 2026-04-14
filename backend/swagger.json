@@ -268,6 +268,29 @@
         ]
       }
     },
+    "/api/v1/groups/{groupId}/validate-statement-of-work": {
+      "get": {
+        "operationId": "GroupsController_validateSow",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
     "/api/v1/invites/deliver": {
       "post": {
         "operationId": "NotificationsController_deliverInvite",
@@ -290,6 +313,105 @@
         "summary": "Deliver an invite to a recipient",
         "tags": [
           "Invites"
+        ]
+      }
+    },
+    "/api/v1/advisors": {
+      "get": {
+        "operationId": "AdvisorsController_listAdvisors",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advisors"
+        ]
+      }
+    },
+    "/api/v1/requests": {
+      "post": {
+        "operationId": "AdvisorRequestsController_submitRequest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdvisorRequests"
+        ]
+      }
+    },
+    "/api/v1/schedules": {
+      "post": {
+        "operationId": "SchedulesController_setSchedule",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Schedules"
+        ]
+      }
+    },
+    "/api/v1/schedules/active": {
+      "get": {
+        "operationId": "SchedulesController_getActiveSchedule",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Schedules"
+        ]
+      }
+    },
+    "/api/v1/submissions/{submissionId}/documents": {
+      "post": {
+        "operationId": "SubmissionsController_uploadFile",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Submissions"
         ]
       }
     }
@@ -391,6 +513,12 @@
           "role": {
             "type": "string",
             "example": "Professor",
+            "enum": [
+              "Student",
+              "Coordinator",
+              "Admin",
+              "Professor"
+            ],
             "description": "User role to assign"
           }
         },
@@ -469,6 +597,14 @@
           "recipientUserId",
           "groupId"
         ]
+      },
+      "SubmitRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetScheduleDto": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

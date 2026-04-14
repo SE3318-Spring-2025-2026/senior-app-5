@@ -55,3 +55,9 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.sectionTitle { color: #f8fafc; margin-bottom: 20px; font-size: 1.5rem; }
+.infoBox { background: #0f172a; padding: 20px; border-radius: 12px; margin-top: 30px; border: 1px dashed #334155; }
+.actionButton { background: #38bdf8; color: #0f172a; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+.customTable { width: 100%; border-collapse: collapse; margin-top: 15px; color: #94a3b8; }
+.customTable th, .customTable td { padding: 12px; text-align: left; border-bottom: 1px solid #1e293b; }
+.smallButton { background: #1e293b; color: #38bdf8; border: 1px solid #38bdf8; padding: 5px 10px; border-radius: 4px; cursor: pointer; }

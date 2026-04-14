@@ -12,12 +12,12 @@ services:
   backend:
     build: ./backend
     ports:
-      - "3000:3000"
+      - "3001:3001" 
     depends_on:
       - mongo
     environment:
       DATABASE_URL: mongodb://root:rootpass@mongo:27017/senior-app?authSource=admin
-      JWT_SECRET: hasan_pasa_ozel_sirri
+      JWT_SECRET: ${JWT_SECRET} 
 
 volumes:
   mongo_data:

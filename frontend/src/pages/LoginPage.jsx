@@ -101,6 +101,10 @@ export function LoginPage() {
           </button>
         </form>
 
+        <p className={styles.forgotPasswordLink}>
+          <a href="/forgot-password">Forgot your password?</a>
+        </p>
+
         <p className={styles.registerLink}>
           Don't have an account? <a href="/register">Sign up here</a>
         </p>

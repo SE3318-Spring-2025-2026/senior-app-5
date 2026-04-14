@@ -16,6 +16,8 @@ function App() {
       <Routes>
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/groups" element={<GroupLifecyclePage />} />
         
         {/* Admin routes wrapped in AdminLayout */}

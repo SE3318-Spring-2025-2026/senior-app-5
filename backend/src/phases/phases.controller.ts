@@ -7,7 +7,7 @@ import { UpdatePhaseScheduleDto } from './dto/update-phase-schedule.dto';
 
 @Controller('phases')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('Coordinator')
+@Roles(Role.Coordinator)
 export class PhasesController {
   constructor(private readonly phasesService: PhasesService) {}
 

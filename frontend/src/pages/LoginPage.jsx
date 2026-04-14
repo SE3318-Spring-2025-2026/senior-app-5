@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import authService from '../utils/authService';
 import styles from './LoginPage.module.css';
 import { useAuth } from '../context/AuthContext';
@@ -19,9 +19,16 @@ const loginSchema = z.object({
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
+
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      setApiError('Your session has expired. Please log in again.');
+    }
+  }, [searchParams]);
 
   const {
     register,

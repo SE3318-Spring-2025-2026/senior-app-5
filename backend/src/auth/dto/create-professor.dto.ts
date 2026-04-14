@@ -1,24 +1,23 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsString,
   MinLength,
   Matches,
   MaxLength,
+  IsEnum,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { Role } from '../enums/role.enum';
 
-export class RegisterDto {
+export class CreateProfessorDto {
   @ApiProperty({
-    example: 'user@example.com',
-    description: 'User email address',
+    example: 'prof@example.com',
+    description: 'Professor email address',
   })
   @IsEmail({}, { message: 'Email must be a valid email address' })
   email!: string;
 
-  @ApiProperty({
-    example: 'StrongPass1',
-    description: 'User password that meets security requirements',
-  })
+  @ApiProperty({ example: 'ProfSecure1', description: 'Professor password' })
   @IsString({ message: 'Password must be a string' })
   @MinLength(8, { message: 'Password must be at least 8 characters long' })
   @MaxLength(128, { message: 'Password must not exceed 128 characters' })
@@ -30,4 +29,12 @@ export class RegisterDto {
   })
   @Matches(/[0-9]/, { message: 'Password must contain at least one number' })
   password!: string;
+
+  @ApiProperty({
+    example: Role.Professor,
+    enum: Role,
+    description: 'User role to assign',
+  })
+  @IsEnum(Role, { message: 'Role must be one of the supported role values' })
+  role!: Role;
 }

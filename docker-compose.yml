@@ -8,5 +8,16 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: rootpass
     volumes:
       - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+    environment:
+      DATABASE_URL: mongodb://root:rootpass@mongo:27017/senior-app?authSource=admin
+      JWT_SECRET: hasan_pasa_ozel_sirri
+
 volumes:
   mongo_data:

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ROLES } from '../auth/constants/roles';
+import { Role } from '../auth/enums/role.enum';
 import { User, UserDocument } from './data/user.schema';
 
 @Injectable()
@@ -22,7 +22,7 @@ export class UsersService {
     return this.userModel.create({
       email: params.email.toLowerCase().trim(),
       passwordHash: params.passwordHash,
-      role: params.role || ROLES.STUDENT,
+      role: params.role || Role.Student,
     });
   }
 

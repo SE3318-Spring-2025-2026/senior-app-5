@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { getAdvisorRoleFilters, ROLES } from '../auth/constants/roles';
+import { Role } from '../auth/enums/role.enum';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User, UserDocument } from '../users/data/user.schema';
@@ -98,8 +98,7 @@ export class AdvisorsService {
   ): Promise<PaginatedAdvisorsResponse> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const advisorRoleFilters = getAdvisorRoleFilters();
-    const roleFilter = { role: { $in: advisorRoleFilters } };
+    const roleFilter = { role: Role.Professor };
     const skip = (page - 1) * limit;
 
     try {
@@ -118,7 +117,7 @@ export class AdvisorsService {
             : (advisor._id?.toString() ?? advisor.id ?? ''),
         name: advisor.name ?? advisor.email,
         email: advisor.email,
-        role: ROLES.ADVISOR,
+        role: advisor.role,
       }));
 
       return { data, total, page, limit };
@@ -210,8 +209,6 @@ export class AdvisorsService {
       throw new ForbiddenException('Invalid authenticated user.');
     }
 
-    const advisorRoleFilters = getAdvisorRoleFilters();
-
     try {
       const group = await this.groupModel
         .findOne({
@@ -230,7 +227,7 @@ export class AdvisorsService {
       const advisor = await this.userModel
         .findOne({
           _id: input.requestedAdvisorId,
-          role: { $in: advisorRoleFilters },
+          role: Role.Professor,
         })
         .lean<User>()
         .exec();

@@ -17,7 +17,9 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
-import { CoordinatorGuard } from '../auth/guards/coordinator.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 import { CommitteesService } from './committees.service';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
 import { CommitteeResponseDto } from './dto/committee-response.dto';
@@ -36,7 +38,8 @@ export class CommitteesController {
   @ApiCreatedResponse({ description: 'Committee created successfully', type: CommitteeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
-  @UseGuards(AuthGuard('jwt'), CoordinatorGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createCommittee(

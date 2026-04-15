@@ -13,6 +13,7 @@ import { App } from 'supertest/types';
 import * as jwt from 'jsonwebtoken';
 import { AdvisorRequestsController } from '../src/advisors/advisor-requests.controller';
 import { AdvisorsService } from '../src/advisors/advisors.service';
+import { AdvisorDecision } from '../src/advisors/dto/decision-request.dto';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
 import { UsersService } from '../src/users/users.service';
 
@@ -27,6 +28,13 @@ describe('Advisor Requests (e2e)', () => {
       submittedBy: 'team-leader-id',
       requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       status: 'PENDING',
+    }),
+    decideRequest: jest.fn().mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-id',
+      requestedAdvisorId: 'advisor-id',
+      status: 'APPROVED',
     }),
   };
 
@@ -194,5 +202,65 @@ describe('Advisor Requests (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
       .expect(500);
+  });
+
+  it('PATCH /requests/:requestId/decision should return 401 when missing bearer token', () => {
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479/decision')
+      .send({ decision: AdvisorDecision.APPROVE })
+      .expect(401);
+  });
+
+  it('PATCH /requests/:requestId/decision should return 403 for non-advisor role', () => {
+    const token = createToken('team-leader-id');
+
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479/decision')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ decision: AdvisorDecision.APPROVE })
+      .expect(403);
+  });
+
+  it('PATCH /requests/:requestId/decision should return 400 for invalid decision value', () => {
+    const token = createToken('advisor-id');
+
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479/decision')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ decision: 'INVALID' })
+      .expect(400);
+  });
+
+  it('PATCH /requests/:requestId/decision should return 400 for invalid request id', () => {
+    const token = createToken('advisor-id');
+
+    return request(app.getHttpServer())
+      .patch('/requests/not-a-uuid/decision')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ decision: AdvisorDecision.APPROVE })
+      .expect(400);
+  });
+
+  it('PATCH /requests/:requestId/decision should return 200 for valid advisor decision', async () => {
+    const token = createToken('advisor-id');
+
+    const response = await request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479/decision')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ decision: AdvisorDecision.APPROVE })
+      .expect(200);
+
+    expect(mockAdvisorsService.decideRequest).toHaveBeenCalledWith({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      advisorId: 'advisor-id',
+      decision: AdvisorDecision.APPROVE,
+    });
+    expect(response.body).toEqual({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-id',
+      requestedAdvisorId: 'advisor-id',
+      status: 'APPROVED',
+    });
   });
 });

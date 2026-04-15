@@ -9,6 +9,12 @@ interface AdvisorRequestNotificationInput {
   groupId: string;
 }
 
+interface AdvisorRequestDecisionNotificationInput {
+  recipientUserId: string;
+  groupId: string;
+  requestId: string;
+}
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -31,6 +37,34 @@ export class NotificationsService {
       recipientUserId: input.recipientUserId,
       groupId: input.groupId,
       type: 'AdvisorRequestSubmitted',
+    });
+
+    const savedNotification = await notification.save();
+    return { notificationId: savedNotification._id.toString() };
+  }
+
+  async notifyAdvisorRequestApproved(
+    input: AdvisorRequestDecisionNotificationInput,
+  ) {
+    const notification = new this.notificationModel({
+      recipientUserId: input.recipientUserId,
+      groupId: input.groupId,
+      type: 'AdvisorRequestApproved',
+      requestId: input.requestId,
+    });
+
+    const savedNotification = await notification.save();
+    return { notificationId: savedNotification._id.toString() };
+  }
+
+  async notifyAdvisorRequestRejected(
+    input: AdvisorRequestDecisionNotificationInput,
+  ) {
+    const notification = new this.notificationModel({
+      recipientUserId: input.recipientUserId,
+      groupId: input.groupId,
+      type: 'AdvisorRequestRejected',
+      requestId: input.requestId,
     });
 
     const savedNotification = await notification.save();

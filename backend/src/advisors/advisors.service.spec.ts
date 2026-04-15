@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import {
   BadRequestException,
   ConflictException,
@@ -17,6 +17,7 @@ import {
 } from './schemas/advisor-request.schema';
 import { Schedule, SchedulePhase } from './schemas/schedule.schema';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AdvisorDecision } from './dto/decision-request.dto';
 
 describe('AdvisorsService', () => {
   let service: AdvisorsService;
@@ -48,6 +49,20 @@ describe('AdvisorsService', () => {
     exec: jest.fn(),
   };
 
+  const mockAdvisorRequestFindOneQuery = {
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
+  const mockAdvisorRequestFindOneAndUpdateQuery = {
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
+  const mockAdvisorRequestUpdateManyQuery = {
+    exec: jest.fn(),
+  };
+
   const mockUserModel = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -59,6 +74,9 @@ describe('AdvisorsService', () => {
   };
 
   const mockAdvisorRequestModel = {
+    findOne: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    updateMany: jest.fn(),
     exists: jest.fn(),
     create: jest.fn(),
   };
@@ -73,6 +91,17 @@ describe('AdvisorsService', () => {
 
   const mockNotificationsService = {
     notifyAdvisorRequestSubmitted: jest.fn(),
+    notifyAdvisorRequestApproved: jest.fn(),
+    notifyAdvisorRequestRejected: jest.fn(),
+  };
+
+  const mockSession = {
+    withTransaction: jest.fn(),
+    endSession: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockConnection = {
+    startSession: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -100,6 +129,10 @@ describe('AdvisorsService', () => {
         {
           provide: NotificationsService,
           useValue: mockNotificationsService,
+        },
+        {
+          provide: getConnectionToken(),
+          useValue: mockConnection,
         },
       ],
     }).compile();
@@ -477,6 +510,197 @@ describe('AdvisorsService', () => {
         requestedAdvisorId: 'advisor-1',
       }),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
+  });
+
+  it('should approve pending request, reject competing requests, and notify submitter', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(mockAdvisorRequestFindOneQuery);
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    mockConnection.startSession.mockResolvedValue(mockSession);
+    mockSession.withTransaction.mockImplementation(async (callback: () => Promise<void>) => callback());
+
+    mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
+      mockAdvisorRequestFindOneAndUpdateQuery,
+    );
+    mockAdvisorRequestFindOneAndUpdateQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.APPROVED,
+    });
+
+    mockAdvisorRequestModel.updateMany.mockReturnValue(
+      mockAdvisorRequestUpdateManyQuery,
+    );
+    mockAdvisorRequestUpdateManyQuery.exec.mockResolvedValue({
+      acknowledged: true,
+      modifiedCount: 2,
+    });
+
+    const result = await service.decideRequest({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      advisorId: 'advisor-1',
+      decision: AdvisorDecision.APPROVE,
+    });
+
+    expect(result.status).toBe(AdvisorRequestStatus.APPROVED);
+    expect(mockAdvisorRequestModel.updateMany).toHaveBeenCalledWith(
+      {
+        groupId: 'group-1',
+        requestId: { $ne: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' },
+        status: AdvisorRequestStatus.PENDING,
+      },
+      { $set: { status: AdvisorRequestStatus.REJECTED } },
+      { session: mockSession },
+    );
+    expect(mockNotificationsService.notifyAdvisorRequestApproved).toHaveBeenCalledWith(
+      {
+        recipientUserId: 'leader-1',
+        groupId: 'group-1',
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      },
+    );
+  });
+
+  it('should reject pending request and notify submitter', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(mockAdvisorRequestFindOneQuery);
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    mockConnection.startSession.mockResolvedValue(mockSession);
+    mockSession.withTransaction.mockImplementation(async (callback: () => Promise<void>) => callback());
+
+    mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
+      mockAdvisorRequestFindOneAndUpdateQuery,
+    );
+    mockAdvisorRequestFindOneAndUpdateQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.REJECTED,
+    });
+
+    const result = await service.decideRequest({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      advisorId: 'advisor-1',
+      decision: AdvisorDecision.REJECT,
+    });
+
+    expect(result.status).toBe(AdvisorRequestStatus.REJECTED);
+    expect(mockAdvisorRequestModel.updateMany).not.toHaveBeenCalled();
+    expect(mockNotificationsService.notifyAdvisorRequestRejected).toHaveBeenCalledWith(
+      {
+        recipientUserId: 'leader-1',
+        groupId: 'group-1',
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      },
+    );
+  });
+
+  it('should return 404 when deciding a non-existent request', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(mockAdvisorRequestFindOneQuery);
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue(null);
+
+    await expect(
+      service.decideRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        advisorId: 'advisor-1',
+        decision: AdvisorDecision.APPROVE,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should return 403 for advisor ownership mismatch', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(mockAdvisorRequestFindOneQuery);
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-2',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    await expect(
+      service.decideRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        advisorId: 'advisor-1',
+        decision: AdvisorDecision.APPROVE,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('should return 409 when request is not pending', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(mockAdvisorRequestFindOneQuery);
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.APPROVED,
+    });
+
+    await expect(
+      service.decideRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        advisorId: 'advisor-1',
+        decision: AdvisorDecision.APPROVE,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('should map transaction failures in decide request to internal server error', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(mockAdvisorRequestFindOneQuery);
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    mockConnection.startSession.mockResolvedValue(mockSession);
+    mockSession.withTransaction.mockImplementation(async (callback: () => Promise<void>) => callback());
+
+    mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
+      mockAdvisorRequestFindOneAndUpdateQuery,
+    );
+    mockAdvisorRequestFindOneAndUpdateQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.APPROVED,
+    });
+
+    mockAdvisorRequestModel.updateMany.mockReturnValue(
+      mockAdvisorRequestUpdateManyQuery,
+    );
+    mockAdvisorRequestUpdateManyQuery.exec.mockRejectedValue(new Error('db down'));
+
+    await expect(
+      service.decideRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        advisorId: 'advisor-1',
+        decision: AdvisorDecision.APPROVE,
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+
+    expect(
+      mockNotificationsService.notifyAdvisorRequestApproved,
+    ).not.toHaveBeenCalled();
   });
 
   it('should return advisor response fields in API contract shape', async () => {

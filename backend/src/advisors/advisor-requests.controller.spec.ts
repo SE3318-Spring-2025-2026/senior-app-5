@@ -2,15 +2,27 @@ import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdvisorRequestsController } from './advisor-requests.controller';
 import { AdvisorsService } from './advisors.service';
+import { AdvisorDecision } from './dto/decision-request.dto';
 
-type SubmitRequestArg = Parameters<AdvisorRequestsController['submitRequest']>[0];
-type SubmitRequestBody = Parameters<AdvisorRequestsController['submitRequest']>[1];
+type SubmitRequestArg = Parameters<
+  AdvisorRequestsController['submitRequest']
+>[0];
+type SubmitRequestBody = Parameters<
+  AdvisorRequestsController['submitRequest']
+>[1];
+type DecideRequestArg = Parameters<
+  AdvisorRequestsController['decideRequest']
+>[0];
+type DecideRequestBody = Parameters<
+  AdvisorRequestsController['decideRequest']
+>[2];
 
 describe('AdvisorRequestsController', () => {
   let controller: AdvisorRequestsController;
 
   const mockAdvisorsService = {
     submitRequest: jest.fn(),
+    decideRequest: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -26,7 +38,9 @@ describe('AdvisorRequestsController', () => {
       ],
     }).compile();
 
-    controller = module.get<AdvisorRequestsController>(AdvisorRequestsController);
+    controller = module.get<AdvisorRequestsController>(
+      AdvisorRequestsController,
+    );
   });
 
   it('should delegate submit request to service for team leaders', async () => {
@@ -66,8 +80,59 @@ describe('AdvisorRequestsController', () => {
       requestedAdvisorId: 'advisor-1',
     };
 
-    await expect(controller.submitRequest(request, body)).rejects.toBeInstanceOf(
-      ForbiddenException,
+    await expect(
+      controller.submitRequest(request, body),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('should delegate advisor decision to service for advisors', async () => {
+    const expected = {
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: 'APPROVED',
+    };
+
+    mockAdvisorsService.decideRequest.mockResolvedValue(expected);
+
+    const request = {
+      user: { role: 'ADVISOR', userId: 'advisor-1' },
+    } as DecideRequestArg;
+
+    const body: DecideRequestBody = {
+      decision: AdvisorDecision.APPROVE,
+    };
+
+    const result = await controller.decideRequest(
+      request,
+      'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      body,
     );
+
+    expect(mockAdvisorsService.decideRequest).toHaveBeenCalledWith({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      advisorId: 'advisor-1',
+      decision: AdvisorDecision.APPROVE,
+    });
+    expect(result).toEqual(expected);
+  });
+
+  it('should throw ForbiddenException for non-advisor decision', async () => {
+    const request = {
+      user: { role: 'TEAM_LEADER', userId: 'leader-1' },
+    } as DecideRequestArg;
+
+    const body: DecideRequestBody = {
+      decision: AdvisorDecision.REJECT,
+    };
+
+    await expect(
+      controller.decideRequest(
+        request,
+        'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        body,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

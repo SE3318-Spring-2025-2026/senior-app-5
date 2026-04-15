@@ -10,8 +10,10 @@ import { AdminModule } from './admin/admin.module';
 import { GroupsModule } from './groups/groups.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdvisorsModule } from './advisors/advisors.module';
+import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CommitteesModule } from './committees/committees.module';
+
 
 @Module({
   imports: [
@@ -24,6 +26,7 @@ import { CommitteesModule } from './committees/committees.module';
     GroupsModule,
     NotificationsModule,
     AdvisorsModule,
+    PhasesModule,
     SubmissionsModule,
     CommitteesModule,
   ],

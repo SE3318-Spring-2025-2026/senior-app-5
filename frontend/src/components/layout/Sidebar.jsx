@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 export const Sidebar = () => {
   
   const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { role: 'STUDENT' };
+  const user = userStr ? JSON.parse(userStr) : { role: 'Student' };
   const role = user.role;
 
   return (
@@ -19,7 +19,7 @@ export const Sidebar = () => {
         </NavLink>
 
         
-        {role === 'STUDENT' && (
+        {role === 'Student' && (
           <>
             <div style={styles.sectionHeader}>STUDENT MENU</div>
             <NavLink 
@@ -38,7 +38,7 @@ export const Sidebar = () => {
         )}
 
         
-        {role === 'COORDINATOR' && (
+        {role === 'Coordinator' && (
           <>
             <div style={styles.sectionHeader}>COORDINATOR MENU</div>
             <NavLink 

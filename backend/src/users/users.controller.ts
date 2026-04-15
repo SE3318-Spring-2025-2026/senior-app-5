@@ -8,19 +8,41 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
+import { LinkGithubDto } from './dto/link-github.dto';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+interface JwtUser {
+  userId: string;
+  sub?: string;
+  _id?: string;
+  email: string;
+  role: string;
+}
+
+interface RequestWithUser extends ExpressRequest {
+  user: JwtUser;
+}
+
+interface GithubUserResponse {
+  id: number;
+}
+
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Link authenticated user account to GitHub' })
   @UseGuards(AuthGuard('jwt'))
   @Post(':userId/integrations/github')
   async linkGithub(
     @Param('userId') userId: string,
-    @Request() req: any,
-    @Body('oauthAccessToken') oauthAccessToken: string,
+    @Request() req: RequestWithUser,
+    @Body() body: LinkGithubDto,
   ) {
     const tokenUserId = req.user.userId || req.user.sub || req.user._id;
     if (tokenUserId !== userId) {
@@ -29,14 +51,14 @@ export class UsersController {
       );
     }
 
-    if (!oauthAccessToken) {
+    if (!body.oauthAccessToken) {
       throw new UnauthorizedException('GitHub oauthAccessToken is required.');
     }
 
     try {
       const githubResponse = await fetch('https://api.github.com/user', {
         headers: {
-          Authorization: `Bearer ${oauthAccessToken}`,
+          Authorization: `Bearer ${body.oauthAccessToken}`,
           Accept: 'application/vnd.github.v3+json',
         },
       });
@@ -45,7 +67,9 @@ export class UsersController {
         throw new UnauthorizedException('Invalid GitHub access token.');
       }
 
-      const githubUserData = await githubResponse.json();
+      const githubUserData =
+        (await githubResponse.json()) as GithubUserResponse;
+
       const githubAccountId = githubUserData.id.toString();
 
       await this.usersService.linkGithubAccount(userId, githubAccountId);

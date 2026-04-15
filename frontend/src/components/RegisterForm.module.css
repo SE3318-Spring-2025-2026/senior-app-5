@@ -126,6 +126,7 @@
   background-color: #fff;
   width: 100%;
   box-sizing: border-box;
+  color: #1a1a1a;
 }
 
 .input:focus {

@@ -1,0 +1,71 @@
+.container {
+  padding: 20px;
+  animation: fadeIn 0.5s ease-in;
+}
+
+.title {
+  color: #38bdf8; 
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+
+.welcomeText {
+  color: #94a3b8;
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.statCard {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 24px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-5px);
+  border-color: #38bdf8;
+}
+
+.cardTitle {
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.cardValue {
+  color: #f8fafc;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sectionTitle { color: #f8fafc; margin-bottom: 20px; font-size: 1.5rem; }
+.infoBox { background: #0f172a; padding: 20px; border-radius: 12px; margin-top: 30px; border: 1px dashed #334155; }
+.actionButton { background: #38bdf8; color: #0f172a; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+.customTable { width: 100%; border-collapse: collapse; margin-top: 15px; color: #94a3b8; }
+.customTable th, .customTable td { padding: 12px; text-align: left; border-bottom: 1px solid #1e293b; }
+.smallButton { background: #1e293b; color: #38bdf8; border: 1px solid #38bdf8; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+.errorBox { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 1.5rem; border-radius: 8px; text-align: center; margin-top: 2rem; }
+.headerSection { border-bottom: 1px solid #1e293b; padding-bottom: 1.5rem; margin-bottom: 2rem; }
+.contentSection { margin-top: 2rem; }
+.highlight { color: #38bdf8; font-weight: 700; }
+.roleContainer { display: flex; flex-direction: column; gap: 1.5rem; }
+.tableWrapper { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; overflow-x: auto; }
+.secondaryButton { background: transparent; border: 1px solid #334155; color: #94a3b8; }
+.secondaryButton:hover { background: rgba(51, 65, 85, 0.4); color: #f8fafc; }

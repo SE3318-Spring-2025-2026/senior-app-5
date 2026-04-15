@@ -1,0 +1,124 @@
+.pageContainer {
+  display: grid;
+  gap: 1.5rem;
+  color: #e2e8f0;
+}
+
+.hero h1 {
+  margin: 0;
+  color: #38bdf8;
+  font-size: 2rem;
+}
+
+.hero p {
+  margin-top: 0.5rem;
+  color: #94a3b8;
+}
+
+.card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+}
+
+.card h2 {
+  margin: 0 0 1rem;
+  color: #f8fafc;
+  font-size: 1.15rem;
+}
+
+.formGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.formRow {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.formRow label {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.formRow input {
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  background: #020617;
+  color: #f8fafc;
+  padding: 0.6rem 0.7rem;
+}
+
+.formRow input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  background: #38bdf8;
+  color: #0f172a;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.windowBanner {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border-radius: 0.6rem;
+  border: 1px solid transparent;
+}
+
+.open {
+  background: rgba(22, 163, 74, 0.15);
+  border-color: #16a34a;
+  color: #bbf7d0;
+}
+
+.upcoming {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+.closed {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #fecaca;
+}
+
+.windowDetails {
+  margin-top: 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.windowDetails p {
+  margin: 0.25rem 0;
+}
+
+.infoText {
+  margin-top: 0.9rem;
+  color: #cbd5e1;
+}
+
+.successText {
+  margin-top: 0.8rem;
+  color: #4ade80;
+}
+
+.errorText {
+  margin-top: 0.8rem;
+  color: #fca5a5;
+}

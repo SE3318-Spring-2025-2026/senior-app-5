@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import StudentSubmissionPage from './pages/StudentSubmissionPage';
 import { Layout } from './components/layout/Layout';
 import './App.css';
 
@@ -33,7 +34,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
-            <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
+            <Route path="/documents" element={<StudentSubmissionPage />} />
           </Route>
 
           {/* Default Routing */}

@@ -6,6 +6,8 @@ export type GroupDocument = HydratedDocument<Group>;
 
 export enum GroupStatus {
   ACTIVE = 'Active',
+  ASSIGNED = 'ASSIGNED',
+  UNASSIGNED = 'UNASSIGNED',
   DISBANDED = 'Disbanded',
 }
 

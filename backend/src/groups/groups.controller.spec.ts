@@ -11,6 +11,7 @@ describe('GroupsController', () => {
   beforeEach(async () => {
     const mockService = {
       createGroup: jest.fn(),
+      disbandGroup: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -51,5 +52,12 @@ describe('GroupsController', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(service.createGroup).toHaveBeenCalledWith(createGroupDto);
     expect(result).toEqual(expectedResult);
+  });
+
+  it('should disband a group', async () => {
+    await controller.disbandGroup('group-1');
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(service.disbandGroup).toHaveBeenCalledWith('group-1');
   });
 });

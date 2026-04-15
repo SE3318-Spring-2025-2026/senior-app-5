@@ -1,40 +1,47 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import GroupLifecyclePage from './pages/GroupLifecyclePage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import { Layout } from './components/layout/Layout';
 import './App.css';
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
+    <AuthProvider>
+      <Router>
         <Routes>
-          {/* Public routes */}
+          {/* Public Routes (Unprotected) */}
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-          {/* Protected routes */}
+          {/* Protected Routes (Layout Protected by Firewall) */}
           <Route
-            path="/groups"
             element={
               <ProtectedRoute>
-                <GroupLifecyclePage />
+                <Layout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/groups" element={<GroupLifecyclePage />} />
+            <Route path="/all-groups" element={<GroupLifecyclePage />} />
+            <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
+          </Route>
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Default Routing */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </AuthProvider>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 }
 

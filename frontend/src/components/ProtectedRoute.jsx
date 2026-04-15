@@ -1,21 +1,26 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/useAuth';
-import LoadingSpinner from './shared/LoadingSpinner';
+import { Navigate, useLocation } from 'react-router-dom';
+import PropTypes from 'prop-types';
+import { useAuth } from '../context/AuthContext';
 
-export default function ProtectedRoute({ children, roles }) {
-  const { user, loading } = useAuth();
+export const ProtectedRoute = ({ children, roles }) => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
 
-  if (loading) {
-    return <LoadingSpinner />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (roles && roles.length > 0 && !roles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+  if (roles && roles.length > 0) {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || !roles.includes(user.role)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return children;
-}
+};
+
+ProtectedRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+  roles: PropTypes.arrayOf(PropTypes.string),
+};

@@ -1,0 +1,475 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Health check endpoint for the API root",
+        "tags": [
+          "Root"
+        ]
+      }
+    },
+    "/api/v1/users/{userId}/integrations/github": {
+      "post": {
+        "operationId": "UsersController_linkGithub",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkGithubDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Link authenticated user account to GitHub",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully"
+          }
+        },
+        "summary": "Register a new user",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User logged in successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid login credentials"
+          }
+        },
+        "summary": "Login and receive JWT access token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/admin/professors": {
+      "post": {
+        "operationId": "AuthController_registerProfessor",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfessorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized or invalid token"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Register a new professor (coordinator only)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized or invalid token"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get current authenticated user details",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/teams/{teamId}/integrations": {
+      "put": {
+        "operationId": "TeamsController_updateIntegrations",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIntegrationsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update team integrations for Jira and GitHub",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/admin/students/{studentId}/group": {
+      "patch": {
+        "operationId": "AdminController_moveStudentToGroup",
+        "parameters": [
+          {
+            "name": "studentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveStudentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Move a student into a different group",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/groups": {
+      "post": {
+        "operationId": "GroupsController_createGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Group created successfully"
+          }
+        },
+        "summary": "Create a new group",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/api/v1/invites/deliver": {
+      "post": {
+        "operationId": "NotificationsController_deliverInvite",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverInviteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invite delivered successfully"
+          }
+        },
+        "summary": "Deliver an invite to a recipient",
+        "tags": [
+          "Invites"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Senior App API",
+    "description": "OpenAPI spec generated from backend routes",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "access-token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "LinkGithubDto": {
+        "type": "object",
+        "properties": {
+          "oauthAccessToken": {
+            "type": "string",
+            "example": "gho_1234567890abcdef",
+            "description": "GitHub OAuth access token"
+          }
+        },
+        "required": [
+          "oauthAccessToken"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com",
+            "description": "User email address"
+          },
+          "password": {
+            "type": "string",
+            "example": "StrongPass1",
+            "description": "User password that meets security requirements"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com",
+            "description": "User email address"
+          },
+          "password": {
+            "type": "string",
+            "example": "StrongPass1",
+            "description": "User password"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NWE2YzM4MDQ4YTRlYThmOWU3MzAyZiIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsInJvbGUiOiJTdHVkZW50IiwiaWF0IjoxNjg5NjY3MzM4LCJleHAiOjE2ODk2NjgzMzh9.KXk1EJvGpOdS5BbYHy7Dk5lnAJpttU8O3XQF9V1O3mc",
+            "description": "JWT access token returned after successful login"
+          }
+        },
+        "required": [
+          "accessToken"
+        ]
+      },
+      "CreateProfessorDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "prof@example.com",
+            "description": "Professor email address"
+          },
+          "password": {
+            "type": "string",
+            "example": "ProfSecure1",
+            "description": "Professor password"
+          },
+          "role": {
+            "type": "string",
+            "example": "Professor",
+            "description": "User role to assign"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "role"
+        ]
+      },
+      "UpdateIntegrationsDto": {
+        "type": "object",
+        "properties": {
+          "jiraProjectKey": {
+            "type": "string",
+            "example": "JIRA-123",
+            "description": "Jira project key for the team"
+          },
+          "githubRepositoryId": {
+            "type": "string",
+            "example": "my-github-repo",
+            "description": "GitHub repository ID for the team"
+          }
+        },
+        "required": [
+          "jiraProjectKey",
+          "githubRepositoryId"
+        ]
+      },
+      "MoveStudentDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "example": "6506c30f8e8c2d1b3e8a6def",
+            "description": "MongoDB ObjectId of the target group"
+          }
+        },
+        "required": [
+          "groupId"
+        ]
+      },
+      "CreateGroupDto": {
+        "type": "object",
+        "properties": {
+          "groupName": {
+            "type": "string",
+            "example": "Student project group",
+            "description": "Name of the group"
+          },
+          "leaderUserId": {
+            "type": "string",
+            "example": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+            "description": "UUID of the group leader user"
+          }
+        },
+        "required": [
+          "groupName",
+          "leaderUserId"
+        ]
+      },
+      "DeliverInviteDto": {
+        "type": "object",
+        "properties": {
+          "recipientUserId": {
+            "type": "string",
+            "example": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+            "description": "UUID of the invite recipient user"
+          },
+          "groupId": {
+            "type": "string",
+            "example": "d290f1ee-6c54-4b01-90e6-d701748f0852",
+            "description": "UUID of the group to invite the user to"
+          }
+        },
+        "required": [
+          "recipientUserId",
+          "groupId"
+        ]
+      }
+    }
+  }
+}

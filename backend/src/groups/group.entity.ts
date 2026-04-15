@@ -26,6 +26,12 @@ export class Group {
     default: GroupStatus.ACTIVE,
   })
   status!: GroupStatus;
+
+  @Prop({ type: String, default: null })
+  advisorId?: string | null;
+
+  @Prop({ type: String, default: null })
+  advisorName?: string | null;
 }
 
 export const GroupSchema = SchemaFactory.createForClass(Group);

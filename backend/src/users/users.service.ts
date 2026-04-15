@@ -18,6 +18,10 @@ export class UsersService {
     return this.userModel.findById(id).exec();
   }
 
+  async findByIdAndRole(id: string, role: string): Promise<User | null> {
+    return this.userModel.findOne({ _id: id, role }).exec();
+  }
+
   createUser(params: { email: string; passwordHash: string; role?: Role }) {
     return this.userModel.create({
       email: params.email.toLowerCase().trim(),

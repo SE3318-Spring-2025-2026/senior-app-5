@@ -18,7 +18,7 @@ services:
     environment:
       PORT: 3001 
       MONGODB_URI: mongodb://root:rootpass@mongo:27017/senior-app?authSource=admin
-      JWT_SECRET: ${JWT_SECRET} 
+      JWT_SECRET: 1234 
 
 volumes:
   mongo_data:

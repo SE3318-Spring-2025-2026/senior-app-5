@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import styles from '../GroupLifecyclePage.module.css'
+import { useAdminGroup } from '../../context/AdminGroupContext'
 
 function SectionCard({ title, description, children }) {
   return (
@@ -26,18 +27,23 @@ function StatusBlock({ title, message, type }) {
 }
 
 function MembersPage() {
-  const [groupIdForMembers, setGroupIdForMembers] = useState('')
+  const { currentGroupId } = useAdminGroup()
+  const [groupIdForMembers, setGroupIdForMembers] = useState(currentGroupId || '')
   const [memberUserId, setMemberUserId] = useState('')
   const [memberStatus, setMemberStatus] = useState({ loading: false, message: '', error: '' })
+
+  useEffect(() => {
+    if (currentGroupId) {
+      setGroupIdForMembers(currentGroupId)
+    }
+  }, [currentGroupId])
 
   const handleAddMember = async (event) => {
     event.preventDefault()
     setMemberStatus({ loading: true, message: '', error: '' })
-   try {
-      
-      
-      await apiClient.patch(`/admin/students/${memberUserId}/group`, {
-        groupId: groupIdForMembers,
+    try {
+      await apiClient.post(apiConfig.endpoints.groupMembers(groupIdForMembers), {
+        memberUserId,
       })
 
       setMemberStatus({

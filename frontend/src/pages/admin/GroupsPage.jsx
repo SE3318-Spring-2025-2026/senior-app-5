@@ -2,6 +2,7 @@ import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import styles from '../GroupLifecyclePage.module.css'
+import { useAdminGroup } from '../../context/AdminGroupContext'
 
 function SectionCard({ title, description, children }) {
   return (
@@ -26,6 +27,7 @@ function StatusBlock({ title, message, type }) {
 }
 
 function GroupsPage() {
+  const { setCurrentGroupId } = useAdminGroup()
   const [groupName, setGroupName] = useState('')
   const [leaderUserId, setLeaderUserId] = useState('')
   const [createdGroup, setCreatedGroup] = useState(null)
@@ -41,6 +43,7 @@ function GroupsPage() {
       })
 
       setCreatedGroup(response.data)
+      setCurrentGroupId(response.data.groupId)
       setGroupStatus({ loading: false, message: `Group created with ID ${response.data.groupId}.`, error: '' })
       setGroupName('')
       setLeaderUserId('')

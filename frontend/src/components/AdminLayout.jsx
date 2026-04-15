@@ -1,7 +1,8 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import styles from './AdminLayout.module.css'
+import { AdminGroupProvider } from '../context/AdminGroupContext'
 
-function AdminLayout({ children }) {
+function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -16,36 +17,38 @@ function AdminLayout({ children }) {
   const isActive = (path) => location.pathname === path
 
   return (
-    <div className={styles.layoutContainer}>
-      <header className={styles.hero}>
-        <div>
-          <p className={styles.badge}>Admin Control Panel</p>
-          <h1>Coordinator Admin Panel</h1>
-          <p className={styles.lead}>
-            Manage groups, members, invites, advisors, and sanitization.
-          </p>
-        </div>
-      </header>
+    <AdminGroupProvider>
+      <div className={styles.layoutContainer}>
+        <header className={styles.hero}>
+          <div>
+            <p className={styles.badge}>Admin Control Panel</p>
+            <h1>Coordinator Admin Panel</h1>
+            <p className={styles.lead}>
+              Manage groups, members, invites, advisors, and sanitization.
+            </p>
+          </div>
+        </header>
 
-      <nav className={styles.tabNavigation}>
-        <ul className={styles.tabList}>
-          {adminTabs.map((tab) => (
-            <li key={tab.path}>
-              <button
-                className={`${styles.tabButton} ${isActive(tab.path) ? styles.activeTab : ''}`}
-                onClick={() => navigate(tab.path)}
-              >
-                {tab.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
+        <nav className={styles.tabNavigation}>
+          <ul className={styles.tabList}>
+            {adminTabs.map((tab) => (
+              <li key={tab.path}>
+                <button
+                  className={`${styles.tabButton} ${isActive(tab.path) ? styles.activeTab : ''}`}
+                  onClick={() => navigate(tab.path)}
+                >
+                  {tab.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-      <main className={styles.contentContainer}>
-        {children}
-      </main>
-    </div>
+        <main className={styles.contentContainer}>
+          <Outlet />
+        </main>
+      </div>
+    </AdminGroupProvider>
   )
 }
 

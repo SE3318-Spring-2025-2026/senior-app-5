@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import styles from '../GroupLifecyclePage.module.css'
+import { useAdminGroup } from '../../context/AdminGroupContext'
 
 function SectionCard({ title, description, children }) {
   return (
@@ -26,9 +27,16 @@ function StatusBlock({ title, message, type }) {
 }
 
 function InvitesPage() {
-  const [inviteGroupId, setInviteGroupId] = useState('')
+  const { currentGroupId } = useAdminGroup()
+  const [inviteGroupId, setInviteGroupId] = useState(currentGroupId || '')
   const [recipientUserId, setRecipientUserId] = useState('')
   const [inviteStatus, setInviteStatus] = useState({ loading: false, message: '', error: '' })
+
+  useEffect(() => {
+    if (currentGroupId) {
+      setInviteGroupId(currentGroupId)
+    }
+  }, [currentGroupId])
 
   const handleDeliverInvite = async (event) => {
     event.preventDefault()

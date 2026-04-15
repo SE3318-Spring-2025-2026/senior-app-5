@@ -40,6 +40,15 @@ function App() {
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
             <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
+
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="groups" replace />} />
+              <Route path="groups" element={<GroupsPage />} />
+              <Route path="members" element={<MembersPage />} />
+              <Route path="invites" element={<InvitesPage />} />
+              <Route path="advisors" element={<AdvisorsPage />} />
+              <Route path="sanitization" element={<SanitizationPage />} />
+            </Route>
           </Route>
 
           {/* Default Routing */}

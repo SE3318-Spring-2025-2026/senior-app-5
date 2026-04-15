@@ -1,5 +1,5 @@
-import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Role } from '../auth/enums/role.enum';
 import { AdvisorRequestsController } from './advisor-requests.controller';
 import { AdvisorsService } from './advisors.service';
 import { AdvisorDecision } from './dto/decision-request.dto';
@@ -55,7 +55,7 @@ describe('AdvisorRequestsController', () => {
     mockAdvisorsService.submitRequest.mockResolvedValue(expected);
 
     const request = {
-      user: { role: 'TEAM_LEADER', userId: 'leader-1' },
+      user: { role: Role.TeamLeader, userId: 'leader-1' },
     } as SubmitRequestArg;
 
     const body: SubmitRequestBody = {
@@ -71,20 +71,6 @@ describe('AdvisorRequestsController', () => {
     expect(result).toEqual(expected);
   });
 
-  it('should throw ForbiddenException for non-team-leader submit', async () => {
-    const request = {
-      user: { role: 'COORDINATOR', userId: 'coordinator-1' },
-    } as SubmitRequestArg;
-
-    const body: SubmitRequestBody = {
-      requestedAdvisorId: 'advisor-1',
-    };
-
-    await expect(
-      controller.submitRequest(request, body),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
   it('should delegate advisor decision to service for advisors', async () => {
     const expected = {
       requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
@@ -97,7 +83,7 @@ describe('AdvisorRequestsController', () => {
     mockAdvisorsService.decideRequest.mockResolvedValue(expected);
 
     const request = {
-      user: { role: 'ADVISOR', userId: 'advisor-1' },
+      user: { role: Role.Professor, userId: 'advisor-1' },
     } as DecideRequestArg;
 
     const body: DecideRequestBody = {
@@ -116,23 +102,5 @@ describe('AdvisorRequestsController', () => {
       decision: AdvisorDecision.APPROVE,
     });
     expect(result).toEqual(expected);
-  });
-
-  it('should throw ForbiddenException for non-advisor decision', async () => {
-    const request = {
-      user: { role: 'TEAM_LEADER', userId: 'leader-1' },
-    } as DecideRequestArg;
-
-    const body: DecideRequestBody = {
-      decision: AdvisorDecision.REJECT,
-    };
-
-    await expect(
-      controller.decideRequest(
-        request,
-        'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-        body,
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

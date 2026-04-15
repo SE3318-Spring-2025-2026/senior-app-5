@@ -1,5 +1,6 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Role } from '../auth/enums/role.enum';
 import { SchedulePhase } from './schemas/schedule.schema';
 import { AdvisorsService } from './advisors.service';
 import { SchedulesController } from './schedules.controller';
@@ -46,7 +47,7 @@ describe('SchedulesController', () => {
     mockAdvisorsService.setSchedule.mockResolvedValue(expected);
 
     const request = {
-      user: { role: 'COORDINATOR', userId: 'coordinator-1' },
+      user: { role: Role.Coordinator, userId: 'coordinator-1' },
     } as SetScheduleArg;
 
     const body: SetScheduleBody = {
@@ -66,22 +67,6 @@ describe('SchedulesController', () => {
     expect(result).toEqual(expected);
   });
 
-  it('should throw forbidden for non-coordinator in set schedule', async () => {
-    const request = {
-      user: { role: 'TEAM_LEADER', userId: 'leader-1' },
-    } as SetScheduleArg;
-
-    const body: SetScheduleBody = {
-      phase: SchedulePhase.ADVISOR_SELECTION,
-      startDatetime: '2026-04-14T10:00:00.000Z',
-      endDatetime: '2026-04-14T12:00:00.000Z',
-    };
-
-    await expect(controller.setSchedule(request, body)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
-  });
-
   it('should delegate get active schedule to service', async () => {
     const expected = {
       scheduleId: 'schedule-1',
@@ -96,7 +81,7 @@ describe('SchedulesController', () => {
     mockAdvisorsService.getActiveSchedule.mockResolvedValue(expected);
 
     const request = {
-      user: { role: 'TEAM_LEADER', userId: 'leader-1' },
+      user: { role: Role.TeamLeader, userId: 'leader-1' },
     } as GetActiveScheduleArg;
 
     const query: GetActiveScheduleQuery = {
@@ -117,7 +102,7 @@ describe('SchedulesController', () => {
     );
 
     const request = {
-      user: { role: 'TEAM_LEADER', userId: 'leader-1' },
+      user: { role: Role.TeamLeader, userId: 'leader-1' },
     } as GetActiveScheduleArg;
 
     const query: GetActiveScheduleQuery = {

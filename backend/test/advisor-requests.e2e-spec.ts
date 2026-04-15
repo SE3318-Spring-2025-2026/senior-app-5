@@ -14,6 +14,7 @@ import * as jwt from 'jsonwebtoken';
 import { AdvisorRequestsController } from '../src/advisors/advisor-requests.controller';
 import { AdvisorsService } from '../src/advisors/advisors.service';
 import { AdvisorDecision } from '../src/advisors/dto/decision-request.dto';
+import { Role } from '../src/auth/enums/role.enum';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
 import { UsersService } from '../src/users/users.service';
 
@@ -26,7 +27,7 @@ describe('Advisor Requests (e2e)', () => {
       requestId: 'request-1',
       groupId: 'group-1',
       submittedBy: 'team-leader-id',
-      requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      requestedAdvisorId: '507f191e810c19729de860ea',
       status: 'PENDING',
     }),
     decideRequest: jest.fn().mockResolvedValue({
@@ -39,9 +40,9 @@ describe('Advisor Requests (e2e)', () => {
   };
 
   const usersById = new Map<string, { role: string }>([
-    ['team-leader-id', { role: 'TEAM_LEADER' }],
-    ['coordinator-id', { role: 'COORDINATOR' }],
-    ['advisor-id', { role: 'ADVISOR' }],
+    ['team-leader-id', { role: Role.TeamLeader }],
+    ['coordinator-id', { role: Role.Coordinator }],
+    ['advisor-id', { role: Role.Professor }],
   ]);
 
   const mockUsersService = {
@@ -91,7 +92,7 @@ describe('Advisor Requests (e2e)', () => {
   it('POST /requests should return 401 when missing bearer token', () => {
     return request(app.getHttpServer())
       .post('/requests')
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(401);
   });
 
@@ -101,7 +102,7 @@ describe('Advisor Requests (e2e)', () => {
     return request(app.getHttpServer())
       .post('/requests')
       .set('Authorization', `Bearer ${token}`)
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(403);
   });
 
@@ -121,18 +122,18 @@ describe('Advisor Requests (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/requests')
       .set('Authorization', `Bearer ${token}`)
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(201);
 
     expect(mockAdvisorsService.submitRequest).toHaveBeenCalledWith({
-      requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      requestedAdvisorId: '507f191e810c19729de860ea',
       submittedBy: 'team-leader-id',
     });
     expect(response.body).toEqual({
       requestId: 'request-1',
       groupId: 'group-1',
       submittedBy: 'team-leader-id',
-      requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      requestedAdvisorId: '507f191e810c19729de860ea',
       status: 'PENDING',
     });
   });
@@ -148,7 +149,7 @@ describe('Advisor Requests (e2e)', () => {
     return request(app.getHttpServer())
       .post('/requests')
       .set('Authorization', `Bearer ${token}`)
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(403);
   });
 
@@ -161,7 +162,7 @@ describe('Advisor Requests (e2e)', () => {
     return request(app.getHttpServer())
       .post('/requests')
       .set('Authorization', `Bearer ${token}`)
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(404);
   });
 
@@ -176,7 +177,7 @@ describe('Advisor Requests (e2e)', () => {
     return request(app.getHttpServer())
       .post('/requests')
       .set('Authorization', `Bearer ${token}`)
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(409);
   });
 
@@ -189,7 +190,7 @@ describe('Advisor Requests (e2e)', () => {
     return request(app.getHttpServer())
       .post('/requests')
       .set('Authorization', `Bearer ${token}`)
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(423);
   });
 
@@ -200,7 +201,7 @@ describe('Advisor Requests (e2e)', () => {
     return request(app.getHttpServer())
       .post('/requests')
       .set('Authorization', `Bearer ${token}`)
-      .send({ requestedAdvisorId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+      .send({ requestedAdvisorId: '507f191e810c19729de860ea' })
       .expect(500);
   });
 

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
-import { getAdvisorRoleFilters, ROLES } from '../auth/constants/roles';
+import { Role } from '../auth/enums/role.enum';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User, UserDocument } from '../users/data/user.schema';
@@ -77,6 +77,10 @@ interface ScheduleRecord {
   createdAt?: Date;
 }
 
+function getAdvisorRoleFilters(): Role[] {
+  return [Role.Professor];
+}
+
 export interface SubmitRequestInput {
   requestedAdvisorId: string;
   submittedBy: string;
@@ -126,7 +130,7 @@ export class AdvisorsService {
             : (advisor._id?.toString() ?? advisor.id ?? ''),
         name: advisor.name ?? advisor.email,
         email: advisor.email,
-        role: ROLES.ADVISOR,
+        role: Role.Professor,
       }));
 
       return { data, total, page, limit };
@@ -308,8 +312,6 @@ export class AdvisorsService {
       throw new ForbiddenException('Invalid authenticated user.');
     }
 
-    let updatedRequest: AdvisorRequest | null = null;
-
     try {
       const existingRequest = await this.advisorRequestModel
         .findOne({ requestId: input.requestId })
@@ -372,12 +374,18 @@ export class AdvisorsService {
               )
               .exec();
           }
-
-          updatedRequest = decidedRequest;
         });
       } finally {
         await session.endSession();
       }
+
+      const updatedRequest = await this.advisorRequestModel
+        .findOne({
+          requestId: input.requestId,
+          requestedAdvisorId: input.advisorId,
+        })
+        .lean<AdvisorRequest>()
+        .exec();
 
       if (!updatedRequest) {
         throw new InternalServerErrorException(

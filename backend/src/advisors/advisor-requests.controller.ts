@@ -15,7 +15,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { AdvisorsService } from './advisors.service';
-import { AdvisorDecision, DecisionRequestDto } from './dto/decision-request.dto';
+import {
+  AdvisorDecision,
+  DecisionRequestDto,
+} from './dto/decision-request.dto';
 import { SubmitRequestDto } from './dto/submit-request.dto';
 import { AdvisorRequestStatus } from './schemas/advisor-request.schema';
 
@@ -88,31 +91,15 @@ export class AdvisorRequestsController {
   }
 
   @Patch(':requestId/decision')
+  @Roles(Role.Professor)
   async decideRequest(
     @Req() req: RequestWithUser,
     @Param('requestId', new ParseUUIDPipe({ version: '4' })) requestId: string,
     @Body() body: DecisionRequestDto,
   ) {
-    const role = req.user?.role;
     const advisorId = req.user?.userId;
     const correlationId = this.getCorrelationId(req);
-    const callerRole = normalizeRole(role) ?? role ?? 'UNKNOWN';
-
-    if (!hasAnyRole(role, [ROLES.ADVISOR])) {
-      this.logger.warn(
-        JSON.stringify({
-          event: 'advisor_request_decision_forbidden',
-          requestId,
-          decision: body.decision,
-          callerRole,
-          correlationId,
-        }),
-      );
-
-      throw new ForbiddenException(
-        'Only advisors can approve or reject advisor requests.',
-      );
-    }
+    const callerRole = req.user?.role ?? 'UNKNOWN';
 
     const result = await this.advisorsService.decideRequest({
       requestId,

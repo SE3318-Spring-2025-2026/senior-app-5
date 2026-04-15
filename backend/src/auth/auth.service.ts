@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Role } from './enums/role.enum';
 import { UsersService } from '../users/users.service';
+import { Role } from './enums/role.enum';
 
 @Injectable()
 export class AuthService {

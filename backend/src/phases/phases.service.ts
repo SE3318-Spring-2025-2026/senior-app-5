@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Phase, PhaseDocument } from './phase.entity';
@@ -6,7 +10,9 @@ import { UpdatePhaseScheduleDto } from './dto/update-phase-schedule.dto';
 
 @Injectable()
 export class PhasesService {
-  constructor(@InjectModel(Phase.name) private phaseModel: Model<PhaseDocument>) {}
+  constructor(
+    @InjectModel(Phase.name) private phaseModel: Model<PhaseDocument>,
+  ) {}
 
   async updateSchedule(phaseId: string, dto: UpdatePhaseScheduleDto) {
     const submissionStart = new Date(dto.submissionStart);

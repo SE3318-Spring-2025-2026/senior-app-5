@@ -14,7 +14,6 @@ import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CommitteesModule } from './committees/committees.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),

@@ -61,9 +61,13 @@ export class CommitteesService {
     correlationId?: string,
   ): Promise<CommitteeDocument> {
     try {
-      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
       if (!committee) {
-        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
       }
 
       this.logger.log({

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   ConflictException,
@@ -8,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Role } from './enums/role.enum';
 import { UsersService } from '../users/users.service';
+import { Role } from './enums/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -36,16 +35,16 @@ export class AuthService {
 
       this.logger.debug(`Creating user with email: ${email} and role: ${role}`);
 
-      const user = (await this.usersService.createUser({
+      const user = await this.usersService.createUser({
         email,
         passwordHash,
         role,
-      })) as any;
+      });
 
       this.logger.log(`User registered successfully: ${email} as ${role}`);
 
       return {
-        id: user._id || user.id,
+        id: user._id.toString(),
         email: user.email,
         role: user.role,
       };
@@ -56,7 +55,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = (await this.usersService.findByEmail(email)) as any;
+    const user = await this.usersService.findByEmail(email);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -69,7 +68,7 @@ export class AuthService {
     }
 
     const accessToken = await this.jwt.signAsync({
-      sub: (user._id || user.id).toString(),
+      sub: user._id.toString(),
       email: user.email,
       role: user.role,
     });

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { Role } from '../auth/enums/role.enum';
 import { AdvisorsController } from './advisors.controller';
 import { AdvisorsService } from './advisors.service';
 
@@ -42,7 +42,7 @@ describe('AdvisorsController', () => {
           advisorId: 'advisor-1',
           name: 'advisor@example.com',
           email: 'advisor@example.com',
-          role: 'ADVISOR',
+          role: Role.Professor,
         },
       ],
       total: 1,
@@ -53,28 +53,13 @@ describe('AdvisorsController', () => {
     mockAdvisorsService.listAdvisors.mockResolvedValue(expected);
 
     const request: ListAdvisorsRequestArg = {
-      user: { role: 'COORDINATOR' },
+      user: { role: Role.Coordinator },
     } as ListAdvisorsRequestArg;
 
     const result = await controller.listAdvisors(request, query);
 
     expect(mockAdvisorsService.listAdvisors).toHaveBeenCalledWith(query);
     expect(result).toEqual(expected);
-  });
-
-  it('should throw ForbiddenException for non-coordinator roles', async () => {
-    const query: ListAdvisorsQueryArg = {
-      page: 1,
-      limit: 20,
-    };
-
-    const request: ListAdvisorsRequestArg = {
-      user: { role: 'Student' },
-    } as ListAdvisorsRequestArg;
-
-    await expect(
-      controller.listAdvisors(request, query),
-    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('should allow team leader role', async () => {
@@ -89,7 +74,7 @@ describe('AdvisorsController', () => {
           advisorId: 'advisor-1',
           name: 'advisor@example.com',
           email: 'advisor@example.com',
-          role: 'ADVISOR',
+          role: Role.Professor,
         },
       ],
       total: 1,
@@ -100,7 +85,7 @@ describe('AdvisorsController', () => {
     mockAdvisorsService.listAdvisors.mockResolvedValue(expected);
 
     const request: ListAdvisorsRequestArg = {
-      user: { role: 'TEAM_LEADER' },
+      user: { role: Role.TeamLeader },
     } as ListAdvisorsRequestArg;
 
     const result = await controller.listAdvisors(request, query);

@@ -40,10 +40,18 @@ export class CommitteesController {
   constructor(private readonly committeesService: CommitteesService) {}
 
   @ApiBearerAuth('access-token')
-  @ApiOperation({ operationId: 'createCommittee', summary: 'Create a new committee (COORDINATOR only)' })
-  @ApiCreatedResponse({ description: 'Committee created successfully', type: CommitteeResponseDto })
+  @ApiOperation({
+    operationId: 'createCommittee',
+    summary: 'Create a new committee (COORDINATOR only)',
+  })
+  @ApiCreatedResponse({
+    description: 'Committee created successfully',
+    type: CommitteeResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Coordinator)
   @Post()
@@ -54,7 +62,8 @@ export class CommitteesController {
   ): Promise<CommitteeResponseDto> {
     const coordinatorId =
       req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
-    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
 
     const committee = await this.committeesService.createCommittee(
       dto,
@@ -66,10 +75,15 @@ export class CommitteesController {
   }
 
   @ApiBearerAuth('access-token')
-  @ApiOperation({ operationId: 'getCommitteeById', summary: 'Get a committee by its ID (any authenticated user)' })
+  @ApiOperation({
+    operationId: 'getCommitteeById',
+    summary: 'Get a committee by its ID (any authenticated user)',
+  })
   @ApiOkResponse({ description: 'Committee found', type: CommitteeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Authenticated but forbidden by policy' })
+  @ApiForbiddenResponse({
+    description: 'Authenticated but forbidden by policy',
+  })
   @ApiNotFoundResponse({ description: 'Committee not found' })
   @UseGuards(AuthGuard('jwt'))
   @Get(':committeeId')
@@ -78,20 +92,33 @@ export class CommitteesController {
     @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
     @Request() req: RequestWithUser,
   ): Promise<CommitteeResponseDto> {
-    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
-    const committee = await this.committeesService.getCommitteeById(committeeId, correlationId);
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+    const committee = await this.committeesService.getCommitteeById(
+      committeeId,
+      correlationId,
+    );
     return this.toResponseDto(committee);
   }
 
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
     return {
-      id: committee.id as string,
+      id: committee.id,
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,
-      jury: (committee.jury as any[]).map((j) => ({ userId: j.userId, name: j.name })),
-      advisors: (committee.advisors as any[]).map((a) => ({ userId: a.userId, name: a.name })),
-      groups: (committee.groups as any[]).map((g) => ({ groupId: g.groupId, groupName: g.groupName })),
+      jury: (committee.jury as any[]).map((j) => ({
+        userId: j.userId,
+        name: j.name,
+      })),
+      advisors: (committee.advisors as any[]).map((a) => ({
+        userId: a.userId,
+        name: a.name,
+      })),
+      groups: (committee.groups as any[]).map((g) => ({
+        groupId: g.groupId,
+        groupName: g.groupName,
+      })),
     };
   }
 }

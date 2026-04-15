@@ -3,10 +3,12 @@ import { getModelToken } from '@nestjs/mongoose';
 import { InternalServerErrorException } from '@nestjs/common';
 import { CommitteesService } from './committees.service';
 import { Committee } from './schemas/committee.schema';
+import { Group } from '../groups/group.entity';
 
 describe('CommitteesService', () => {
   let service: CommitteesService;
-  let mockCommitteeModel: { create: jest.Mock };
+  let mockCommitteeModel: { create: jest.Mock; findOne: jest.Mock };
+  let mockGroupModel: { findOne: jest.Mock };
 
   const mockCommittee = {
     id: 'test-uuid',
@@ -21,6 +23,11 @@ describe('CommitteesService', () => {
   beforeEach(async () => {
     mockCommitteeModel = {
       create: jest.fn(),
+      findOne: jest.fn(),
+    };
+
+    mockGroupModel = {
+      findOne: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -29,6 +36,10 @@ describe('CommitteesService', () => {
         {
           provide: getModelToken(Committee.name),
           useValue: mockCommitteeModel,
+        },
+        {
+          provide: getModelToken(Group.name),
+          useValue: mockGroupModel,
         },
       ],
     }).compile();
@@ -77,7 +88,9 @@ describe('CommitteesService', () => {
     });
 
     it('failure: repository throws → throws InternalServerErrorException (500)', async () => {
-      mockCommitteeModel.create.mockRejectedValue(new Error('DB connection lost'));
+      mockCommitteeModel.create.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       await expect(
         service.createCommittee({ name: 'Test Committee' }, 'coordinator-123'),
@@ -85,11 +98,15 @@ describe('CommitteesService', () => {
     });
 
     it('failure: repository throws → error message is generic to caller', async () => {
-      mockCommitteeModel.create.mockRejectedValue(new Error('DB connection lost'));
+      mockCommitteeModel.create.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       await expect(
         service.createCommittee({ name: 'Test Committee' }, 'coordinator-123'),
-      ).rejects.toThrow('Failed to create committee due to an unexpected error.');
+      ).rejects.toThrow(
+        'Failed to create committee due to an unexpected error.',
+      );
     });
   });
 });

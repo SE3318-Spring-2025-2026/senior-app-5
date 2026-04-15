@@ -13,6 +13,7 @@ import { Role } from '../auth/enums/role.enum';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User, UserDocument } from '../users/data/user.schema';
+import { AdvisorDecision } from './dto/decision-request.dto';
 import { ListAdvisorsQueryDto } from './dto/list-advisors-query.dto';
 import {
   AdvisorRequest,
@@ -76,9 +77,19 @@ interface ScheduleRecord {
   createdAt?: Date;
 }
 
+function getAdvisorRoleFilters(): Role[] {
+  return [Role.Professor];
+}
+
 export interface SubmitRequestInput {
   requestedAdvisorId: string;
   submittedBy: string;
+}
+
+export interface DecideRequestInput {
+  requestId: string;
+  advisorId: string;
+  decision: AdvisorDecision;
 }
 
 @Injectable()
@@ -98,7 +109,8 @@ export class AdvisorsService {
   ): Promise<PaginatedAdvisorsResponse> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const roleFilter = { role: Role.Professor };
+    const advisorRoleFilters = getAdvisorRoleFilters();
+    const roleFilter = { role: { $in: advisorRoleFilters } };
     const skip = (page - 1) * limit;
 
     try {
@@ -117,7 +129,7 @@ export class AdvisorsService {
             : (advisor._id?.toString() ?? advisor.id ?? ''),
         name: advisor.name ?? advisor.email,
         email: advisor.email,
-        role: advisor.role,
+        role: Role.Professor,
       }));
 
       return { data, total, page, limit };
@@ -209,6 +221,8 @@ export class AdvisorsService {
       throw new ForbiddenException('Invalid authenticated user.');
     }
 
+    const advisorRoleFilters = getAdvisorRoleFilters();
+
     try {
       const group = await this.groupModel
         .findOne({
@@ -227,7 +241,7 @@ export class AdvisorsService {
       const advisor = await this.userModel
         .findOne({
           _id: input.requestedAdvisorId,
-          role: Role.Professor,
+          role: { $in: advisorRoleFilters },
         })
         .lean<User>()
         .exec();
@@ -288,6 +302,113 @@ export class AdvisorsService {
 
       throw new InternalServerErrorException(
         'Failed to submit advisor request.',
+      );
+    }
+  }
+
+  async decideRequest(input: DecideRequestInput): Promise<AdvisorRequest> {
+    if (!input.advisorId) {
+      throw new ForbiddenException('Invalid authenticated user.');
+    }
+
+    try {
+      const existingRequest = await this.advisorRequestModel
+        .findOne({ requestId: input.requestId })
+        .lean<AdvisorRequest>()
+        .exec();
+
+      if (!existingRequest) {
+        throw new NotFoundException('Advisor request was not found.');
+      }
+
+      if (existingRequest.requestedAdvisorId !== input.advisorId) {
+        throw new ForbiddenException(
+          'You are not allowed to decide this advisor request.',
+        );
+      }
+
+      if (existingRequest.status !== AdvisorRequestStatus.PENDING) {
+        throw new ConflictException(
+          'Advisor request is not in a pending state.',
+        );
+      }
+
+      const nextStatus =
+        input.decision === AdvisorDecision.APPROVE
+          ? AdvisorRequestStatus.APPROVED
+          : AdvisorRequestStatus.REJECTED;
+
+      const decidedRequest = await this.advisorRequestModel
+        .findOneAndUpdate(
+          {
+            requestId: input.requestId,
+            requestedAdvisorId: input.advisorId,
+            status: AdvisorRequestStatus.PENDING,
+          },
+          { $set: { status: nextStatus } },
+          { returnDocument: 'after' },
+        )
+        .lean<AdvisorRequest>()
+        .exec();
+
+      if (!decidedRequest) {
+        throw new ConflictException('Advisor request is no longer pending.');
+      }
+
+      if (input.decision === AdvisorDecision.APPROVE) {
+        await this.advisorRequestModel
+          .updateMany(
+            {
+              groupId: decidedRequest.groupId,
+              requestId: { $ne: decidedRequest.requestId },
+              status: AdvisorRequestStatus.PENDING,
+            },
+            { $set: { status: AdvisorRequestStatus.REJECTED } },
+          )
+          .exec();
+      }
+
+      const updatedRequest = await this.advisorRequestModel
+        .findOne({
+          requestId: input.requestId,
+          requestedAdvisorId: input.advisorId,
+        })
+        .lean<AdvisorRequest>()
+        .exec();
+
+      if (!updatedRequest) {
+        throw new InternalServerErrorException(
+          'Failed to decide advisor request.',
+        );
+      }
+
+      if (input.decision === AdvisorDecision.APPROVE) {
+        await this.notificationsService.notifyAdvisorRequestApproved({
+          recipientUserId: updatedRequest.submittedBy,
+          groupId: updatedRequest.groupId,
+          requestId: updatedRequest.requestId,
+        });
+      } else {
+        await this.notificationsService.notifyAdvisorRequestRejected({
+          recipientUserId: updatedRequest.submittedBy,
+          groupId: updatedRequest.groupId,
+          requestId: updatedRequest.requestId,
+        });
+      }
+
+      return updatedRequest;
+    } catch (error: unknown) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof ForbiddenException ||
+        error instanceof HttpException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Failed to decide advisor request.',
       );
     }
   }

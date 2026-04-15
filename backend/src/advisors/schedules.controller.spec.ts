@@ -7,8 +7,12 @@ import { SchedulesController } from './schedules.controller';
 
 type SetScheduleArg = Parameters<SchedulesController['setSchedule']>[0];
 type SetScheduleBody = Parameters<SchedulesController['setSchedule']>[1];
-type GetActiveScheduleArg = Parameters<SchedulesController['getActiveSchedule']>[0];
-type GetActiveScheduleQuery = Parameters<SchedulesController['getActiveSchedule']>[1];
+type GetActiveScheduleArg = Parameters<
+  SchedulesController['getActiveSchedule']
+>[0];
+type GetActiveScheduleQuery = Parameters<
+  SchedulesController['getActiveSchedule']
+>[1];
 
 describe('SchedulesController', () => {
   let controller: SchedulesController;

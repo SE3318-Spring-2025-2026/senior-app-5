@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { getModelToken } from '@nestjs/mongoose';
 import {
   BadRequestException,
   ConflictException,
@@ -96,15 +96,6 @@ describe('AdvisorsService', () => {
     notifyAdvisorRequestRejected: jest.fn(),
   };
 
-  const mockSession = {
-    withTransaction: jest.fn(),
-    endSession: jest.fn().mockResolvedValue(undefined),
-  };
-
-  const mockConnection = {
-    startSession: jest.fn(),
-  };
-
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -130,10 +121,6 @@ describe('AdvisorsService', () => {
         {
           provide: NotificationsService,
           useValue: mockNotificationsService,
-        },
-        {
-          provide: getConnectionToken(),
-          useValue: mockConnection,
         },
       ],
     }).compile();
@@ -533,11 +520,6 @@ describe('AdvisorsService', () => {
         status: AdvisorRequestStatus.APPROVED,
       });
 
-    mockConnection.startSession.mockResolvedValue(mockSession);
-    mockSession.withTransaction.mockImplementation(
-      async (callback: () => Promise<void>) => callback(),
-    );
-
     mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
       mockAdvisorRequestFindOneAndUpdateQuery,
     );
@@ -571,7 +553,6 @@ describe('AdvisorsService', () => {
         status: AdvisorRequestStatus.PENDING,
       },
       { $set: { status: AdvisorRequestStatus.REJECTED } },
-      { session: mockSession },
     );
     expect(
       mockNotificationsService.notifyAdvisorRequestApproved,
@@ -601,11 +582,6 @@ describe('AdvisorsService', () => {
         requestedAdvisorId: 'advisor-1',
         status: AdvisorRequestStatus.REJECTED,
       });
-
-    mockConnection.startSession.mockResolvedValue(mockSession);
-    mockSession.withTransaction.mockImplementation(
-      async (callback: () => Promise<void>) => callback(),
-    );
 
     mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
       mockAdvisorRequestFindOneAndUpdateQuery,
@@ -692,7 +668,7 @@ describe('AdvisorsService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('should map transaction failures in decide request to internal server error', async () => {
+  it('should map update failures in decide request to internal server error', async () => {
     mockAdvisorRequestModel.findOne.mockReturnValue(
       mockAdvisorRequestFindOneQuery,
     );
@@ -703,11 +679,6 @@ describe('AdvisorsService', () => {
       requestedAdvisorId: 'advisor-1',
       status: AdvisorRequestStatus.PENDING,
     });
-
-    mockConnection.startSession.mockResolvedValue(mockSession);
-    mockSession.withTransaction.mockImplementation(
-      async (callback: () => Promise<void>) => callback(),
-    );
 
     mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
       mockAdvisorRequestFindOneAndUpdateQuery,

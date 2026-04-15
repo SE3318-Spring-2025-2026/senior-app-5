@@ -6,7 +6,7 @@ import { Model } from 'mongoose';
 import { AppModule } from '../src/app.module';
 import { Group, GroupDocument, GroupStatus } from '../src/groups/group.entity';
 import { User, UserDocument } from '../src/users/data/user.schema';
-import { ROLES } from '../src/auth/constants/roles';
+import { Role } from '../src/auth/enums/role.enum';
 
 const logger = new Logger('SeedTestUsers');
 
@@ -14,22 +14,22 @@ const seedUsers = [
   {
     email: 'teamleader@example.com',
     password: 'SecurePass123',
-    role: ROLES.TEAM_LEADER,
+    role: Role.TeamLeader,
   },
   {
     email: 'coordinator@example.com',
     password: 'SecurePass123',
-    role: ROLES.COORDINATOR,
+    role: Role.Coordinator,
   },
   {
     email: 'student@example.com',
     password: 'SecurePass123',
-    role: ROLES.STUDENT,
+    role: Role.Student,
   },
   {
-    email: 'advisor@example.com',
+    email: 'professor@example.com',
     password: 'SecurePass123',
-    role: ROLES.ADVISOR,
+    role: Role.Professor,
   },
 ];
 

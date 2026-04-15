@@ -34,10 +34,18 @@ export class CommitteesController {
   constructor(private readonly committeesService: CommitteesService) {}
 
   @ApiBearerAuth('access-token')
-  @ApiOperation({ operationId: 'createCommittee', summary: 'Create a new committee (COORDINATOR only)' })
-  @ApiCreatedResponse({ description: 'Committee created successfully', type: CommitteeResponseDto })
+  @ApiOperation({
+    operationId: 'createCommittee',
+    summary: 'Create a new committee (COORDINATOR only)',
+  })
+  @ApiCreatedResponse({
+    description: 'Committee created successfully',
+    type: CommitteeResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Coordinator)
   @Post()
@@ -48,7 +56,8 @@ export class CommitteesController {
   ): Promise<CommitteeResponseDto> {
     const coordinatorId =
       req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
-    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
 
     const committee = await this.committeesService.createCommittee(
       dto,
@@ -57,7 +66,7 @@ export class CommitteesController {
     );
 
     return {
-      id: committee.id as string,
+      id: committee.id,
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,

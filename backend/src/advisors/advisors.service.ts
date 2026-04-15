@@ -7,8 +7,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { Role } from '../auth/enums/role.enum';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -101,7 +101,6 @@ export class AdvisorsService {
     private readonly advisorRequestModel: Model<AdvisorRequestDocument>,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
-    @InjectConnection() private readonly connection: Connection,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -334,49 +333,39 @@ export class AdvisorsService {
         );
       }
 
-      const session = await this.connection.startSession();
-      try {
-        await session.withTransaction(async () => {
-          const nextStatus =
-            input.decision === AdvisorDecision.APPROVE
-              ? AdvisorRequestStatus.APPROVED
-              : AdvisorRequestStatus.REJECTED;
+      const nextStatus =
+        input.decision === AdvisorDecision.APPROVE
+          ? AdvisorRequestStatus.APPROVED
+          : AdvisorRequestStatus.REJECTED;
 
-          const decidedRequest = await this.advisorRequestModel
-            .findOneAndUpdate(
-              {
-                requestId: input.requestId,
-                requestedAdvisorId: input.advisorId,
-                status: AdvisorRequestStatus.PENDING,
-              },
-              { $set: { status: nextStatus } },
-              { new: true, session },
-            )
-            .lean<AdvisorRequest>()
-            .exec();
+      const decidedRequest = await this.advisorRequestModel
+        .findOneAndUpdate(
+          {
+            requestId: input.requestId,
+            requestedAdvisorId: input.advisorId,
+            status: AdvisorRequestStatus.PENDING,
+          },
+          { $set: { status: nextStatus } },
+          { returnDocument: 'after' },
+        )
+        .lean<AdvisorRequest>()
+        .exec();
 
-          if (!decidedRequest) {
-            throw new ConflictException(
-              'Advisor request is no longer pending.',
-            );
-          }
+      if (!decidedRequest) {
+        throw new ConflictException('Advisor request is no longer pending.');
+      }
 
-          if (input.decision === AdvisorDecision.APPROVE) {
-            await this.advisorRequestModel
-              .updateMany(
-                {
-                  groupId: decidedRequest.groupId,
-                  requestId: { $ne: decidedRequest.requestId },
-                  status: AdvisorRequestStatus.PENDING,
-                },
-                { $set: { status: AdvisorRequestStatus.REJECTED } },
-                { session },
-              )
-              .exec();
-          }
-        });
-      } finally {
-        await session.endSession();
+      if (input.decision === AdvisorDecision.APPROVE) {
+        await this.advisorRequestModel
+          .updateMany(
+            {
+              groupId: decidedRequest.groupId,
+              requestId: { $ne: decidedRequest.requestId },
+              status: AdvisorRequestStatus.PENDING,
+            },
+            { $set: { status: AdvisorRequestStatus.REJECTED } },
+          )
+          .exec();
       }
 
       const updatedRequest = await this.advisorRequestModel

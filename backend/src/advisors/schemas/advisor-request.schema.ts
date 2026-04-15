@@ -43,3 +43,11 @@ AdvisorRequestSchema.index(
     partialFilterExpression: { status: AdvisorRequestStatus.PENDING },
   },
 );
+
+AdvisorRequestSchema.index(
+  { groupId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: AdvisorRequestStatus.APPROVED },
+  },
+);

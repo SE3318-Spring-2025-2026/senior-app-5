@@ -1,12 +1,13 @@
+import 'dotenv/config';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { getModelToken } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { AppModule } from '../src/app.module';
+import { Role } from '../src/auth/enums/role.enum';
 import { Group, GroupDocument, GroupStatus } from '../src/groups/group.entity';
 import { User, UserDocument } from '../src/users/data/user.schema';
-import { ROLES } from '../src/auth/constants/roles';
 
 const logger = new Logger('SeedTestUsers');
 
@@ -14,22 +15,22 @@ const seedUsers = [
   {
     email: 'teamleader@example.com',
     password: 'SecurePass123',
-    role: ROLES.TEAM_LEADER,
+    role: Role.TeamLeader,
   },
   {
     email: 'coordinator@example.com',
     password: 'SecurePass123',
-    role: ROLES.COORDINATOR,
+    role: Role.Coordinator,
   },
   {
     email: 'student@example.com',
     password: 'SecurePass123',
-    role: ROLES.STUDENT,
+    role: Role.Student,
   },
   {
     email: 'advisor@example.com',
     password: 'SecurePass123',
-    role: ROLES.ADVISOR,
+    role: Role.Professor,
   },
 ];
 

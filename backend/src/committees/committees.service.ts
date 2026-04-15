@@ -8,6 +8,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Committee, CommitteeDocument } from './schemas/committee.schema';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
+import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
+import { CommitteeGroupListItemDto, CommitteeGroupPageDto } from './dto/committee-group-page.dto';
 import { Group, GroupDocument } from '../groups/group.entity';
 
 @Injectable()
@@ -83,6 +85,55 @@ export class CommitteesService {
       });
       throw new InternalServerErrorException(
         'Failed to retrieve committee due to an unexpected error.',
+      );
+    }
+  }
+
+  async listCommitteeGroups(
+    committeeId: string,
+    query: ListCommitteeGroupsQueryDto,
+    correlationId?: string,
+  ): Promise<CommitteeGroupPageDto> {
+    try {
+      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+      const skip = (page - 1) * limit;
+
+      const allGroups = (committee.groups as any[]) ?? [];
+      const total = allGroups.length;
+      const data: CommitteeGroupListItemDto[] = allGroups
+        .slice(skip, skip + limit)
+        .map((g) => ({
+          groupId: g.groupId as string,
+          assignedAt: g.assignedAt as Date,
+          assignedByUserId: g.assignedByUserId as string,
+        }));
+
+      this.logger.log({
+        event: 'committee_groups_listed',
+        committeeId,
+        page,
+        limit,
+        resultCount: data.length,
+        correlationId,
+      });
+
+      return { data, total, page, limit };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({
+        event: 'committee_groups_list_failed',
+        committeeId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to retrieve committee groups due to an unexpected error.',
       );
     }
   }

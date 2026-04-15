@@ -1,12 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { InternalServerErrorException } from '@nestjs/common';
+import {
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CommitteesService } from './committees.service';
 import { Committee } from './schemas/committee.schema';
+import { Group } from '../groups/group.entity';
+import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
 
 describe('CommitteesService', () => {
   let service: CommitteesService;
-  let mockCommitteeModel: { create: jest.Mock };
+
+  const now = new Date('2025-06-01T10:00:00.000Z');
 
   const mockCommittee = {
     id: 'test-uuid',
@@ -18,10 +24,17 @@ describe('CommitteesService', () => {
     updatedAt: null,
   };
 
+  const mockCommitteeModel = {
+    create: jest.fn(),
+    findOne: jest.fn(),
+  };
+
+  const mockGroupModel = {
+    findOne: jest.fn(),
+  };
+
   beforeEach(async () => {
-    mockCommitteeModel = {
-      create: jest.fn(),
-    };
+    jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -29,6 +42,10 @@ describe('CommitteesService', () => {
         {
           provide: getModelToken(Committee.name),
           useValue: mockCommitteeModel,
+        },
+        {
+          provide: getModelToken(Group.name),
+          useValue: mockGroupModel,
         },
       ],
     }).compile();
@@ -39,6 +56,8 @@ describe('CommitteesService', () => {
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
+
+  // ─── createCommittee ──────────────────────────────────────────────────────
 
   describe('createCommittee', () => {
     it('happy path: valid name → returns created committee', async () => {
@@ -90,6 +109,146 @@ describe('CommitteesService', () => {
       await expect(
         service.createCommittee({ name: 'Test Committee' }, 'coordinator-123'),
       ).rejects.toThrow('Failed to create committee due to an unexpected error.');
+    });
+  });
+
+  // ─── listCommitteeGroups ──────────────────────────────────────────────────
+
+  describe('listCommitteeGroups', () => {
+    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+    const makeGroups = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        groupId: `group-${i + 1}`,
+        assignedAt: new Date(now.getTime() + i * 1000),
+        assignedByUserId: `coordinator-${i + 1}`,
+      }));
+
+    const defaultQuery = (): ListCommitteeGroupsQueryDto => {
+      const q = new ListCommitteeGroupsQueryDto();
+      q.page = 1;
+      q.limit = 20;
+      return q;
+    };
+
+    it('happy path: committee with assigned groups → paginated CommitteeGroupPage', async () => {
+      const groups = makeGroups(3);
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+      });
+
+      const result = await service.listCommitteeGroups(committeeId, defaultQuery());
+
+      expect(result.total).toBe(3);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(20);
+      expect(result.data).toHaveLength(3);
+      expect(result.data[0]).toMatchObject({
+        groupId: 'group-1',
+        assignedByUserId: 'coordinator-1',
+      });
+      expect(result.data[0].assignedAt).toBeInstanceOf(Date);
+    });
+
+    it('empty: committee exists but no groups assigned → data: [], total: 0', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups: [] }),
+      });
+
+      const result = await service.listCommitteeGroups(committeeId, defaultQuery());
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(20);
+    });
+
+    it('pagination: page 2 with limit 2 returns correct slice', async () => {
+      const groups = makeGroups(5);
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+      });
+
+      const query = new ListCommitteeGroupsQueryDto();
+      query.page = 2;
+      query.limit = 2;
+
+      const result = await service.listCommitteeGroups(committeeId, query);
+
+      expect(result.total).toBe(5);
+      expect(result.page).toBe(2);
+      expect(result.limit).toBe(2);
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].groupId).toBe('group-3');
+      expect(result.data[1].groupId).toBe('group-4');
+    });
+
+    it('pagination: last page returns remaining items', async () => {
+      const groups = makeGroups(5);
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+      });
+
+      const query = new ListCommitteeGroupsQueryDto();
+      query.page = 3;
+      query.limit = 2;
+
+      const result = await service.listCommitteeGroups(committeeId, query);
+
+      expect(result.total).toBe(5);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].groupId).toBe('group-5');
+    });
+
+    it('failure: committee not found → throws NotFoundException (404)', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.listCommitteeGroups(committeeId, defaultQuery()),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('failure: committee not found → error message includes committeeId', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.listCommitteeGroups(committeeId, defaultQuery()),
+      ).rejects.toThrow(`Committee with ID '${committeeId}' not found.`);
+    });
+
+    it('failure: repository throws → throws InternalServerErrorException (500)', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockRejectedValue(new Error('DB timeout')),
+      });
+
+      await expect(
+        service.listCommitteeGroups(committeeId, defaultQuery()),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('failure: repository throws → error message is generic to caller', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockRejectedValue(new Error('DB timeout')),
+      });
+
+      await expect(
+        service.listCommitteeGroups(committeeId, defaultQuery()),
+      ).rejects.toThrow('Failed to retrieve committee groups due to an unexpected error.');
+    });
+
+    it('each item does not include committeeId', async () => {
+      const groups = makeGroups(1);
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+      });
+
+      const result = await service.listCommitteeGroups(committeeId, defaultQuery());
+
+      expect(result.data[0]).not.toHaveProperty('committeeId');
     });
   });
 });

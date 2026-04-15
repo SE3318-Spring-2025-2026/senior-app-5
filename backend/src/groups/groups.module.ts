@@ -4,11 +4,13 @@ import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 import { Group, GroupSchema } from './group.entity';
 import { Submission, SubmissionSchema } from '../submissions/schemas/submission.schema';
+import { CommitteesModule } from '../committees/committees.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Group.name, schema: GroupSchema }]),
-    MongooseModule.forFeature([{ name: Submission.name, schema: SubmissionSchema }])
+    MongooseModule.forFeature([{ name: Submission.name, schema: SubmissionSchema }]),
+    CommitteesModule,
   ],
   controllers: [GroupsController],
   providers: [GroupsService],

@@ -1,9 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExecutionContext, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Reflector } from '@nestjs/core';
 import { CommitteesController } from './committees.controller';
 import { CommitteesService } from './committees.service';
-import { CoordinatorGuard } from '../auth/guards/coordinator.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { Role } from '../auth/enums/role.enum';
 
 describe('CommitteesController', () => {
@@ -11,7 +17,7 @@ describe('CommitteesController', () => {
   let service: CommitteesService;
 
   const mockCommittee = {
-    id: 'test-uuid',
+    id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     name: 'Test Committee',
     jury: [],
     advisors: [],
@@ -21,31 +27,37 @@ describe('CommitteesController', () => {
   };
 
   const coordinatorUser = { userId: 'coord-123', role: Role.Coordinator };
+  const studentUser    = { userId: 'student-1', role: Role.Student };
 
   beforeEach(async () => {
     const mockService = {
-      createCommittee: jest.fn(),
+      createCommittee:        jest.fn(),
+      getCommitteeById:       jest.fn(),
+      getCommitteeByGroupId:  jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CommitteesController],
       providers: [
         { provide: CommitteesService, useValue: mockService },
+        Reflector,
       ],
     })
       .overrideGuard(AuthGuard('jwt'))
       .useValue({ canActivate: () => true })
-      .overrideGuard(CoordinatorGuard)
+      .overrideGuard(RolesGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
     controller = module.get<CommitteesController>(CommitteesController);
-    service = module.get<CommitteesService>(CommitteesService);
+    service    = module.get<CommitteesService>(CommitteesService);
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
+
+  // ─── POST /committees ──────────────────────────────────────────────────────
 
   describe('POST /committees', () => {
     it('happy path: valid COORDINATOR + valid body → 201 with Committee shape', async () => {
@@ -55,7 +67,7 @@ describe('CommitteesController', () => {
       const result = await controller.createCommittee({ name: 'Test Committee' }, req);
 
       expect(result).toMatchObject({
-        id: 'test-uuid',
+        id: mockCommittee.id,
         name: 'Test Committee',
         jury: [],
         advisors: [],
@@ -101,38 +113,110 @@ describe('CommitteesController', () => {
     });
   });
 
-  describe('COORDINATOR guard enforcement', () => {
-    it('non-COORDINATOR role → CoordinatorGuard throws ForbiddenException', () => {
-      const guardInstance = new CoordinatorGuard();
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({ user: { role: Role.Professor } }),
-        }),
-      } as ExecutionContext;
+  // ─── COORDINATOR guard enforcement via RolesGuard ─────────────────────────
 
-      expect(() => guardInstance.canActivate(mockContext)).toThrow(ForbiddenException);
+  describe('COORDINATOR role check via RolesGuard', () => {
+    let rolesGuard: RolesGuard;
+    let reflector: Reflector;
+
+    beforeEach(() => {
+      reflector  = new Reflector();
+      rolesGuard = new RolesGuard(reflector);
     });
 
-    it('missing user → CoordinatorGuard throws ForbiddenException', () => {
-      const guardInstance = new CoordinatorGuard();
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({ user: null }),
-        }),
-      } as ExecutionContext;
+    function makeContext(user: unknown): ExecutionContext {
+      return {
+        switchToHttp: () => ({ getRequest: () => ({ user }) }),
+        getHandler:   () => ({}),
+        getClass:     () => ({}),
+      } as unknown as ExecutionContext;
+    }
 
-      expect(() => guardInstance.canActivate(mockContext)).toThrow(ForbiddenException);
+    it('no required roles metadata → guard allows through', () => {
+      // Reflector returns undefined (no @Roles decorator on handler)
+      expect(rolesGuard.canActivate(makeContext(studentUser))).toBe(true);
     });
 
-    it('COORDINATOR role → CoordinatorGuard allows access', () => {
-      const guardInstance = new CoordinatorGuard();
-      const mockContext = {
-        switchToHttp: () => ({
-          getRequest: () => ({ user: { role: Role.Coordinator } }),
-        }),
-      } as ExecutionContext;
+    it('non-COORDINATOR role with COORDINATOR requirement → throws ForbiddenException', () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
+      expect(() => rolesGuard.canActivate(makeContext(studentUser))).toThrow(ForbiddenException);
+    });
 
-      expect(guardInstance.canActivate(mockContext)).toBe(true);
+    it('missing user with COORDINATOR requirement → throws ForbiddenException', () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
+      expect(() => rolesGuard.canActivate(makeContext(null))).toThrow(ForbiddenException);
+    });
+
+    it('COORDINATOR role with COORDINATOR requirement → returns true', () => {
+      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
+      expect(rolesGuard.canActivate(makeContext(coordinatorUser))).toBe(true);
+    });
+  });
+
+  // ─── GET /committees/:committeeId ─────────────────────────────────────────
+
+  describe('GET /committees/:committeeId', () => {
+    const committeeId = mockCommittee.id;
+
+    it('happy path: existing committeeId → 200 with Committee shape', async () => {
+      jest.spyOn(service, 'getCommitteeById').mockResolvedValue(mockCommittee as any);
+
+      const req = { user: studentUser, headers: {} } as any;
+      const result = await controller.getCommitteeById(committeeId, req);
+
+      expect(result).toMatchObject({
+        id: committeeId,
+        name: 'Test Committee',
+        jury: [],
+        advisors: [],
+        groups: [],
+      });
+    });
+
+    it('passes correlationId header to service', async () => {
+      jest.spyOn(service, 'getCommitteeById').mockResolvedValue(mockCommittee as any);
+
+      const req = { user: studentUser, headers: { 'x-correlation-id': 'corr-abc' } } as any;
+      await controller.getCommitteeById(committeeId, req);
+
+      expect(service.getCommitteeById).toHaveBeenCalledWith(committeeId, 'corr-abc');
+    });
+
+    it('committee not found → propagates NotFoundException (404)', async () => {
+      jest.spyOn(service, 'getCommitteeById').mockRejectedValue(
+        new NotFoundException(`Committee with ID '${committeeId}' not found.`),
+      );
+
+      const req = { user: studentUser, headers: {} } as any;
+      await expect(controller.getCommitteeById(committeeId, req)).rejects.toThrow(NotFoundException);
+    });
+
+    it('unexpected repository error → propagates InternalServerErrorException (500)', async () => {
+      jest.spyOn(service, 'getCommitteeById').mockRejectedValue(
+        new InternalServerErrorException('Failed to retrieve committee due to an unexpected error.'),
+      );
+
+      const req = { user: studentUser, headers: {} } as any;
+      await expect(controller.getCommitteeById(committeeId, req)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('embedded lists are mapped correctly when non-empty', async () => {
+      const richCommittee = {
+        ...mockCommittee,
+        jury:     [{ userId: 'j1', name: 'Juror One' }],
+        advisors: [{ userId: 'a1', name: 'Advisor One' }],
+        groups:   [{ groupId: 'g1', groupName: 'Group One' }],
+      };
+      jest.spyOn(service, 'getCommitteeById').mockResolvedValue(richCommittee as any);
+
+      const req = { user: studentUser, headers: {} } as any;
+      const result = await controller.getCommitteeById(committeeId, req);
+
+      expect(result.jury).toEqual([{ userId: 'j1', name: 'Juror One' }]);
+      expect(result.advisors).toEqual([{ userId: 'a1', name: 'Advisor One' }]);
+      expect(result.groups).toEqual([{ groupId: 'g1', groupName: 'Group One' }]);
     });
   });
 });

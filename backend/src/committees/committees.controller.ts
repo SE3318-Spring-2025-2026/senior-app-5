@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -29,6 +31,8 @@ import { CommitteesService } from './committees.service';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
 import { CommitteeResponseDto } from './dto/committee-response.dto';
 import { CommitteeDocument } from './schemas/committee.schema';
+import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
+import { CommitteeGroupPageDto } from './dto/committee-group-page.dto';
 
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
@@ -101,23 +105,42 @@ export class CommitteesController {
     return this.toResponseDto(committee);
   }
 
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'listCommitteeGroups',
+    summary: 'List groups assigned to a committee (COORDINATOR only)',
+    description: 'Returns paginated group assignments for a committee. Each item includes groupId and assignedAt. committeeId is not repeated in items.',
+  })
+  @ApiOkResponse({ description: 'Committee groups returned successfully', type: CommitteeGroupPageDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Get(':committeeId/groups')
+  @HttpCode(HttpStatus.OK)
+  async listCommitteeGroups(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Query() query: ListCommitteeGroupsQueryDto,
+    @Request() req: RequestWithUser,
+  ): Promise<CommitteeGroupPageDto> {
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.listCommitteeGroups(committeeId, query, correlationId);
+  }
+
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
     return {
       id: committee.id,
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,
-      jury: (committee.jury as any[]).map((j) => ({
-        userId: j.userId,
-        name: j.name,
-      })),
-      advisors: (committee.advisors as any[]).map((a) => ({
-        userId: a.userId,
-        name: a.name,
-      })),
+      jury: (committee.jury as any[]).map((j) => ({ userId: j.userId, name: j.name })),
+      advisors: (committee.advisors as any[]).map((a) => ({ userId: a.userId, name: a.name })),
       groups: (committee.groups as any[]).map((g) => ({
         groupId: g.groupId,
-        groupName: g.groupName,
+        assignedAt: g.assignedAt,
+        assignedByUserId: g.assignedByUserId,
       })),
     };
   }

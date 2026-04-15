@@ -96,7 +96,9 @@ describe('CommitteesService', () => {
     });
 
     it('failure: repository throws → throws InternalServerErrorException (500)', async () => {
-      mockCommitteeModel.create.mockRejectedValue(new Error('DB connection lost'));
+      mockCommitteeModel.create.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       await expect(
         service.createCommittee({ name: 'Test Committee' }, 'coordinator-123'),
@@ -104,11 +106,15 @@ describe('CommitteesService', () => {
     });
 
     it('failure: repository throws → error message is generic to caller', async () => {
-      mockCommitteeModel.create.mockRejectedValue(new Error('DB connection lost'));
+      mockCommitteeModel.create.mockRejectedValue(
+        new Error('DB connection lost'),
+      );
 
       await expect(
         service.createCommittee({ name: 'Test Committee' }, 'coordinator-123'),
-      ).rejects.toThrow('Failed to create committee due to an unexpected error.');
+      ).rejects.toThrow(
+        'Failed to create committee due to an unexpected error.',
+      );
     });
   });
 

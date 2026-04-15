@@ -14,7 +14,9 @@ export class SubmissionsService {
     // 1. Find the Submission from the database (If not, throw 404)
     const submission = await this.submissionModel.findById(submissionId);
     if (!submission) {
-      throw new NotFoundException(`Submission with ID ${submissionId} not found.`);
+      throw new NotFoundException(
+        `Submission with ID ${submissionId} not found.`,
+      );
     }
 
     // 2. Prepare file information (metadata)
@@ -34,5 +36,4 @@ export class SubmissionsService {
       document: newDocument,
     };
   }
-
 }

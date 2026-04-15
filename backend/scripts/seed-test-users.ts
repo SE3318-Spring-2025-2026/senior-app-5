@@ -28,7 +28,7 @@ const seedUsers = [
     role: Role.Student,
   },
   {
-    email: 'advisor@example.com',
+    email: 'professor@example.com',
     password: 'SecurePass123',
     role: Role.Professor,
   },

@@ -10,15 +10,19 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
-  findByEmail(email: string) {
+  findByEmail(email: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ email: email.toLowerCase().trim() }).exec();
   }
 
-  findById(id: string) {
+  findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id).exec();
   }
 
-  createUser(params: { email: string; passwordHash: string; role?: string }) {
+  createUser(params: {
+    email: string;
+    passwordHash: string;
+    role?: string;
+  }): Promise<UserDocument> {
     return this.userModel.create({
       email: params.email.toLowerCase().trim(),
       passwordHash: params.passwordHash,
@@ -26,15 +30,25 @@ export class UsersService {
     });
   }
 
-  async updateUserTeam(studentId: string, teamId: string) {
+  async updateUserTeam(
+    studentId: string,
+    teamId: string,
+  ): Promise<UserDocument | null> {
     return this.userModel
-      .findByIdAndUpdate(studentId, { teamId }, { new: true })
+      .findByIdAndUpdate(studentId, { teamId }, { returnDocument: 'after' })
       .exec();
   }
 
-  async linkGithubAccount(userId: string, githubAccountId: string) {
+  async linkGithubAccount(
+    userId: string,
+    githubAccountId: string,
+  ): Promise<UserDocument | null> {
     return this.userModel
-      .findByIdAndUpdate(userId, { githubAccountId }, { new: true })
+      .findByIdAndUpdate(
+        userId,
+        { githubAccountId },
+        { returnDocument: 'after' },
+      )
       .exec();
   }
 }

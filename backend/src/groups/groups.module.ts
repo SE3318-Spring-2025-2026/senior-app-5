@@ -3,14 +3,19 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 import { Group, GroupSchema } from './group.entity';
-import { Submission, SubmissionSchema } from '../submissions/schemas/submission.schema';
+import {
+  Submission,
+  SubmissionSchema,
+} from '../submissions/schemas/submission.schema';
 import { CommitteesModule } from '../committees/committees.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Group.name, schema: GroupSchema }]),
-    MongooseModule.forFeature([{ name: Submission.name, schema: SubmissionSchema }]),
     CommitteesModule,
+    MongooseModule.forFeature([{ name: Group.name, schema: GroupSchema }]),
+    MongooseModule.forFeature([
+      { name: Submission.name, schema: SubmissionSchema },
+    ]),
   ],
   controllers: [GroupsController],
   providers: [GroupsService],

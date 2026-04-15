@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Group, GroupDocument, GroupStatus } from './group.entity';
@@ -26,26 +26,38 @@ export class GroupsService {
   }
 
   async validateStatementOfWork(groupId: string) {
-    const submissions = await this.submissionModel.find({ 
+    const submissions = await this.submissionModel.find({
       groupId: groupId,
-      type: { $in: ['SOW', 'RevisedProposal'] }
+      type: { $in: ['SOW', 'RevisedProposal'] },
     });
 
     if (!submissions || submissions.length === 0) {
-      throw new NotFoundException(`No submission records found for group ID: ${groupId}`);
+      throw new NotFoundException(
+        `No submission records found for group ID: ${groupId}`,
+      );
     }
 
-    const sow = submissions.find(sub => sub.type === 'SOW');
-    const revisedProposal = submissions.find(sub => sub.type === 'RevisedProposal');
+    const sow = submissions.find((sub) => sub.type === 'SOW');
+    const revisedProposal = submissions.find(
+      (sub) => sub.type === 'RevisedProposal',
+    );
 
     const sowStatus = sow ? sow.status : 'Not Submitted';
-    const revisedStatus = revisedProposal ? revisedProposal.status : 'Not Required';
+    const revisedStatus = revisedProposal
+      ? revisedProposal.status
+      : 'Not Required';
 
     let validationState = 'Pending';
 
-    if (sowStatus === 'Approved' && (revisedStatus === 'Approved' || revisedStatus === 'Not Required')) {
+    if (
+      sowStatus === 'Approved' &&
+      (revisedStatus === 'Approved' || revisedStatus === 'Not Required')
+    ) {
       validationState = 'Approved';
-    } else if (sowStatus === 'Needs Revision' || revisedStatus === 'Needs Revision') {
+    } else if (
+      sowStatus === 'Needs Revision' ||
+      revisedStatus === 'Needs Revision'
+    ) {
       validationState = 'Needs Revision';
     } else if (sowStatus === 'Submitted' || revisedStatus === 'Submitted') {
       validationState = 'Submitted';
@@ -58,7 +70,7 @@ export class GroupsService {
         revisedProposal: revisedStatus,
       },
       overallValidationStatus: validationState,
-      canClearSowStatus: validationState === 'Approved'
+      canClearSowStatus: validationState === 'Approved',
     };
   }
 }

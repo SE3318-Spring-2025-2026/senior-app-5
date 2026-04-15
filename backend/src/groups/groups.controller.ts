@@ -54,11 +54,18 @@ export class GroupsController {
   }
 
   @ApiBearerAuth('access-token')
-  @ApiOperation({ operationId: 'getCommitteeByGroupId', summary: 'Get the committee assigned to a group (any authenticated user)' })
+  @ApiOperation({
+    operationId: 'getCommitteeByGroupId',
+    summary: 'Get the committee assigned to a group (any authenticated user)',
+  })
   @ApiOkResponse({ description: 'Committee found', type: CommitteeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Authenticated but forbidden by policy' })
-  @ApiNotFoundResponse({ description: 'Group not found or no committee assigned' })
+  @ApiForbiddenResponse({
+    description: 'Authenticated but forbidden by policy',
+  })
+  @ApiNotFoundResponse({
+    description: 'Group not found or no committee assigned',
+  })
   @UseGuards(AuthGuard('jwt'))
   @Get(':groupId/committee')
   @HttpCode(HttpStatus.OK)
@@ -66,14 +73,18 @@ export class GroupsController {
     @Param('groupId', new ParseUUIDPipe()) groupId: string,
     @Request() req: RequestWithUser,
   ): Promise<CommitteeResponseDto> {
-    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
-    const committee = await this.committeesService.getCommitteeByGroupId(groupId, correlationId);
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+    const committee = await this.committeesService.getCommitteeByGroupId(
+      groupId,
+      correlationId,
+    );
     return this.toResponseDto(committee);
   }
 
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
     return {
-      id: committee.id as string,
+      id: committee.id,
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,

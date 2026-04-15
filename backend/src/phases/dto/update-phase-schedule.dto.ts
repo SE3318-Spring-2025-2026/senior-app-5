@@ -7,6 +7,7 @@ export class UpdatePhaseScheduleDto {
   @IsDateString()
   submissionStart!: string;
 
+  @ApiProperty()
   @IsDateString()
   submissionEnd!: string;
 }

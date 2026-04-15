@@ -1,12 +1,13 @@
+import 'dotenv/config';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { getModelToken } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { AppModule } from '../src/app.module';
+import { Role } from '../src/auth/enums/role.enum';
 import { Group, GroupDocument, GroupStatus } from '../src/groups/group.entity';
 import { User, UserDocument } from '../src/users/data/user.schema';
-import { Role } from '../src/auth/enums/role.enum';
 
 const logger = new Logger('SeedTestUsers');
 

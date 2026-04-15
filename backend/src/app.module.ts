@@ -11,6 +11,7 @@ import { GroupsModule } from './groups/groups.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
+import { SchedulesModule } from './schedules/schedules.module';
 
 
 @Module({
@@ -25,6 +26,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
     NotificationsModule,
     PhasesModule,
     SubmissionsModule,
+    SchedulesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

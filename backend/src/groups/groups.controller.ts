@@ -84,7 +84,7 @@ export class GroupsController {
 
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
     return {
-      id: committee.id as string,
+      id: committee.id,
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,

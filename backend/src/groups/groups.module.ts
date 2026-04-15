@@ -7,9 +7,11 @@ import {
   Submission,
   SubmissionSchema,
 } from '../submissions/schemas/submission.schema';
+import { CommitteesModule } from '../committees/committees.module';
 
 @Module({
   imports: [
+    CommitteesModule,
     MongooseModule.forFeature([{ name: Group.name, schema: GroupSchema }]),
     MongooseModule.forFeature([
       { name: Submission.name, schema: SubmissionSchema },

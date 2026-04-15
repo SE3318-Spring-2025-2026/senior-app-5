@@ -8,6 +8,7 @@ import * as jwt from 'jsonwebtoken';
 import { AdvisorsController } from '../src/advisors/advisors.controller';
 import { AdvisorsService } from '../src/advisors/advisors.service';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
+import { Role } from '../src/auth/enums/role.enum';
 import { UsersService } from '../src/users/users.service';
 
 describe('Advisors Auth (e2e)', () => {
@@ -31,9 +32,9 @@ describe('Advisors Auth (e2e)', () => {
   };
 
   const usersById = new Map<string, { role: string }>([
-    ['team-leader-id', { role: 'TEAM_LEADER' }],
-    ['coordinator-id', { role: 'COORDINATOR' }],
-    ['student-id', { role: 'STUDENT' }],
+    ['team-leader-id', { role: Role.TeamLeader }],
+    ['coordinator-id', { role: Role.Coordinator }],
+    ['student-id', { role: Role.Student }],
   ]);
 
   const mockUsersService = {

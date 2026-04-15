@@ -9,6 +9,7 @@ import { AdvisorsService } from '../src/advisors/advisors.service';
 import { SchedulesController } from '../src/advisors/schedules.controller';
 import { SchedulePhase } from '../src/advisors/schemas/schedule.schema';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
+import { Role } from '../src/auth/enums/role.enum';
 import { UsersService } from '../src/users/users.service';
 import { NotFoundException } from '@nestjs/common';
 
@@ -37,8 +38,8 @@ describe('Schedules (e2e)', () => {
   };
 
   const usersById = new Map<string, { role: string }>([
-    ['team-leader-id', { role: 'TEAM_LEADER' }],
-    ['coordinator-id', { role: 'COORDINATOR' }],
+    ['team-leader-id', { role: Role.TeamLeader }],
+    ['coordinator-id', { role: Role.Coordinator }],
   ]);
 
   const mockUsersService = {

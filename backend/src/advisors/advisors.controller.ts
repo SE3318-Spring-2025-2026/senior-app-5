@@ -1,6 +1,5 @@
 import {
   Controller,
-  ForbiddenException,
   Get,
   Logger,
   Query,
@@ -9,7 +8,9 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { hasAnyRole, normalizeRole, ROLES } from '../auth/constants/roles';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 import { AdvisorsService } from './advisors.service';
 import { ListAdvisorsQueryDto } from './dto/list-advisors-query.dto';
 
@@ -20,7 +21,7 @@ interface RequestWithUser extends Request {
 }
 
 @Controller('advisors')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AdvisorsController {
   private readonly logger = new Logger(AdvisorsController.name);
 
@@ -29,43 +30,25 @@ export class AdvisorsController {
   private getCorrelationId(req: Request): string | undefined {
     const headerValue =
       req.headers?.['x-correlation-id'] ?? req.headers?.['x-request-id'];
-
     return typeof headerValue === 'string' ? headerValue : undefined;
   }
 
   @Get()
+  @Roles(Role.Coordinator, Role.TeamLeader)
   async listAdvisors(
     @Req() req: RequestWithUser,
     @Query() query: ListAdvisorsQueryDto,
   ) {
-    const role = req.user?.role;
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const correlationId = this.getCorrelationId(req);
-    const callerRole = normalizeRole(role) ?? role ?? 'UNKNOWN';
-
-    if (!hasAnyRole(role, [ROLES.COORDINATOR, ROLES.TEAM_LEADER])) {
-      this.logger.warn(
-        JSON.stringify({
-          event: 'advisors_list_forbidden',
-          callerRole,
-          page,
-          limit,
-          correlationId,
-        }),
-      );
-
-      throw new ForbiddenException(
-        'Only coordinators and team leaders can view advisors.',
-      );
-    }
 
     const result = await this.advisorsService.listAdvisors(query);
 
     this.logger.log(
       JSON.stringify({
         event: 'advisors_listed',
-        callerRole,
+        callerRole: req.user?.role,
         page,
         limit,
         resultCount: result.data.length,

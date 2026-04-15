@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { ROLES } from '../../auth/constants/roles';
+import { Role } from '../../auth/enums/role.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -13,21 +13,7 @@ export class User {
   @Prop({ required: true })
   passwordHash!: string;
 
-  // Canonical roles are uppercase; legacy values are temporarily accepted for compatibility.
-  @Prop({
-    required: true,
-    enum: [
-      ROLES.STUDENT,
-      ROLES.TEAM_LEADER,
-      ROLES.COORDINATOR,
-      ROLES.ADMIN,
-      ROLES.ADVISOR,
-      'Student',
-      'Coordinator',
-      'Admin',
-      'PROFESSOR',
-    ],
-  })
+  @Prop({ required: true, enum: Object.values(Role) })
   role!: string;
 
   @Prop()

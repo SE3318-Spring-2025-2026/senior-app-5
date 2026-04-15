@@ -410,7 +410,9 @@ export class AdvisorsService {
         throw error;
       }
 
-      throw new InternalServerErrorException('Failed to decide advisor request.');
+      throw new InternalServerErrorException(
+        'Failed to decide advisor request.',
+      );
     }
   }
 

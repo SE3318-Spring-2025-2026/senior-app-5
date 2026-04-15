@@ -1,15 +1,16 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Logger,
   Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { hasAnyRole, normalizeRole, ROLES } from '../auth/constants/roles';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 import { AdvisorsService } from './advisors.service';
 import { SubmitRequestDto } from './dto/submit-request.dto';
 import { AdvisorRequestStatus } from './schemas/advisor-request.schema';
@@ -22,7 +23,7 @@ interface RequestWithUser extends Request {
 }
 
 @Controller('requests')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AdvisorRequestsController {
   private readonly logger = new Logger(AdvisorRequestsController.name);
 
@@ -31,34 +32,17 @@ export class AdvisorRequestsController {
   private getCorrelationId(req: Request): string | undefined {
     const headerValue =
       req.headers?.['x-correlation-id'] ?? req.headers?.['x-request-id'];
-
     return typeof headerValue === 'string' ? headerValue : undefined;
   }
 
   @Post()
+  @Roles(Role.TeamLeader)
   async submitRequest(
     @Req() req: RequestWithUser,
     @Body() body: SubmitRequestDto,
   ) {
-    const role = req.user?.role;
     const userId = req.user?.userId;
     const correlationId = this.getCorrelationId(req);
-    const callerRole = normalizeRole(role) ?? role ?? 'UNKNOWN';
-
-    if (!hasAnyRole(role, [ROLES.TEAM_LEADER])) {
-      this.logger.warn(
-        JSON.stringify({
-          event: 'advisor_request_submit_forbidden',
-          callerRole,
-          requestedAdvisorId: body.requestedAdvisorId,
-          correlationId,
-        }),
-      );
-
-      throw new ForbiddenException(
-        'Only team leaders can submit advisor requests.',
-      );
-    }
 
     const result = await this.advisorsService.submitRequest({
       requestedAdvisorId: body.requestedAdvisorId,
@@ -91,7 +75,7 @@ export class AdvisorRequestsController {
         requestId: response.requestId,
         groupId: response.groupId,
         requestedAdvisorId: response.requestedAdvisorId,
-        callerRole,
+        callerRole: req.user?.role,
         correlationId,
       }),
     );

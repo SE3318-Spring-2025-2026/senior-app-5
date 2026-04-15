@@ -8,7 +8,7 @@ export enum GroupStatus {
   ACTIVE = 'Active',
   ASSIGNED = 'ASSIGNED',
   UNASSIGNED = 'UNASSIGNED',
-  DISBANDED = 'Disbanded',
+  DISBANDED = 'DISBANDED',
 }
 
 @Schema({ timestamps: true })

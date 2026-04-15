@@ -6,7 +6,7 @@ import { Submission } from '../submissions/schemas/submission.schema';
 import { CommitteeGroupAssignment } from './schemas/committee-group-assignment.schema';
 import { AdvisorRequest, AdvisorRequestStatus } from './schemas/advisor-request.schema';
 import { User } from '../users/data/user.schema';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('GroupsService', () => {
   let service: GroupsService;
@@ -101,6 +101,19 @@ describe('GroupsService', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
+  it('should remove assignment when mapping exists', async () => {
+    mockCommitteeGroupAssignmentModel.findOneAndDelete.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ committeeId: 'committee-1', groupId: 'group-1' }),
+    });
+
+    await service.removeGroupFromCommittee('committee-1', 'group-1');
+
+    expect(mockCommitteeGroupAssignmentModel.findOneAndDelete).toHaveBeenCalledWith({
+      committeeId: 'committee-1',
+      groupId: 'group-1',
+    });
+  });
+
   it('should disband group when status is UNASSIGNED', async () => {
     const mockSave = jest.fn().mockResolvedValue(undefined);
     mockGroupModel.findOne.mockReturnValue({
@@ -124,5 +137,27 @@ describe('GroupsService', () => {
       status: AdvisorRequestStatus.PENDING,
     });
     expect(mockSave).toHaveBeenCalled();
+  });
+
+  it('should throw NotFound when disbanding missing group', async () => {
+    mockGroupModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    await expect(service.disbandGroup('group-404')).rejects.toThrow(NotFoundException);
+  });
+
+  it('should throw Conflict when status is not UNASSIGNED', async () => {
+    mockGroupModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        groupId: 'group-1',
+        status: GroupStatus.ASSIGNED,
+        save: jest.fn(),
+      }),
+    });
+
+    await expect(service.disbandGroup('group-1')).rejects.toThrow(ConflictException);
+    expect(mockUserModel.updateMany).not.toHaveBeenCalled();
+    expect(mockAdvisorRequestModel.deleteMany).not.toHaveBeenCalled();
   });
 });

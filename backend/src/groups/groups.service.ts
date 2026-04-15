@@ -89,7 +89,9 @@ export class GroupsService {
     }
 
     if (group.status !== GroupStatus.UNASSIGNED) {
-      throw new ConflictException('Group status must be UNASSIGNED before disbanding');
+      throw new ConflictException(
+        'Group must be UNASSIGNED before disbanding. Release advisor assignment first.',
+      );
     }
 
     await this.userModel.updateMany({ teamId: groupId }, { $set: { teamId: null } }).exec();

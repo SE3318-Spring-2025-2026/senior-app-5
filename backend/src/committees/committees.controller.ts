@@ -1,11 +1,8 @@
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseUUIDPipe,
   Post,
   Request,
   UseGuards,
@@ -15,8 +12,6 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -28,7 +23,6 @@ import { Role } from '../auth/enums/role.enum';
 import { CommitteesService } from './committees.service';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
 import { CommitteeResponseDto } from './dto/committee-response.dto';
-import { CommitteeDocument } from './schemas/committee.schema';
 
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
@@ -62,36 +56,14 @@ export class CommitteesController {
       correlationId,
     );
 
-    return this.toResponseDto(committee);
-  }
-
-  @ApiBearerAuth('access-token')
-  @ApiOperation({ operationId: 'getCommitteeById', summary: 'Get a committee by its ID (any authenticated user)' })
-  @ApiOkResponse({ description: 'Committee found', type: CommitteeResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Authenticated but forbidden by policy' })
-  @ApiNotFoundResponse({ description: 'Committee not found' })
-  @UseGuards(AuthGuard('jwt'))
-  @Get(':committeeId')
-  @HttpCode(HttpStatus.OK)
-  async getCommitteeById(
-    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
-    @Request() req: RequestWithUser,
-  ): Promise<CommitteeResponseDto> {
-    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
-    const committee = await this.committeesService.getCommitteeById(committeeId, correlationId);
-    return this.toResponseDto(committee);
-  }
-
-  private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
     return {
       id: committee.id as string,
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,
-      jury: (committee.jury as any[]).map((j) => ({ userId: j.userId, name: j.name })),
-      advisors: (committee.advisors as any[]).map((a) => ({ userId: a.userId, name: a.name })),
-      groups: (committee.groups as any[]).map((g) => ({ groupId: g.groupId, groupName: g.groupName })),
+      jury: [],
+      advisors: [],
+      groups: [],
     };
   }
 }

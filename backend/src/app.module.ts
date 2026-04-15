@@ -9,7 +9,6 @@ import { TeamsModule } from './teams/teams.module';
 import { AdminModule } from './admin/admin.module';
 import { GroupsModule } from './groups/groups.module';
 import { NotificationsModule } from './notifications/notifications.module';
- feature/Backend---Create-Submission-Schedule-API
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 
@@ -24,11 +23,8 @@ import { SubmissionsModule } from './submissions/submissions.module';
     AdminModule,
     GroupsModule,
     NotificationsModule,
-<<<<<<< feature/Backend---Create-Submission-Schedule-API
     PhasesModule,
-=======
     SubmissionsModule,
->>>>>>> main
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
 
 import GroupLifecyclePage from './pages/GroupLifecyclePage';
 import RegisterPage from './pages/RegisterPage';
@@ -10,6 +12,11 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Layout } from './components/layout/Layout';
 import './App.css';
+
+const RootRedirect = () => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+};
 
 function App() {
   return (
@@ -36,8 +43,7 @@ function App() {
             <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
           </Route>
 
-          {/* Default Routing */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<RootRedirect />} />
         </Routes>
       </Router>
     </AuthProvider>

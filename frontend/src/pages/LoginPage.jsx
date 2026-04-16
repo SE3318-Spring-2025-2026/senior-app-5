@@ -21,13 +21,15 @@ const loginSchema = z.object({
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
+
+  const [searchParams] = useSearchParams(); 
+  const location = useLocation(); 
   const { login } = useAuth();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
   
-  const from = location.state?.from?.pathname || '/groups';
+  const from = location.state?.from?.pathname || '/dashboard';
 
   useEffect(() => {
     if (searchParams.get('expired') === 'true') {
@@ -60,6 +62,7 @@ export const LoginPage = () => {
       localStorage.setItem('user', JSON.stringify(realUser));
 
       login();
+
 
       navigate(from, { replace: true }); 
 

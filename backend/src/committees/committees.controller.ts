@@ -111,13 +111,21 @@ export class CommitteesController {
   @ApiOperation({
     operationId: 'listCommitteeAdvisors',
     summary: 'List advisors assigned to a committee (COORDINATOR only)',
-    description: 'Returns paginated advisor assignments for a committee. Each item includes advisorUserId and assignedAt. committeeId is not repeated in items.',
+    description:
+      'Returns paginated advisor assignments for a committee. Each item includes advisorUserId and assignedAt. committeeId is not repeated in items.',
   })
-  @ApiOkResponse({ description: 'Committee advisors returned successfully', type: CommitteeAdvisorPageDto })
+  @ApiOkResponse({
+    description: 'Committee advisors returned successfully',
+    type: CommitteeAdvisorPageDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
   @ApiNotFoundResponse({ description: 'Committee not found' })
-  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Coordinator)
   @Get(':committeeId/advisors')
@@ -127,21 +135,34 @@ export class CommitteesController {
     @Query() query: ListCommitteeAdvisorsQueryDto,
     @Request() req: RequestWithUser,
   ): Promise<CommitteeAdvisorPageDto> {
-    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
-    return this.committeesService.listCommitteeAdvisors(committeeId, query, correlationId);
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.listCommitteeAdvisors(
+      committeeId,
+      query,
+      correlationId,
+    );
   }
 
   @ApiBearerAuth('access-token')
   @ApiOperation({
     operationId: 'listCommitteeGroups',
     summary: 'List groups assigned to a committee (COORDINATOR only)',
-    description: 'Returns paginated group assignments for a committee. Each item includes groupId and assignedAt. committeeId is not repeated in items.',
+    description:
+      'Returns paginated group assignments for a committee. Each item includes groupId and assignedAt. committeeId is not repeated in items.',
   })
-  @ApiOkResponse({ description: 'Committee groups returned successfully', type: CommitteeGroupPageDto })
+  @ApiOkResponse({
+    description: 'Committee groups returned successfully',
+    type: CommitteeGroupPageDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
   @ApiNotFoundResponse({ description: 'Committee not found' })
-  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Coordinator)
   @Get(':committeeId/groups')
@@ -151,8 +172,13 @@ export class CommitteesController {
     @Query() query: ListCommitteeGroupsQueryDto,
     @Request() req: RequestWithUser,
   ): Promise<CommitteeGroupPageDto> {
-    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
-    return this.committeesService.listCommitteeGroups(committeeId, query, correlationId);
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.listCommitteeGroups(
+      committeeId,
+      query,
+      correlationId,
+    );
   }
 
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
@@ -161,8 +187,14 @@ export class CommitteesController {
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,
-      jury: (committee.jury as any[]).map((j) => ({ userId: j.userId, name: j.name })),
-      advisors: (committee.advisors as any[]).map((a) => ({ userId: a.userId, name: a.name })),
+      jury: (committee.jury as any[]).map((j) => ({
+        userId: j.userId,
+        name: j.name,
+      })),
+      advisors: (committee.advisors as any[]).map((a) => ({
+        userId: a.userId,
+        name: a.name,
+      })),
       groups: (committee.groups as any[]).map((g) => ({
         groupId: g.groupId,
         assignedAt: g.assignedAt,

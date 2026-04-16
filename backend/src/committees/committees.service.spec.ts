@@ -141,10 +141,15 @@ describe('CommitteesService', () => {
     it('happy path: committee with assigned groups → paginated CommitteeGroupPage', async () => {
       const groups = makeGroups(3);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
       });
 
-      const result = await service.listCommitteeGroups(committeeId, defaultQuery());
+      const result = await service.listCommitteeGroups(
+        committeeId,
+        defaultQuery(),
+      );
 
       expect(result.total).toBe(3);
       expect(result.page).toBe(1);
@@ -159,10 +164,15 @@ describe('CommitteesService', () => {
 
     it('empty: committee exists but no groups assigned → data: [], total: 0', async () => {
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups: [] }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, groups: [] }),
       });
 
-      const result = await service.listCommitteeGroups(committeeId, defaultQuery());
+      const result = await service.listCommitteeGroups(
+        committeeId,
+        defaultQuery(),
+      );
 
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
@@ -173,7 +183,9 @@ describe('CommitteesService', () => {
     it('pagination: page 2 with limit 2 returns correct slice', async () => {
       const groups = makeGroups(5);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
       });
 
       const query = new ListCommitteeGroupsQueryDto();
@@ -193,7 +205,9 @@ describe('CommitteesService', () => {
     it('pagination: last page returns remaining items', async () => {
       const groups = makeGroups(5);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
       });
 
       const query = new ListCommitteeGroupsQueryDto();
@@ -244,16 +258,23 @@ describe('CommitteesService', () => {
 
       await expect(
         service.listCommitteeGroups(committeeId, defaultQuery()),
-      ).rejects.toThrow('Failed to retrieve committee groups due to an unexpected error.');
+      ).rejects.toThrow(
+        'Failed to retrieve committee groups due to an unexpected error.',
+      );
     });
 
     it('each item does not include committeeId', async () => {
       const groups = makeGroups(1);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, groups }),
       });
 
-      const result = await service.listCommitteeGroups(committeeId, defaultQuery());
+      const result = await service.listCommitteeGroups(
+        committeeId,
+        defaultQuery(),
+      );
 
       expect(result.data[0]).not.toHaveProperty('committeeId');
     });
@@ -281,10 +302,15 @@ describe('CommitteesService', () => {
     it('happy path: committee with linked advisors → paginated CommitteeAdvisorPage', async () => {
       const advisors = makeAdvisors(3);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
       });
 
-      const result = await service.listCommitteeAdvisors(committeeId, defaultQuery());
+      const result = await service.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+      );
 
       expect(result.total).toBe(3);
       expect(result.page).toBe(1);
@@ -298,10 +324,17 @@ describe('CommitteesService', () => {
 
     it('empty: committee exists but no advisors linked → data: [], total: 0', async () => {
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors: [] }),
+        exec: jest.fn().mockResolvedValue({
+          ...mockCommittee,
+          id: committeeId,
+          advisors: [],
+        }),
       });
 
-      const result = await service.listCommitteeAdvisors(committeeId, defaultQuery());
+      const result = await service.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+      );
 
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
@@ -312,7 +345,9 @@ describe('CommitteesService', () => {
     it('pagination: page 2 with limit 2 returns correct slice', async () => {
       const advisors = makeAdvisors(5);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
       });
 
       const query = new ListCommitteeAdvisorsQueryDto();
@@ -332,7 +367,9 @@ describe('CommitteesService', () => {
     it('pagination: last page returns remaining items', async () => {
       const advisors = makeAdvisors(5);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
       });
 
       const query = new ListCommitteeAdvisorsQueryDto();
@@ -383,16 +420,23 @@ describe('CommitteesService', () => {
 
       await expect(
         service.listCommitteeAdvisors(committeeId, defaultQuery()),
-      ).rejects.toThrow('Failed to retrieve committee advisors due to an unexpected error.');
+      ).rejects.toThrow(
+        'Failed to retrieve committee advisors due to an unexpected error.',
+      );
     });
 
     it('each item does not include committeeId', async () => {
       const advisors = makeAdvisors(1);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
       });
 
-      const result = await service.listCommitteeAdvisors(committeeId, defaultQuery());
+      const result = await service.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+      );
 
       expect(result.data[0]).not.toHaveProperty('committeeId');
     });
@@ -400,10 +444,15 @@ describe('CommitteesService', () => {
     it('no assignment source field returned — excluded by design', async () => {
       const advisors = makeAdvisors(1);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
       });
 
-      const result = await service.listCommitteeAdvisors(committeeId, defaultQuery());
+      const result = await service.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+      );
 
       expect(result.data[0]).not.toHaveProperty('assignmentSource');
     });
@@ -411,12 +460,19 @@ describe('CommitteesService', () => {
     it('results scoped to given committeeId only', async () => {
       const advisors = makeAdvisors(2);
       mockCommitteeModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, advisors }),
       });
 
-      const result = await service.listCommitteeAdvisors(committeeId, defaultQuery());
+      const result = await service.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+      );
 
-      expect(mockCommitteeModel.findOne).toHaveBeenCalledWith({ id: committeeId });
+      expect(mockCommitteeModel.findOne).toHaveBeenCalledWith({
+        id: committeeId,
+      });
       expect(result.total).toBe(2);
     });
   });

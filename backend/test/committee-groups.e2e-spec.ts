@@ -1,4 +1,8 @@
-import { INestApplication, UnauthorizedException, ValidationPipe } from '@nestjs/common';
+import {
+  INestApplication,
+  UnauthorizedException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthGuard } from '@nestjs/passport';
 import request from 'supertest';
@@ -55,7 +59,9 @@ describe('Committee Groups (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
   });
 
@@ -64,7 +70,9 @@ describe('Committee Groups (e2e)', () => {
   });
 
   it('No JWT -> 401', async () => {
-    await request(app.getHttpServer()).get(`/api/v1/committees/${committeeId}/groups`).expect(401);
+    await request(app.getHttpServer())
+      .get(`/api/v1/committees/${committeeId}/groups`)
+      .expect(401);
   });
 
   it('ADVISOR role -> 403', async () => {
@@ -85,7 +93,9 @@ describe('Committee Groups (e2e)', () => {
 
   it('COORDINATOR role -> 200 with CommitteeGroupPage shape and defaults', async () => {
     mockCommitteesService.listCommitteeGroups.mockResolvedValue({
-      data: [{ groupId: 'group-1', assignedAt: now, assignedByUserId: 'coord-1' }],
+      data: [
+        { groupId: 'group-1', assignedAt: now, assignedByUserId: 'coord-1' },
+      ],
       total: 1,
       page: 1,
       limit: 20,

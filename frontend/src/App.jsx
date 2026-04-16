@@ -11,6 +11,12 @@ import DashboardPage from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Layout } from './components/layout/Layout';
+import AdminLayout from './components/AdminLayout';
+import GroupsPage from './pages/admin/GroupsPage';
+import MembersPage from './pages/admin/MembersPage';
+import InvitesPage from './pages/admin/InvitesPage';
+import AdvisorsPage from './pages/admin/AdvisorsPage';
+import SanitizationPage from './pages/admin/SanitizationPage';
 import './App.css';
 
 const RootRedirect = () => {
@@ -41,6 +47,19 @@ function App() {
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
             <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
+
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="Coordinator">
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<Navigate to="groups" replace />} />
+              <Route path="groups" element={<GroupsPage />} />
+              <Route path="members" element={<MembersPage />} />
+              <Route path="invites" element={<InvitesPage />} />
+              <Route path="advisors" element={<AdvisorsPage />} />
+              <Route path="sanitization" element={<SanitizationPage />} />
+            </Route>
           </Route>
 
           <Route path="/" element={<RootRedirect />} />

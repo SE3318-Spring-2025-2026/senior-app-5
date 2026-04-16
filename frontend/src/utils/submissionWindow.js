@@ -48,7 +48,7 @@ export const getSubmissionWindowStatus = (submissionStart, submissionEnd, now = 
     };
   }
 
-  if (nowMs > endMs) {
+  if (nowMs >= endMs) {
     return {
       state: WINDOW_STATE.CLOSED,
       isActive: false,

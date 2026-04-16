@@ -98,6 +98,12 @@
   color: #fecaca;
 }
 
+.unavailable {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: #64748b;
+  color: #cbd5e1;
+}
+
 .windowDetails {
   margin-top: 0.75rem;
   color: #cbd5e1;

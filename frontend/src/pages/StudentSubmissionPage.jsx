@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { getSubmissionWindowStatus, WINDOW_STATE } from '../utils/submissionWindow';
@@ -7,6 +7,7 @@ import styles from './StudentSubmissionPage.module.css';
 const initialFeedback = { loading: false, message: '', error: '' };
 
 function StudentSubmissionPage() {
+  const fileInputRef = useRef(null);
   const [phaseId, setPhaseId] = useState('');
   const [submissionId, setSubmissionId] = useState('');
   const [file, setFile] = useState(null);
@@ -20,6 +21,22 @@ function StudentSubmissionPage() {
     [windowStatus.isActive, submitFeedback.loading],
   );
 
+  const windowBannerClass = useMemo(() => {
+    if (windowStatus.state === WINDOW_STATE.OPEN) {
+      return styles.open;
+    }
+
+    if (windowStatus.state === WINDOW_STATE.UPCOMING) {
+      return styles.upcoming;
+    }
+
+    if (windowStatus.state === WINDOW_STATE.CLOSED) {
+      return styles.closed;
+    }
+
+    return styles.unavailable;
+  }, [windowStatus.state]);
+
   const fetchPhaseWindow = async () => {
     if (!phaseId.trim()) {
       setPhaseFeedback({ loading: false, message: '', error: 'Phase ID is required to load the submission window.' });
@@ -32,10 +49,12 @@ function StudentSubmissionPage() {
       const response = await apiClient.get(apiConfig.endpoints.phaseById(phaseId.trim()));
       const nextPhase = response.data;
       const nextWindowStatus = getSubmissionWindowStatus(nextPhase?.submissionStart, nextPhase?.submissionEnd);
+      const phaseMessage =
+        nextWindowStatus.state === WINDOW_STATE.UNAVAILABLE ? '' : 'Phase schedule loaded successfully.';
 
       setPhase(nextPhase);
       setWindowStatus(nextWindowStatus);
-      setPhaseFeedback({ loading: false, message: 'Phase schedule loaded successfully.', error: '' });
+      setPhaseFeedback({ loading: false, message: phaseMessage, error: '' });
       return nextWindowStatus;
     } catch (error) {
       const details = error.response?.data?.message || error.message || 'Unable to load phase schedule.';
@@ -62,7 +81,7 @@ function StudentSubmissionPage() {
     setSubmitFeedback({ loading: true, message: '', error: '' });
 
     const latestWindowStatus = await fetchPhaseWindow();
-    if (!latestWindowStatus || !latestWindowStatus.isActive) {
+    if (!latestWindowStatus?.isActive) {
       setSubmitFeedback({
         loading: false,
         message: '',
@@ -88,8 +107,15 @@ function StudentSubmissionPage() {
       const uploadedName = response.data?.document?.originalName || file.name;
       setSubmitFeedback({ loading: false, message: `Uploaded ${uploadedName} successfully.`, error: '' });
       setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (error) {
       const details = error.response?.data?.message || error.message || 'File upload failed.';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setFile(null);
       setSubmitFeedback({ loading: false, message: '', error: Array.isArray(details) ? details.join(', ') : details });
     }
   };
@@ -122,13 +148,7 @@ function StudentSubmissionPage() {
         {phaseFeedback.error && <p className={styles.errorText}>{phaseFeedback.error}</p>}
 
         <div
-          className={`${styles.windowBanner} ${
-            windowStatus.state === WINDOW_STATE.OPEN
-              ? styles.open
-              : windowStatus.state === WINDOW_STATE.UPCOMING
-                ? styles.upcoming
-                : styles.closed
-          }`}
+          className={`${styles.windowBanner} ${windowBannerClass}`}
         >
           <strong>Submission Window Status: {windowStatus.state}</strong>
           <span>{windowStatus.message}</span>
@@ -155,7 +175,7 @@ function StudentSubmissionPage() {
               id="submissionId"
               value={submissionId}
               onChange={(event) => setSubmissionId(event.target.value)}
-              placeholder="Enter submission document ID"
+              placeholder="Enter submission ID"
               disabled={isSubmissionDisabled}
             />
           </div>
@@ -164,6 +184,7 @@ function StudentSubmissionPage() {
             <label htmlFor="submissionFile">Document</label>
             <input
               id="submissionFile"
+              ref={fileInputRef}
               type="file"
               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
               onChange={(event) => setFile(event.target.files?.[0] || null)}

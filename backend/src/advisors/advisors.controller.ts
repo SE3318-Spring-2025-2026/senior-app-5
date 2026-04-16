@@ -1,5 +1,17 @@
-import { Controller, Get, Logger, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Delete,
+  Get,
+  Logger,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { Request } from 'express';
+import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -9,6 +21,7 @@ import { ListAdvisorsQueryDto } from './dto/list-advisors-query.dto';
 
 interface RequestWithUser extends Request {
   user?: {
+    userId?: string;
     role?: string;
   };
 }
@@ -45,6 +58,42 @@ export class AdvisorsController {
         page,
         limit,
         resultCount: result.data.length,
+        correlationId,
+      }),
+    );
+
+    return result;
+  }
+
+  @Delete(':advisorId/groups/:groupId')
+  @Roles(Role.Coordinator, Role.Professor)
+  async releaseTeam(
+    @Req() req: RequestWithUser,
+    @Param('advisorId') advisorId: string,
+    @Param('groupId', new ParseUUIDPipe({ version: '4' })) groupId: string,
+  ) {
+    if (!Types.ObjectId.isValid(advisorId)) {
+      throw new BadRequestException('Validation failed (MongoId is expected)');
+    }
+
+    const callerId = req.user?.userId;
+    const callerRole = req.user?.role;
+    const correlationId = this.getCorrelationId(req);
+
+    const result = await this.advisorsService.releaseTeam({
+      advisorId,
+      groupId,
+      callerId: callerId ?? '',
+      callerRole: callerRole ?? '',
+    });
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'group_released',
+        advisorId,
+        groupId,
+        callerId,
+        callerRole,
         correlationId,
       }),
     );

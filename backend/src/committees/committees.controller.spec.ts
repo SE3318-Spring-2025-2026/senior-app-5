@@ -37,11 +37,11 @@ describe('CommitteesController', () => {
 
   beforeEach(async () => {
     const mockService = {
-      createCommittee:         jest.fn(),
-      getCommitteeById:        jest.fn(),
-      getCommitteeByGroupId:   jest.fn(),
-      listCommitteeGroups:     jest.fn(),
-      listCommitteeAdvisors:   jest.fn(),
+      createCommittee: jest.fn(),
+      getCommitteeById: jest.fn(),
+      getCommitteeByGroupId: jest.fn(),
+      listCommitteeGroups: jest.fn(),
+      listCommitteeAdvisors: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -186,13 +186,21 @@ describe('CommitteesController', () => {
     });
 
     it('ADVISOR role with COORDINATOR requirement → throws ForbiddenException', () => {
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
-      expect(() => rolesGuard.canActivate(makeContext(advisorUser))).toThrow(ForbiddenException);
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
+      expect(() => rolesGuard.canActivate(makeContext(advisorUser))).toThrow(
+        ForbiddenException,
+      );
     });
 
     it('TEAM_LEADER role with COORDINATOR requirement → throws ForbiddenException', () => {
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
-      expect(() => rolesGuard.canActivate(makeContext(teamLeaderUser))).toThrow(ForbiddenException);
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
+      expect(() => rolesGuard.canActivate(makeContext(teamLeaderUser))).toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -270,7 +278,9 @@ describe('CommitteesController', () => {
         ...mockCommittee,
         jury: [{ userId: 'j1', name: 'Juror One' }],
         advisors: [{ userId: 'a1', name: 'Advisor One' }],
-        groups:   [{ groupId: 'g1', assignedAt: now, assignedByUserId: 'coord-1' }],
+        groups: [
+          { groupId: 'g1', assignedAt: now, assignedByUserId: 'coord-1' },
+        ],
       };
       jest
         .spyOn(service, 'getCommitteeById')
@@ -281,7 +291,9 @@ describe('CommitteesController', () => {
 
       expect(result.jury).toEqual([{ userId: 'j1', name: 'Juror One' }]);
       expect(result.advisors).toEqual([{ userId: 'a1', name: 'Advisor One' }]);
-      expect(result.groups).toEqual([{ groupId: 'g1', assignedAt: now, assignedByUserId: 'coord-1' }]);
+      expect(result.groups).toEqual([
+        { groupId: 'g1', assignedAt: now, assignedByUserId: 'coord-1' },
+      ]);
     });
   });
 
@@ -311,7 +323,11 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommitteeAdvisors').mockResolvedValue(mockPage);
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommitteeAdvisors(committeeId, defaultQuery(), req);
+      const result = await controller.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+        req,
+      );
 
       expect(result).toMatchObject({
         data: expect.any(Array),
@@ -325,10 +341,17 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommitteeAdvisors').mockResolvedValue(mockPage);
 
       const query = defaultQuery();
-      const req = { user: coordinatorUser, headers: { 'x-correlation-id': 'corr-33' } } as any;
+      const req = {
+        user: coordinatorUser,
+        headers: { 'x-correlation-id': 'corr-33' },
+      } as any;
       await controller.listCommitteeAdvisors(committeeId, query, req);
 
-      expect(service.listCommitteeAdvisors).toHaveBeenCalledWith(committeeId, query, 'corr-33');
+      expect(service.listCommitteeAdvisors).toHaveBeenCalledWith(
+        committeeId,
+        query,
+        'corr-33',
+      );
     });
 
     it('empty: no advisors → data: [], total: 0', async () => {
@@ -340,7 +363,11 @@ describe('CommitteesController', () => {
       });
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommitteeAdvisors(committeeId, defaultQuery(), req);
+      const result = await controller.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+        req,
+      );
 
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
@@ -350,7 +377,11 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommitteeAdvisors').mockResolvedValue(mockPage);
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommitteeAdvisors(committeeId, defaultQuery(), req);
+      const result = await controller.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+        req,
+      );
 
       result.data.forEach((item) => {
         expect(item).not.toHaveProperty('committeeId');
@@ -361,7 +392,11 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommitteeAdvisors').mockResolvedValue(mockPage);
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommitteeAdvisors(committeeId, defaultQuery(), req);
+      const result = await controller.listCommitteeAdvisors(
+        committeeId,
+        defaultQuery(),
+        req,
+      );
 
       result.data.forEach((item) => {
         expect(item).not.toHaveProperty('assignmentSource');
@@ -369,9 +404,13 @@ describe('CommitteesController', () => {
     });
 
     it('committee not found → propagates NotFoundException (404)', async () => {
-      jest.spyOn(service, 'listCommitteeAdvisors').mockRejectedValue(
-        new NotFoundException(`Committee with ID '${committeeId}' not found.`),
-      );
+      jest
+        .spyOn(service, 'listCommitteeAdvisors')
+        .mockRejectedValue(
+          new NotFoundException(
+            `Committee with ID '${committeeId}' not found.`,
+          ),
+        );
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
@@ -380,11 +419,13 @@ describe('CommitteesController', () => {
     });
 
     it('repository failure → propagates InternalServerErrorException (500)', async () => {
-      jest.spyOn(service, 'listCommitteeAdvisors').mockRejectedValue(
-        new InternalServerErrorException(
-          'Failed to retrieve committee advisors due to an unexpected error.',
-        ),
-      );
+      jest
+        .spyOn(service, 'listCommitteeAdvisors')
+        .mockRejectedValue(
+          new InternalServerErrorException(
+            'Failed to retrieve committee advisors due to an unexpected error.',
+          ),
+        );
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
@@ -393,45 +434,51 @@ describe('CommitteesController', () => {
     });
 
     it('non-COORDINATOR role via RolesGuard → throws ForbiddenException', () => {
-      const reflector  = new Reflector();
+      const reflector = new Reflector();
       const rolesGuard = new RolesGuard(reflector);
 
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
 
       const ctx = {
         switchToHttp: () => ({ getRequest: () => ({ user: studentUser }) }),
-        getHandler:   () => ({}),
-        getClass:     () => ({}),
+        getHandler: () => ({}),
+        getClass: () => ({}),
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
 
     it('ADVISOR role via RolesGuard → throws ForbiddenException (403)', () => {
-      const reflector  = new Reflector();
+      const reflector = new Reflector();
       const rolesGuard = new RolesGuard(reflector);
 
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
 
       const ctx = {
         switchToHttp: () => ({ getRequest: () => ({ user: advisorUser }) }),
-        getHandler:   () => ({}),
-        getClass:     () => ({}),
+        getHandler: () => ({}),
+        getClass: () => ({}),
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
 
     it('TEAM_LEADER role via RolesGuard → throws ForbiddenException (403)', () => {
-      const reflector  = new Reflector();
+      const reflector = new Reflector();
       const rolesGuard = new RolesGuard(reflector);
 
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
 
       const ctx = {
         switchToHttp: () => ({ getRequest: () => ({ user: teamLeaderUser }) }),
-        getHandler:   () => ({}),
-        getClass:     () => ({}),
+        getHandler: () => ({}),
+        getClass: () => ({}),
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
@@ -464,7 +511,11 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommitteeGroups').mockResolvedValue(mockPage);
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommitteeGroups(committeeId, defaultQuery(), req);
+      const result = await controller.listCommitteeGroups(
+        committeeId,
+        defaultQuery(),
+        req,
+      );
 
       expect(result).toMatchObject({
         data: expect.any(Array),
@@ -478,10 +529,17 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommitteeGroups').mockResolvedValue(mockPage);
 
       const query = defaultQuery();
-      const req = { user: coordinatorUser, headers: { 'x-correlation-id': 'corr-36' } } as any;
+      const req = {
+        user: coordinatorUser,
+        headers: { 'x-correlation-id': 'corr-36' },
+      } as any;
       await controller.listCommitteeGroups(committeeId, query, req);
 
-      expect(service.listCommitteeGroups).toHaveBeenCalledWith(committeeId, query, 'corr-36');
+      expect(service.listCommitteeGroups).toHaveBeenCalledWith(
+        committeeId,
+        query,
+        'corr-36',
+      );
     });
 
     it('empty: no groups → data: [], total: 0', async () => {
@@ -493,7 +551,11 @@ describe('CommitteesController', () => {
       });
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommitteeGroups(committeeId, defaultQuery(), req);
+      const result = await controller.listCommitteeGroups(
+        committeeId,
+        defaultQuery(),
+        req,
+      );
 
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
@@ -503,7 +565,11 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommitteeGroups').mockResolvedValue(mockPage);
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommitteeGroups(committeeId, defaultQuery(), req);
+      const result = await controller.listCommitteeGroups(
+        committeeId,
+        defaultQuery(),
+        req,
+      );
 
       result.data.forEach((item) => {
         expect(item).not.toHaveProperty('committeeId');
@@ -511,9 +577,13 @@ describe('CommitteesController', () => {
     });
 
     it('committee not found → propagates NotFoundException (404)', async () => {
-      jest.spyOn(service, 'listCommitteeGroups').mockRejectedValue(
-        new NotFoundException(`Committee with ID '${committeeId}' not found.`),
-      );
+      jest
+        .spyOn(service, 'listCommitteeGroups')
+        .mockRejectedValue(
+          new NotFoundException(
+            `Committee with ID '${committeeId}' not found.`,
+          ),
+        );
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
@@ -522,11 +592,13 @@ describe('CommitteesController', () => {
     });
 
     it('repository failure → propagates InternalServerErrorException (500)', async () => {
-      jest.spyOn(service, 'listCommitteeGroups').mockRejectedValue(
-        new InternalServerErrorException(
-          'Failed to retrieve committee groups due to an unexpected error.',
-        ),
-      );
+      jest
+        .spyOn(service, 'listCommitteeGroups')
+        .mockRejectedValue(
+          new InternalServerErrorException(
+            'Failed to retrieve committee groups due to an unexpected error.',
+          ),
+        );
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
@@ -535,19 +607,20 @@ describe('CommitteesController', () => {
     });
 
     it('non-COORDINATOR role via RolesGuard → throws ForbiddenException', () => {
-      const reflector  = new Reflector();
+      const reflector = new Reflector();
       const rolesGuard = new RolesGuard(reflector);
 
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Coordinator]);
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
 
       const ctx = {
         switchToHttp: () => ({ getRequest: () => ({ user: studentUser }) }),
-        getHandler:   () => ({}),
-        getClass:     () => ({}),
+        getHandler: () => ({}),
+        getClass: () => ({}),
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
   });
 });
-

@@ -291,6 +291,273 @@
         ]
       }
     },
+    "/api/v1/groups/{groupId}/committee": {
+      "get": {
+        "operationId": "getCommitteeByGroupId",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committee found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitteeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Authenticated but forbidden by policy"
+          },
+          "404": {
+            "description": "Group not found or no committee assigned"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get the committee assigned to a group (any authenticated user)",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/api/v1/committees": {
+      "post": {
+        "operationId": "createCommittee",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommitteeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Committee created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitteeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a new committee (COORDINATOR only)",
+        "tags": [
+          "Committees"
+        ]
+      }
+    },
+    "/api/v1/committees/{committeeId}": {
+      "get": {
+        "operationId": "getCommitteeById",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committee found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitteeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Authenticated but forbidden by policy"
+          },
+          "404": {
+            "description": "Committee not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get a committee by its ID (any authenticated user)",
+        "tags": [
+          "Committees"
+        ]
+      }
+    },
+    "/api/v1/committees/{committeeId}/advisors": {
+      "get": {
+        "description": "Returns paginated advisor assignments for a committee. Each item includes advisorUserId and assignedAt. committeeId is not repeated in items.",
+        "operationId": "listCommitteeAdvisors",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page index",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committee advisors returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitteeAdvisorPageDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List advisors assigned to a committee (COORDINATOR only)",
+        "tags": [
+          "Committees"
+        ]
+      }
+    },
+    "/api/v1/committees/{committeeId}/groups": {
+      "get": {
+        "description": "Returns paginated group assignments for a committee. Each item includes groupId and assignedAt. committeeId is not repeated in items.",
+        "operationId": "listCommitteeGroups",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page index",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committee groups returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitteeGroupPageDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List groups assigned to a committee (COORDINATOR only)",
+        "tags": [
+          "Committees"
+        ]
+      }
+    },
     "/api/v1/invites/deliver": {
       "post": {
         "operationId": "NotificationsController_deliverInvite",
@@ -330,6 +597,37 @@
         ]
       }
     },
+    "/api/v1/advisors/{advisorId}/groups/{groupId}": {
+      "delete": {
+        "operationId": "AdvisorsController_releaseTeam",
+        "parameters": [
+          {
+            "name": "advisorId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advisors"
+        ]
+      }
+    },
     "/api/v1/requests": {
       "post": {
         "operationId": "AdvisorRequestsController_submitRequest",
@@ -346,6 +644,72 @@
         },
         "responses": {
           "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdvisorRequests"
+        ]
+      }
+    },
+    "/api/v1/requests/{requestId}/decision": {
+      "patch": {
+        "operationId": "AdvisorRequestsController_decideRequest",
+        "parameters": [
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdvisorRequests"
+        ]
+      }
+    },
+    "/api/v1/requests/{requestId}": {
+      "patch": {
+        "operationId": "AdvisorRequestsController_withdrawRequest",
+        "parameters": [
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRequestStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": ""
           }
         },
@@ -389,6 +753,39 @@
         },
         "tags": [
           "Schedules"
+        ]
+      }
+    },
+    "/api/v1/phases/{phaseId}/schedule": {
+      "put": {
+        "operationId": "PhasesController_updateSchedule",
+        "parameters": [
+          {
+            "name": "phaseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePhaseScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Phases"
         ]
       }
     },
@@ -517,7 +914,8 @@
               "Student",
               "Coordinator",
               "Admin",
-              "Professor"
+              "Professor",
+              "TeamLeader"
             ],
             "description": "User role to assign"
           }
@@ -579,6 +977,228 @@
           "leaderUserId"
         ]
       },
+      "JuryMemberResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "name"
+        ]
+      },
+      "CommitteeAdvisorResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "name"
+        ]
+      },
+      "CommitteeGroupResponse": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "UUID of the assigned group"
+          },
+          "assignedAt": {
+            "type": "string",
+            "description": "Timestamp when this group was assigned",
+            "format": "date-time"
+          },
+          "assignedByUserId": {
+            "type": "string",
+            "description": "ID of the user who made this assignment"
+          }
+        },
+        "required": [
+          "groupId",
+          "assignedAt",
+          "assignedByUserId"
+        ]
+      },
+      "CommitteeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID of the committee"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the committee"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Creation timestamp"
+          },
+          "updatedAt": {
+            "type": "object",
+            "description": "Last update timestamp",
+            "nullable": true
+          },
+          "jury": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JuryMemberResponse"
+            }
+          },
+          "advisors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommitteeAdvisorResponse"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommitteeGroupResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "updatedAt",
+          "jury",
+          "advisors",
+          "groups"
+        ]
+      },
+      "CreateCommitteeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Spring 2025 Jury Committee",
+            "description": "Name of the committee",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "Object": {
+        "type": "object",
+        "properties": {}
+      },
+      "CommitteeAdvisorListItemDto": {
+        "type": "object",
+        "properties": {
+          "advisorUserId": {
+            "type": "string",
+            "description": "User ID of the advisor",
+            "format": "uuid"
+          },
+          "assignedAt": {
+            "type": "string",
+            "description": "Timestamp when this advisor was assigned",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "advisorUserId",
+          "assignedAt"
+        ]
+      },
+      "CommitteeAdvisorPageDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommitteeAdvisorListItemDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of advisor assignments for this committee"
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page index (1-based)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Page size"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "CommitteeGroupListItemDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "UUID of the assigned group"
+          },
+          "assignedAt": {
+            "type": "string",
+            "description": "Timestamp when this group was assigned",
+            "format": "date-time"
+          },
+          "assignedByUserId": {
+            "type": "string",
+            "description": "ID of the user who made this assignment"
+          }
+        },
+        "required": [
+          "groupId",
+          "assignedAt",
+          "assignedByUserId"
+        ]
+      },
+      "CommitteeGroupPageDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommitteeGroupListItemDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of group assignments for this committee"
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page index (1-based)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Page size"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
       "DeliverInviteDto": {
         "type": "object",
         "properties": {
@@ -602,9 +1222,32 @@
         "type": "object",
         "properties": {}
       },
+      "DecisionRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateRequestStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
       "SetScheduleDto": {
         "type": "object",
         "properties": {}
+      },
+      "UpdatePhaseScheduleDto": {
+        "type": "object",
+        "properties": {
+          "submissionStart": {
+            "type": "string"
+          },
+          "submissionEnd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "submissionStart",
+          "submissionEnd"
+        ]
       }
     }
   }

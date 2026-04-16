@@ -9,9 +9,15 @@ import { Model } from 'mongoose';
 import { Committee, CommitteeDocument } from './schemas/committee.schema';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
 import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
-import { CommitteeGroupListItemDto, CommitteeGroupPageDto } from './dto/committee-group-page.dto';
+import {
+  CommitteeGroupListItemDto,
+  CommitteeGroupPageDto,
+} from './dto/committee-group-page.dto';
 import { ListCommitteeAdvisorsQueryDto } from './dto/list-committee-advisors-query.dto';
-import { CommitteeAdvisorListItemDto, CommitteeAdvisorPageDto } from './dto/committee-advisor-page.dto';
+import {
+  CommitteeAdvisorListItemDto,
+  CommitteeAdvisorPageDto,
+} from './dto/committee-advisor-page.dto';
 import { Group, GroupDocument } from '../groups/group.entity';
 
 @Injectable()
@@ -101,9 +107,13 @@ export class CommitteesService {
     correlationId?: string,
   ): Promise<CommitteeGroupPageDto> {
     try {
-      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
       if (!committee) {
-        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
       }
 
       const page = query.page ?? 1;
@@ -150,9 +160,13 @@ export class CommitteesService {
     correlationId?: string,
   ): Promise<CommitteeAdvisorPageDto> {
     try {
-      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
       if (!committee) {
-        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
       }
 
       const page = query.page ?? 1;

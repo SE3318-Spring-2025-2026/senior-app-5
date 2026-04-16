@@ -10,7 +10,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Role } from '../auth/enums/role.enum';
-import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
+import {
+  Group,
+  GroupAssignmentStatus,
+  GroupDocument,
+  GroupStatus,
+} from '../groups/group.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { User, UserDocument } from '../users/data/user.schema';
 import { AdvisorDecision } from './dto/decision-request.dto';
@@ -95,6 +100,23 @@ export interface DecideRequestInput {
 export interface WithdrawRequestInput {
   requestId: string;
   teamLeaderId: string;
+}
+
+export interface ReleaseTeamInput {
+  advisorId: string;
+  groupId: string;
+  callerId: string;
+  callerRole: string;
+}
+
+export interface GroupAssignmentStatusResponse {
+  groupId: string;
+  status: GroupAssignmentStatus | 'DISBANDED';
+  advisorId: string | null;
+  advisorName: string | null;
+  canSubmitRequest: boolean;
+  blockedReason: string | null;
+  updatedAt: string;
 }
 
 @Injectable()
@@ -243,6 +265,16 @@ export class AdvisorsService {
         );
       }
 
+      if (
+        group.assignmentStatus === GroupAssignmentStatus.ASSIGNED &&
+        group.assignedAdvisorId
+      ) {
+        throw new HttpException(
+          'Group is already assigned to an advisor.',
+          423,
+        );
+      }
+
       const advisor = await this.userModel
         .findOne({
           _id: input.requestedAdvisorId,
@@ -259,20 +291,6 @@ export class AdvisorsService {
       if (!scheduleOpen) {
         throw new ForbiddenException(
           'Advisor selection schedule window is not currently open.',
-        );
-      }
-
-      const alreadyAssigned = await this.advisorRequestModel
-        .exists({
-          groupId: group.groupId,
-          status: AdvisorRequestStatus.APPROVED,
-        })
-        .exec();
-
-      if (alreadyAssigned) {
-        throw new HttpException(
-          'Group is already assigned to an advisor.',
-          423,
         );
       }
 
@@ -366,9 +384,32 @@ export class AdvisorsService {
             {
               groupId: decidedRequest.groupId,
               requestId: { $ne: decidedRequest.requestId },
+              status: AdvisorRequestStatus.APPROVED,
+            },
+            { $set: { status: AdvisorRequestStatus.REJECTED } },
+          )
+          .exec();
+
+        await this.advisorRequestModel
+          .updateMany(
+            {
+              groupId: decidedRequest.groupId,
+              requestId: { $ne: decidedRequest.requestId },
               status: AdvisorRequestStatus.PENDING,
             },
             { $set: { status: AdvisorRequestStatus.REJECTED } },
+          )
+          .exec();
+
+        await this.groupModel
+          .updateOne(
+            { groupId: decidedRequest.groupId, status: GroupStatus.ACTIVE },
+            {
+              $set: {
+                assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+                assignedAdvisorId: input.advisorId,
+              },
+            },
           )
           .exec();
       }
@@ -497,6 +538,161 @@ export class AdvisorsService {
         'Failed to withdraw advisor request.',
       );
     }
+  }
+
+  async releaseTeam(
+    input: ReleaseTeamInput,
+  ): Promise<GroupAssignmentStatusResponse> {
+    if (!input.callerId || !input.callerRole) {
+      throw new ForbiddenException('Invalid authenticated user.');
+    }
+
+    const callerRole = input.callerRole as Role;
+    const isCoordinator = callerRole === Role.Coordinator;
+    const isAdvisor = callerRole === Role.Professor;
+
+    if (!isCoordinator && !isAdvisor) {
+      throw new ForbiddenException(
+        'You are not allowed to release this group.',
+      );
+    }
+
+    if (isAdvisor && input.callerId !== input.advisorId) {
+      throw new ForbiddenException(
+        'You are not allowed to release another advisor assignment.',
+      );
+    }
+
+    try {
+      const existingGroup = await this.groupModel
+        .findOne({ groupId: input.groupId })
+        .lean<Group>()
+        .exec();
+
+      if (!existingGroup) {
+        throw new NotFoundException('Group was not found.');
+      }
+
+      if (existingGroup.status === GroupStatus.DISBANDED) {
+        return this.buildGroupAssignmentStatus(existingGroup, null);
+      }
+
+      if (existingGroup.assignmentStatus === GroupAssignmentStatus.UNASSIGNED) {
+        return this.buildGroupAssignmentStatus(existingGroup, null);
+      }
+
+      if (existingGroup.assignedAdvisorId !== input.advisorId) {
+        throw new NotFoundException('Advisor-group association was not found.');
+      }
+
+      if (isAdvisor && existingGroup.assignedAdvisorId !== input.callerId) {
+        throw new ForbiddenException(
+          'You are not allowed to release another advisor assignment.',
+        );
+      }
+
+      const advisor = await this.userModel
+        .findOne({
+          _id: input.advisorId,
+          role: { $in: getAdvisorRoleFilters() },
+        })
+        .lean<User>()
+        .exec();
+
+      const updatedGroup = await this.groupModel
+        .findOneAndUpdate(
+          {
+            groupId: input.groupId,
+            assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+            assignedAdvisorId: input.advisorId,
+          },
+          {
+            $set: {
+              assignmentStatus: GroupAssignmentStatus.UNASSIGNED,
+              assignedAdvisorId: null,
+            },
+          },
+          { returnDocument: 'after' },
+        )
+        .lean<Group>()
+        .exec();
+
+      if (!updatedGroup) {
+        const groupAfterAttempt = await this.groupModel
+          .findOne({ groupId: input.groupId })
+          .lean<Group>()
+          .exec();
+
+        if (
+          groupAfterAttempt &&
+          groupAfterAttempt.assignmentStatus ===
+            GroupAssignmentStatus.UNASSIGNED
+        ) {
+          return this.buildGroupAssignmentStatus(groupAfterAttempt, null);
+        }
+
+        throw new NotFoundException('Advisor-group association was not found.');
+      }
+
+      await this.notificationsService.notifyAdvisorReleased({
+        recipientUserId: input.advisorId,
+        groupId: updatedGroup.groupId,
+      });
+
+      return this.buildGroupAssignmentStatus(updatedGroup, advisor ?? null);
+    } catch (error: unknown) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof ForbiddenException ||
+        error instanceof HttpException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Failed to release group advisor.',
+      );
+    }
+  }
+
+  private buildGroupAssignmentStatus(
+    group: Group,
+    advisor: Pick<User, 'email'> | null,
+  ): GroupAssignmentStatusResponse {
+    if (group.status === GroupStatus.DISBANDED) {
+      return {
+        groupId: group.groupId,
+        status: 'DISBANDED',
+        advisorId: null,
+        advisorName: null,
+        canSubmitRequest: false,
+        blockedReason: 'Group is disbanded.',
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    if (group.assignmentStatus === GroupAssignmentStatus.ASSIGNED) {
+      return {
+        groupId: group.groupId,
+        status: GroupAssignmentStatus.ASSIGNED,
+        advisorId: group.assignedAdvisorId,
+        advisorName: advisor?.email ?? null,
+        canSubmitRequest: false,
+        blockedReason: 'Group is already assigned to an advisor.',
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    return {
+      groupId: group.groupId,
+      status: GroupAssignmentStatus.UNASSIGNED,
+      advisorId: null,
+      advisorName: null,
+      canSubmitRequest: true,
+      blockedReason: null,
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   private isMongoDuplicateKeyError(error: unknown): error is { code: number } {

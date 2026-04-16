@@ -20,7 +20,11 @@ export class CommitteeGroupResponse {
   @ApiProperty({ description: 'UUID of the assigned group' })
   groupId!: string;
 
-  @ApiProperty({ description: 'Timestamp when this group was assigned', type: String, format: 'date-time' })
+  @ApiProperty({
+    description: 'Timestamp when this group was assigned',
+    type: String,
+    format: 'date-time',
+  })
   assignedAt!: Date;
 
   @ApiProperty({ description: 'ID of the user who made this assignment' })

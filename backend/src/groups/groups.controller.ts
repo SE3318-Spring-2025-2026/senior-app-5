@@ -88,8 +88,14 @@ export class GroupsController {
       name: committee.name,
       createdAt: (committee as any).createdAt as Date,
       updatedAt: (committee as any).updatedAt as Date | null,
-      jury: (committee.jury as any[]).map((j) => ({ userId: j.userId, name: j.name })),
-      advisors: (committee.advisors as any[]).map((a) => ({ userId: a.userId, name: a.name })),
+      jury: (committee.jury as any[]).map((j) => ({
+        userId: j.userId,
+        name: j.name,
+      })),
+      advisors: (committee.advisors as any[]).map((a) => ({
+        userId: a.userId,
+        name: a.name,
+      })),
       groups: (committee.groups as any[]).map((g) => ({
         groupId: g.groupId,
         assignedAt: g.assignedAt,

@@ -84,4 +84,15 @@ export class NotificationsService {
     const savedNotification = await notification.save();
     return { notificationId: savedNotification._id.toString() };
   }
+
+  async notifyAdvisorReleased(input: AdvisorRequestNotificationInput) {
+    const notification = new this.notificationModel({
+      recipientUserId: input.recipientUserId,
+      groupId: input.groupId,
+      type: 'AdvisorReleased',
+    });
+
+    const savedNotification = await notification.save();
+    return { notificationId: savedNotification._id.toString() };
+  }
 }

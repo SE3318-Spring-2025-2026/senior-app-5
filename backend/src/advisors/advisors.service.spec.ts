@@ -10,7 +10,11 @@ import {
 import { AdvisorsService } from './advisors.service';
 import { User } from '../users/data/user.schema';
 import { ListAdvisorsQueryDto } from './dto/list-advisors-query.dto';
-import { Group, GroupStatus } from '../groups/group.entity';
+import {
+  Group,
+  GroupAssignmentStatus,
+  GroupStatus,
+} from '../groups/group.entity';
 import {
   AdvisorRequest,
   AdvisorRequestStatus,
@@ -37,6 +41,15 @@ describe('AdvisorsService', () => {
 
   const mockGroupFindOneQuery = {
     lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
+  const mockGroupFindOneAndUpdateQuery = {
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
+  const mockGroupUpdateOneQuery = {
     exec: jest.fn(),
   };
 
@@ -72,6 +85,8 @@ describe('AdvisorsService', () => {
 
   const mockGroupModel = {
     findOne: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    updateOne: jest.fn(),
   };
 
   const mockAdvisorRequestModel = {
@@ -95,10 +110,39 @@ describe('AdvisorsService', () => {
     notifyAdvisorRequestApproved: jest.fn(),
     notifyAdvisorRequestRejected: jest.fn(),
     notifyAdvisorRequestWithdrawn: jest.fn(),
+    notifyAdvisorReleased: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockQuery.exec.mockReset();
+    mockUserFindOneQuery.exec.mockReset();
+    mockGroupFindOneQuery.exec.mockReset();
+    mockGroupFindOneAndUpdateQuery.exec.mockReset();
+    mockGroupUpdateOneQuery.exec.mockReset();
+    mockScheduleFindOneQuery.exec.mockReset();
+    mockExistsQuery.exec.mockReset();
+    mockAdvisorRequestFindOneQuery.exec.mockReset();
+    mockAdvisorRequestFindOneAndUpdateQuery.exec.mockReset();
+    mockAdvisorRequestUpdateManyQuery.exec.mockReset();
+
+    mockUserModel.find.mockReset();
+    mockUserModel.findOne.mockReset();
+    mockUserModel.countDocuments.mockReset();
+    mockGroupModel.findOne.mockReset();
+    mockGroupModel.findOneAndUpdate.mockReset();
+    mockGroupModel.updateOne.mockReset();
+    mockAdvisorRequestModel.findOne.mockReset();
+    mockAdvisorRequestModel.findOneAndUpdate.mockReset();
+    mockAdvisorRequestModel.updateMany.mockReset();
+    mockAdvisorRequestModel.exists.mockReset();
+    mockAdvisorRequestModel.create.mockReset();
+    mockScheduleModel.findOne.mockReset();
+    mockScheduleModel.create.mockReset();
+
+    mockScheduleModel.updateMany.mockImplementation(() => ({
+      exec: jest.fn().mockResolvedValue({ acknowledged: true }),
+    }));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -420,6 +464,8 @@ describe('AdvisorsService', () => {
       groupId: 'group-1',
       leaderUserId: 'leader-1',
       status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+      assignedAdvisorId: 'advisor-1',
     });
 
     mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
@@ -434,9 +480,6 @@ describe('AdvisorsService', () => {
       startDatetime: new Date(Date.now() - 1000 * 60),
       endDatetime: new Date(Date.now() + 1000 * 60),
     });
-
-    mockAdvisorRequestModel.exists.mockReturnValue(mockExistsQuery);
-    mockExistsQuery.exec.mockResolvedValue(true);
 
     await expect(
       service.submitRequest({
@@ -540,6 +583,12 @@ describe('AdvisorsService', () => {
       modifiedCount: 2,
     });
 
+    mockGroupModel.updateOne.mockReturnValue(mockGroupUpdateOneQuery);
+    mockGroupUpdateOneQuery.exec.mockResolvedValue({
+      acknowledged: true,
+      modifiedCount: 1,
+    });
+
     const result = await service.decideRequest({
       requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       advisorId: 'advisor-1',
@@ -547,7 +596,17 @@ describe('AdvisorsService', () => {
     });
 
     expect(result.status).toBe(AdvisorRequestStatus.APPROVED);
-    expect(mockAdvisorRequestModel.updateMany).toHaveBeenCalledWith(
+    expect(mockAdvisorRequestModel.updateMany).toHaveBeenNthCalledWith(
+      1,
+      {
+        groupId: 'group-1',
+        requestId: { $ne: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' },
+        status: AdvisorRequestStatus.APPROVED,
+      },
+      { $set: { status: AdvisorRequestStatus.REJECTED } },
+    );
+    expect(mockAdvisorRequestModel.updateMany).toHaveBeenNthCalledWith(
+      2,
       {
         groupId: 'group-1',
         requestId: { $ne: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' },
@@ -884,6 +943,169 @@ describe('AdvisorsService', () => {
       service.withdrawRequest({
         requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
         teamLeaderId: 'team-leader-1',
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+  });
+
+  it('should release assigned group for coordinator and return UNASSIGNED status', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+      assignedAdvisorId: 'advisor-1',
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue({
+      _id: 'advisor-1',
+      name: 'Advisor One',
+      email: 'advisor1@example.com',
+      role: Role.Professor,
+    });
+
+    mockGroupModel.findOneAndUpdate.mockReturnValue(
+      mockGroupFindOneAndUpdateQuery,
+    );
+    mockGroupFindOneAndUpdateQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.UNASSIGNED,
+      assignedAdvisorId: null,
+    });
+
+    const result = await service.releaseTeam({
+      advisorId: 'advisor-1',
+      groupId: 'group-1',
+      callerId: 'coordinator-1',
+      callerRole: Role.Coordinator,
+    });
+
+    expect(mockGroupModel.findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        groupId: 'group-1',
+        assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+        assignedAdvisorId: 'advisor-1',
+      },
+      {
+        $set: {
+          assignmentStatus: GroupAssignmentStatus.UNASSIGNED,
+          assignedAdvisorId: null,
+        },
+      },
+      { returnDocument: 'after' },
+    );
+    expect(result.status).toBe(GroupAssignmentStatus.UNASSIGNED);
+    expect(result.canSubmitRequest).toBe(true);
+    expect(mockNotificationsService.notifyAdvisorReleased).toHaveBeenCalledWith(
+      {
+        recipientUserId: 'advisor-1',
+        groupId: 'group-1',
+      },
+    );
+  });
+
+  it('should release assigned group for advisor releasing own assignment', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+      assignedAdvisorId: 'advisor-1',
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockResolvedValue({
+      _id: 'advisor-1',
+      email: 'advisor1@example.com',
+      role: Role.Professor,
+    });
+
+    mockGroupModel.findOneAndUpdate.mockReturnValue(
+      mockGroupFindOneAndUpdateQuery,
+    );
+    mockGroupFindOneAndUpdateQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.UNASSIGNED,
+      assignedAdvisorId: null,
+    });
+
+    const result = await service.releaseTeam({
+      advisorId: 'advisor-1',
+      groupId: 'group-1',
+      callerId: 'advisor-1',
+      callerRole: Role.Professor,
+    });
+
+    expect(result.status).toBe(GroupAssignmentStatus.UNASSIGNED);
+    expect(result.canSubmitRequest).toBe(true);
+  });
+
+  it('should return 403 when advisor tries to release another advisor assignment', async () => {
+    await expect(
+      service.releaseTeam({
+        advisorId: 'advisor-1',
+        groupId: 'group-1',
+        callerId: 'advisor-2',
+        callerRole: Role.Professor,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('should return 404 when group is not found for release', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue(null);
+
+    await expect(
+      service.releaseTeam({
+        advisorId: 'advisor-1',
+        groupId: 'group-1',
+        callerId: 'coordinator-1',
+        callerRole: Role.Coordinator,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should return idempotent success when group is already unassigned', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.UNASSIGNED,
+      assignedAdvisorId: null,
+    });
+
+    const result = await service.releaseTeam({
+      advisorId: 'advisor-1',
+      groupId: 'group-1',
+      callerId: 'coordinator-1',
+      callerRole: Role.Coordinator,
+    });
+
+    expect(result.status).toBe(GroupAssignmentStatus.UNASSIGNED);
+    expect(result.canSubmitRequest).toBe(true);
+    expect(mockGroupModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('should map repository failure in release to internal server error', async () => {
+    mockGroupModel.findOne.mockReturnValue(mockGroupFindOneQuery);
+    mockGroupFindOneQuery.exec.mockResolvedValue({
+      groupId: 'group-1',
+      status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+      assignedAdvisorId: 'advisor-1',
+    });
+
+    mockUserModel.findOne.mockReturnValue(mockUserFindOneQuery);
+    mockUserFindOneQuery.exec.mockRejectedValue(new Error('db down'));
+
+    await expect(
+      service.releaseTeam({
+        advisorId: 'advisor-1',
+        groupId: 'group-1',
+        callerId: 'coordinator-1',
+        callerRole: Role.Coordinator,
       }),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
   });

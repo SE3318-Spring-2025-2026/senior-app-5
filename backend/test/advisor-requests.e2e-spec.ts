@@ -14,6 +14,7 @@ import * as jwt from 'jsonwebtoken';
 import { AdvisorRequestsController } from '../src/advisors/advisor-requests.controller';
 import { AdvisorsService } from '../src/advisors/advisors.service';
 import { AdvisorDecision } from '../src/advisors/dto/decision-request.dto';
+import { WithdrawRequestStatus } from '../src/advisors/dto/update-request-status.dto';
 import { Role } from '../src/auth/enums/role.enum';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
 import { UsersService } from '../src/users/users.service';
@@ -36,6 +37,13 @@ describe('Advisor Requests (e2e)', () => {
       submittedBy: 'team-leader-id',
       requestedAdvisorId: 'advisor-id',
       status: 'APPROVED',
+    }),
+    withdrawRequest: jest.fn().mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-id',
+      requestedAdvisorId: 'advisor-id',
+      status: 'WITHDRAWN',
     }),
   };
 
@@ -262,6 +270,96 @@ describe('Advisor Requests (e2e)', () => {
       submittedBy: 'team-leader-id',
       requestedAdvisorId: 'advisor-id',
       status: 'APPROVED',
+    });
+  });
+
+  it('PATCH /requests/:requestId should return 401 when missing bearer token', () => {
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479')
+      .send({ status: WithdrawRequestStatus.WITHDRAWN })
+      .expect(401);
+  });
+
+  it('PATCH /requests/:requestId should return 403 for non-team-leader role', () => {
+    const token = createToken('advisor-id');
+
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: WithdrawRequestStatus.WITHDRAWN })
+      .expect(403);
+  });
+
+  it('PATCH /requests/:requestId should return 400 for invalid request id', () => {
+    const token = createToken('team-leader-id');
+
+    return request(app.getHttpServer())
+      .patch('/requests/not-a-uuid')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: WithdrawRequestStatus.WITHDRAWN })
+      .expect(400);
+  });
+
+  it('PATCH /requests/:requestId should return 404 when request is not found', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.withdrawRequest.mockRejectedValueOnce(
+      new NotFoundException('Advisor request was not found.'),
+    );
+
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: WithdrawRequestStatus.WITHDRAWN })
+      .expect(404);
+  });
+
+  it('PATCH /requests/:requestId should return 409 when request is not pending', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.withdrawRequest.mockRejectedValueOnce(
+      new ConflictException('Advisor request is not in a pending state.'),
+    );
+
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: WithdrawRequestStatus.WITHDRAWN })
+      .expect(409);
+  });
+
+  it('PATCH /requests/:requestId should return 403 when caller is not the submitter', () => {
+    const token = createToken('team-leader-id');
+    mockAdvisorsService.withdrawRequest.mockRejectedValueOnce(
+      new ForbiddenException(
+        'You are not allowed to withdraw this advisor request.',
+      ),
+    );
+
+    return request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: WithdrawRequestStatus.WITHDRAWN })
+      .expect(403);
+  });
+
+  it('PATCH /requests/:requestId should return 200 for valid team leader withdraw', async () => {
+    const token = createToken('team-leader-id');
+
+    const response = await request(app.getHttpServer())
+      .patch('/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: WithdrawRequestStatus.WITHDRAWN })
+      .expect(200);
+
+    expect(mockAdvisorsService.withdrawRequest).toHaveBeenCalledWith({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      teamLeaderId: 'team-leader-id',
+    });
+    expect(response.body).toEqual({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-id',
+      requestedAdvisorId: 'advisor-id',
+      status: 'WITHDRAWN',
     });
   });
 });

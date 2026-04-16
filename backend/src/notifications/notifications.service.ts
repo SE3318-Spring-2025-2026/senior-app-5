@@ -70,4 +70,18 @@ export class NotificationsService {
     const savedNotification = await notification.save();
     return { notificationId: savedNotification._id.toString() };
   }
+
+  async notifyAdvisorRequestWithdrawn(
+    input: AdvisorRequestDecisionNotificationInput,
+  ) {
+    const notification = new this.notificationModel({
+      recipientUserId: input.recipientUserId,
+      groupId: input.groupId,
+      type: 'AdvisorRequestWithdrawn',
+      requestId: input.requestId,
+    });
+
+    const savedNotification = await notification.save();
+    return { notificationId: savedNotification._id.toString() };
+  }
 }

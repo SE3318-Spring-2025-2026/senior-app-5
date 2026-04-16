@@ -3,6 +3,7 @@ import { Role } from '../auth/enums/role.enum';
 import { AdvisorRequestsController } from './advisor-requests.controller';
 import { AdvisorsService } from './advisors.service';
 import { AdvisorDecision } from './dto/decision-request.dto';
+import { WithdrawRequestStatus } from './dto/update-request-status.dto';
 
 type SubmitRequestArg = Parameters<
   AdvisorRequestsController['submitRequest']
@@ -16,6 +17,12 @@ type DecideRequestArg = Parameters<
 type DecideRequestBody = Parameters<
   AdvisorRequestsController['decideRequest']
 >[2];
+type WithdrawRequestArg = Parameters<
+  AdvisorRequestsController['withdrawRequest']
+>[0];
+type WithdrawRequestBody = Parameters<
+  AdvisorRequestsController['withdrawRequest']
+>[2];
 
 describe('AdvisorRequestsController', () => {
   let controller: AdvisorRequestsController;
@@ -23,6 +30,7 @@ describe('AdvisorRequestsController', () => {
   const mockAdvisorsService = {
     submitRequest: jest.fn(),
     decideRequest: jest.fn(),
+    withdrawRequest: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -100,6 +108,38 @@ describe('AdvisorRequestsController', () => {
       requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       advisorId: 'advisor-1',
       decision: AdvisorDecision.APPROVE,
+    });
+    expect(result).toEqual(expected);
+  });
+
+  it('should delegate withdraw request to service for team leaders', async () => {
+    const expected = {
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: 'WITHDRAWN',
+    };
+
+    mockAdvisorsService.withdrawRequest.mockResolvedValue(expected);
+
+    const request = {
+      user: { role: Role.TeamLeader, userId: 'team-leader-1' },
+    } as WithdrawRequestArg;
+
+    const body: WithdrawRequestBody = {
+      status: WithdrawRequestStatus.WITHDRAWN,
+    };
+
+    const result = await controller.withdrawRequest(
+      request,
+      'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      body,
+    );
+
+    expect(mockAdvisorsService.withdrawRequest).toHaveBeenCalledWith({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      teamLeaderId: 'team-leader-1',
     });
     expect(result).toEqual(expected);
   });

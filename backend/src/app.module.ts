@@ -10,7 +10,9 @@ import { AdminModule } from './admin/admin.module';
 import { GroupsModule } from './groups/groups.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdvisorsModule } from './advisors/advisors.module';
+import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
+
 
 @Module({
   imports: [
@@ -23,6 +25,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
     GroupsModule,
     NotificationsModule,
     AdvisorsModule,
+    PhasesModule,
     SubmissionsModule,
   ],
   controllers: [AppController],

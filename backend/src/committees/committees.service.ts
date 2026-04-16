@@ -10,6 +10,8 @@ import { Committee, CommitteeDocument } from './schemas/committee.schema';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
 import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
 import { CommitteeGroupListItemDto, CommitteeGroupPageDto } from './dto/committee-group-page.dto';
+import { ListCommitteeAdvisorsQueryDto } from './dto/list-committee-advisors-query.dto';
+import { CommitteeAdvisorListItemDto, CommitteeAdvisorPageDto } from './dto/committee-advisor-page.dto';
 import { Group, GroupDocument } from '../groups/group.entity';
 
 @Injectable()
@@ -138,6 +140,54 @@ export class CommitteesService {
       });
       throw new InternalServerErrorException(
         'Failed to retrieve committee groups due to an unexpected error.',
+      );
+    }
+  }
+
+  async listCommitteeAdvisors(
+    committeeId: string,
+    query: ListCommitteeAdvisorsQueryDto,
+    correlationId?: string,
+  ): Promise<CommitteeAdvisorPageDto> {
+    try {
+      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+      const skip = (page - 1) * limit;
+
+      const allAdvisors = (committee.advisors as any[]) ?? [];
+      const total = allAdvisors.length;
+      const data: CommitteeAdvisorListItemDto[] = allAdvisors
+        .slice(skip, skip + limit)
+        .map((a) => ({
+          advisorUserId: (a.advisorId ?? a.userId ?? a.advisorUserId) as string,
+          assignedAt: a.assignedAt as Date,
+        }));
+
+      this.logger.log({
+        event: 'committee_advisors_listed',
+        committeeId,
+        page,
+        limit,
+        resultCount: data.length,
+        correlationId,
+      });
+
+      return { data, total, page, limit };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({
+        event: 'committee_advisors_list_failed',
+        committeeId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to retrieve committee advisors due to an unexpected error.',
       );
     }
   }

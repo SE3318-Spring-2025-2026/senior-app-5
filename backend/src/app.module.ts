@@ -11,6 +11,24 @@ import { GroupsModule } from './groups/groups.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
+import { CommitteesModule } from './committees/committees.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    MongooseModule.forRoot(process.env.MONGODB_URI as string),
+    UsersModule,
+    AuthModule,
+    TeamsModule,
+    AdminModule,
+    GroupsModule,
+    NotificationsModule,
+    PhasesModule,
+    SubmissionsModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
 
 
 @Module({
@@ -25,6 +43,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
     NotificationsModule,
     PhasesModule,
     SubmissionsModule,
+    CommitteesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

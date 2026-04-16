@@ -25,9 +25,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid, clear storage
       localStorage.removeItem('accessToken');
       localStorage.removeItem('userEmail');
+      
+      globalThis.location.href = '/login?expired=true';
     }
     return Promise.reject(error);
   }

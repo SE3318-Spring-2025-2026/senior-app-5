@@ -33,6 +33,8 @@ import { CommitteeResponseDto } from './dto/committee-response.dto';
 import { CommitteeDocument } from './schemas/committee.schema';
 import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
 import { CommitteeGroupPageDto } from './dto/committee-group-page.dto';
+import { ListCommitteeAdvisorsQueryDto } from './dto/list-committee-advisors-query.dto';
+import { CommitteeAdvisorPageDto } from './dto/committee-advisor-page.dto';
 
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
@@ -103,6 +105,30 @@ export class CommitteesController {
       correlationId,
     );
     return this.toResponseDto(committee);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'listCommitteeAdvisors',
+    summary: 'List advisors assigned to a committee (COORDINATOR only)',
+    description: 'Returns paginated advisor assignments for a committee. Each item includes advisorUserId and assignedAt. committeeId is not repeated in items.',
+  })
+  @ApiOkResponse({ description: 'Committee advisors returned successfully', type: CommitteeAdvisorPageDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Get(':committeeId/advisors')
+  @HttpCode(HttpStatus.OK)
+  async listCommitteeAdvisors(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Query() query: ListCommitteeAdvisorsQueryDto,
+    @Request() req: RequestWithUser,
+  ): Promise<CommitteeAdvisorPageDto> {
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.listCommitteeAdvisors(committeeId, query, correlationId);
   }
 
   @ApiBearerAuth('access-token')

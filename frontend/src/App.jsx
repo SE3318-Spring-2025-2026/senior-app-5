@@ -41,7 +41,11 @@ function App() {
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
             <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
 
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="Coordinator">
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
               <Route index element={<Navigate to="groups" replace />} />
               <Route path="groups" element={<GroupsPage />} />
               <Route path="members" element={<MembersPage />} />

@@ -20,6 +20,10 @@ import {
   DecisionRequestDto,
 } from './dto/decision-request.dto';
 import { SubmitRequestDto } from './dto/submit-request.dto';
+import {
+  UpdateRequestStatusDto,
+  WithdrawRequestStatus,
+} from './dto/update-request-status.dto';
 import { AdvisorRequestStatus } from './schemas/advisor-request.schema';
 
 interface RequestWithUser extends Request {
@@ -139,6 +143,53 @@ export class AdvisorRequestsController {
         (body.decision === AdvisorDecision.APPROVE
           ? AdvisorRequestStatus.APPROVED
           : AdvisorRequestStatus.REJECTED),
+      createdAt: requestRecord.createdAt,
+      updatedAt: requestRecord.updatedAt,
+    };
+  }
+
+  @Patch(':requestId')
+  @Roles(Role.TeamLeader)
+  async withdrawRequest(
+    @Req() req: RequestWithUser,
+    @Param('requestId', new ParseUUIDPipe({ version: '4' })) requestId: string,
+    @Body() body: UpdateRequestStatusDto,
+  ) {
+    const teamLeaderId = req.user?.userId;
+    const correlationId = this.getCorrelationId(req);
+
+    const result = await this.advisorsService.withdrawRequest({
+      requestId,
+      teamLeaderId: teamLeaderId ?? '',
+    });
+
+    const requestRecord = result as unknown as {
+      requestId: string;
+      groupId: string;
+      submittedBy: string;
+      requestedAdvisorId: string;
+      status?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    };
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'advisor_request_withdrawn',
+        requestId: requestRecord.requestId,
+        groupId: requestRecord.groupId,
+        teamLeaderId,
+        requestedStatus: body.status,
+        correlationId,
+      }),
+    );
+
+    return {
+      requestId: requestRecord.requestId,
+      groupId: requestRecord.groupId,
+      submittedBy: requestRecord.submittedBy,
+      requestedAdvisorId: requestRecord.requestedAdvisorId,
+      status: requestRecord.status ?? WithdrawRequestStatus.WITHDRAWN,
       createdAt: requestRecord.createdAt,
       updatedAt: requestRecord.updatedAt,
     };

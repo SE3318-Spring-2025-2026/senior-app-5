@@ -94,6 +94,7 @@ describe('AdvisorsService', () => {
     notifyAdvisorRequestSubmitted: jest.fn(),
     notifyAdvisorRequestApproved: jest.fn(),
     notifyAdvisorRequestRejected: jest.fn(),
+    notifyAdvisorRequestWithdrawn: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -709,6 +710,182 @@ describe('AdvisorsService', () => {
     expect(
       mockNotificationsService.notifyAdvisorRequestApproved,
     ).not.toHaveBeenCalled();
+  });
+
+  it('should withdraw pending request and notify requested advisor', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(
+      mockAdvisorRequestFindOneQuery,
+    );
+    mockAdvisorRequestFindOneQuery.exec
+      .mockResolvedValueOnce({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        groupId: 'group-1',
+        submittedBy: 'team-leader-1',
+        requestedAdvisorId: 'advisor-1',
+        status: AdvisorRequestStatus.PENDING,
+      })
+      .mockResolvedValueOnce({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        groupId: 'group-1',
+        submittedBy: 'team-leader-1',
+        requestedAdvisorId: 'advisor-1',
+        status: AdvisorRequestStatus.WITHDRAWN,
+      });
+
+    mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
+      mockAdvisorRequestFindOneAndUpdateQuery,
+    );
+    mockAdvisorRequestFindOneAndUpdateQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.WITHDRAWN,
+    });
+
+    const result = await service.withdrawRequest({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      teamLeaderId: 'team-leader-1',
+    });
+
+    expect(result.status).toBe(AdvisorRequestStatus.WITHDRAWN);
+    expect(mockAdvisorRequestModel.findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        submittedBy: 'team-leader-1',
+        status: AdvisorRequestStatus.PENDING,
+      },
+      { $set: { status: AdvisorRequestStatus.WITHDRAWN } },
+      { returnDocument: 'after' },
+    );
+    expect(
+      mockNotificationsService.notifyAdvisorRequestWithdrawn,
+    ).toHaveBeenCalledWith({
+      recipientUserId: 'advisor-1',
+      groupId: 'group-1',
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    });
+  });
+
+  it('should return 404 when withdrawing a non-existent request', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(
+      mockAdvisorRequestFindOneQuery,
+    );
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue(null);
+
+    await expect(
+      service.withdrawRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        teamLeaderId: 'team-leader-1',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should return 403 when team leader does not own request', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(
+      mockAdvisorRequestFindOneQuery,
+    );
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-2',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    await expect(
+      service.withdrawRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        teamLeaderId: 'team-leader-1',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('should return 409 when withdrawing a non-pending request', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(
+      mockAdvisorRequestFindOneQuery,
+    );
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.APPROVED,
+    });
+
+    await expect(
+      service.withdrawRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        teamLeaderId: 'team-leader-1',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('should return 409 when request is concurrently transitioned before withdrawal', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(
+      mockAdvisorRequestFindOneQuery,
+    );
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
+      mockAdvisorRequestFindOneAndUpdateQuery,
+    );
+    mockAdvisorRequestFindOneAndUpdateQuery.exec.mockResolvedValue(null);
+
+    await expect(
+      service.withdrawRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        teamLeaderId: 'team-leader-1',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('should map unknown failures in withdraw request to internal server error', async () => {
+    mockAdvisorRequestModel.findOne.mockReturnValue(
+      mockAdvisorRequestFindOneQuery,
+    );
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+
+    mockAdvisorRequestModel.findOneAndUpdate.mockReturnValue(
+      mockAdvisorRequestFindOneAndUpdateQuery,
+    );
+    mockAdvisorRequestFindOneAndUpdateQuery.exec.mockResolvedValue({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.WITHDRAWN,
+    });
+
+    mockAdvisorRequestFindOneQuery.exec.mockResolvedValueOnce({
+      requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      groupId: 'group-1',
+      submittedBy: 'team-leader-1',
+      requestedAdvisorId: 'advisor-1',
+      status: AdvisorRequestStatus.PENDING,
+    });
+    mockAdvisorRequestFindOneQuery.exec.mockRejectedValueOnce(
+      new Error('db down'),
+    );
+
+    await expect(
+      service.withdrawRequest({
+        requestId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        teamLeaderId: 'team-leader-1',
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 
   it('should return advisor response fields in API contract shape', async () => {

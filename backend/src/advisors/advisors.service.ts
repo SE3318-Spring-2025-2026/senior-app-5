@@ -92,6 +92,11 @@ export interface DecideRequestInput {
   decision: AdvisorDecision;
 }
 
+export interface WithdrawRequestInput {
+  requestId: string;
+  teamLeaderId: string;
+}
+
 @Injectable()
 export class AdvisorsService {
   constructor(
@@ -409,6 +414,87 @@ export class AdvisorsService {
 
       throw new InternalServerErrorException(
         'Failed to decide advisor request.',
+      );
+    }
+  }
+
+  async withdrawRequest(input: WithdrawRequestInput): Promise<AdvisorRequest> {
+    if (!input.teamLeaderId) {
+      throw new ForbiddenException('Invalid authenticated user.');
+    }
+
+    try {
+      const existingRequest = await this.advisorRequestModel
+        .findOne({ requestId: input.requestId })
+        .lean<AdvisorRequest>()
+        .exec();
+
+      if (!existingRequest) {
+        throw new NotFoundException('Advisor request was not found.');
+      }
+
+      if (existingRequest.submittedBy !== input.teamLeaderId) {
+        throw new ForbiddenException(
+          'You are not allowed to withdraw this advisor request.',
+        );
+      }
+
+      if (existingRequest.status !== AdvisorRequestStatus.PENDING) {
+        throw new ConflictException(
+          'Advisor request is not in a pending state.',
+        );
+      }
+
+      const withdrawnRequest = await this.advisorRequestModel
+        .findOneAndUpdate(
+          {
+            requestId: input.requestId,
+            submittedBy: input.teamLeaderId,
+            status: AdvisorRequestStatus.PENDING,
+          },
+          { $set: { status: AdvisorRequestStatus.WITHDRAWN } },
+          { returnDocument: 'after' },
+        )
+        .lean<AdvisorRequest>()
+        .exec();
+
+      if (!withdrawnRequest) {
+        throw new ConflictException('Advisor request is no longer pending.');
+      }
+
+      const updatedRequest = await this.advisorRequestModel
+        .findOne({
+          requestId: input.requestId,
+          submittedBy: input.teamLeaderId,
+        })
+        .lean<AdvisorRequest>()
+        .exec();
+
+      if (!updatedRequest) {
+        throw new InternalServerErrorException(
+          'Failed to withdraw advisor request.',
+        );
+      }
+
+      await this.notificationsService.notifyAdvisorRequestWithdrawn({
+        recipientUserId: updatedRequest.requestedAdvisorId,
+        groupId: updatedRequest.groupId,
+        requestId: updatedRequest.requestId,
+      });
+
+      return updatedRequest;
+    } catch (error: unknown) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof ForbiddenException ||
+        error instanceof HttpException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Failed to withdraw advisor request.',
       );
     }
   }

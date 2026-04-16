@@ -8,5 +8,17 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: rootpass
     volumes:
       - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3001" 
+    depends_on:
+      - mongo
+    environment:
+      PORT: 3001 
+      MONGODB_URI: mongodb://root:rootpass@mongo:27017/senior-app?authSource=admin
+      JWT_SECRET: 1234 
+
 volumes:
   mongo_data:

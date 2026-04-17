@@ -502,4 +502,72 @@ export class CommitteesService {
       );
     }
   }
+
+  async removeCommitteeAdvisor(
+    committeeId: string,
+    advisorUserId: string,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<void> {
+    try {
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
+      if (!committee) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      type AdvisorEntry = {
+        advisorId?: string;
+        userId?: string;
+        advisorUserId?: string;
+        [key: string]: unknown;
+      };
+      const advisors = (committee.advisors as AdvisorEntry[]) ?? [];
+      const advisorIndex = advisors.findIndex(
+        (a) =>
+          a.advisorId === advisorUserId ||
+          a.userId === advisorUserId ||
+          a.advisorUserId === advisorUserId,
+      );
+
+      if (advisorIndex === -1) {
+        throw new NotFoundException(
+          `Advisor link for user '${advisorUserId}' not found in committee '${committeeId}'.`,
+        );
+      }
+
+      const updatedAdvisors: unknown[] = [
+        ...advisors.slice(0, advisorIndex),
+        ...advisors.slice(advisorIndex + 1),
+      ];
+
+      await this.committeeModel
+        .updateOne({ id: committeeId }, { $set: { advisors: updatedAdvisors } })
+        .exec();
+
+      this.logger.log({
+        event: 'committee_advisor_unlinked',
+        committeeId,
+        advisorUserId,
+        coordinatorId,
+        correlationId,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({
+        event: 'committee_advisor_unlink_failed',
+        committeeId,
+        advisorUserId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to remove committee advisor due to an unexpected error.',
+      );
+    }
+  }
 }

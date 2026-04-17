@@ -48,6 +48,7 @@ describe('CommitteesController', () => {
       listCommittees: jest.fn(),
       removeJuryMember: jest.fn(),
       assignGroupToCommittee: jest.fn(),
+      removeCommitteeAdvisor: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -927,6 +928,62 @@ describe('CommitteesController', () => {
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
         controller.assignGroupToCommittee(committeeId, payload, req),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
+    });
+  });
+
+  // ─── DELETE :committeeId/advisors/:advisorUserId ──────────────────────────
+
+  describe('DELETE :committeeId/advisors/:advisorUserId', () => {
+    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const advisorUserId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+    it('happy path: COORDINATOR → resolves void (204)', async () => {
+      jest.spyOn(service, 'removeCommitteeAdvisor').mockResolvedValue(undefined);
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      const result = await controller.removeCommitteeAdvisor(
+        committeeId,
+        advisorUserId,
+        req,
+      );
+
+      expect(result).toBeUndefined();
+      expect(service.removeCommitteeAdvisor).toHaveBeenCalledWith(
+        committeeId,
+        advisorUserId,
+        coordinatorUser.userId,
+        undefined,
+      );
+    });
+
+    it('service throws NotFoundException → propagates', async () => {
+      jest
+        .spyOn(service, 'removeCommitteeAdvisor')
+        .mockRejectedValue(
+          new NotFoundException(
+            `Advisor link for user '${advisorUserId}' not found in committee '${committeeId}'.`,
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.removeCommitteeAdvisor(committeeId, advisorUserId, req),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('service throws InternalServerErrorException → propagates', async () => {
+      jest
+        .spyOn(service, 'removeCommitteeAdvisor')
+        .mockRejectedValue(
+          new InternalServerErrorException(
+            'Failed to remove committee advisor due to an unexpected error.',
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.removeCommitteeAdvisor(committeeId, advisorUserId, req),
       ).rejects.toBeInstanceOf(InternalServerErrorException);
     });
   });

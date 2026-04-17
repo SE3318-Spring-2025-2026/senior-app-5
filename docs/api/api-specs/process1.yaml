@@ -1,0 +1,918 @@
+openapi: 3.0.3
+info:
+  title: Senior App — Process 1 Evaluation Setup & Configuration
+  description: |
+    Evaluation lifecycle: rubric management, story point targets, sprint-deliverable
+    configuration, sprint evaluation recording, and deliverable evaluation recording
+    (docs/system-processes.md — Process 1).
+
+    Authorization policy: canonical role names are uppercase
+    (COORDINATOR, TEAM_LEADER, ADVISOR, ADMIN, STUDENT).
+    [ANY] means any authenticated role with a valid JWT.
+
+    Cross-service dependency: Process 8 (Grade Calc) reads D1 (deliverable weights,
+    rubrics) and D2 (sprint configs, evaluations) from this service to compute
+    final grades. Process 4 (Schedule API) provides the active sprint window
+    consumed by 1.5 Record Sprint Evaluation.
+  version: 1.0.0
+  contact:
+    name: Backend Service Layer
+
+servers:
+  - url: http://localhost:3000
+    description: Local NestJS (or adjust per environment)
+
+tags:
+  - name: rubrics
+    description: "1.2 – Create or manage evaluation rubrics"
+  - name: deliverables
+    description: "1.1 – Set deliverable weights and map deliverable percentages"
+  - name: sprints
+    description: "1.3 / 1.4 – Map sprints to deliverables and set story point targets"
+  - name: sprint-evaluations
+    description: "1.5 – Record sprint evaluations (SCRUM / CODE_REVIEW)"
+  - name: deliverable-evaluations
+    description: "1.6 – Record deliverable evaluations"
+
+paths:
+
+  # ─────────────────────────────────────────────
+  # 1.1 Set Deliverable Weights
+  # ─────────────────────────────────────────────
+  /deliverables:
+    get:
+      tags: [deliverables]
+      summary: List all deliverables with weights
+      operationId: listDeliverables
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR, ADMIN]
+
+        Returns all deliverables stored in D1, including their category weights
+        and sub-weights. Read-only for Process 8 and Process 5/6.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of deliverables
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedDeliverables"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [deliverables]
+      summary: Create a deliverable and set its weights
+      operationId: createDeliverable
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Creates a new deliverable entry in D1 with its category weight and
+        sub-weight configuration (subWeight, categoryWeight).
+
+        **Postconditions (_effects_):**
+        - Deliverable ID and weights are persisted in D1.
+        - D1 becomes available for rubric creation (1.2) and sprint mapping (1.3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeliverableRequest"
+      responses:
+        "201":
+          description: Deliverable created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deliverable"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Conflict – a deliverable with this name already exists.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /deliverables/{deliverableId}:
+    patch:
+      tags: [deliverables]
+      summary: Update deliverable weights
+      operationId: updateDeliverableWeights
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Updates the subWeight or categoryWeight of an existing deliverable in D1.
+        Also used to update the deliverable percentage (contributionPercentage)
+        relative to the total.
+
+        **Preconditions (_requires_):**
+        - Total deliverable percentages across all deliverables MUST NOT exceed 100.
+      parameters:
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDeliverableRequest"
+      responses:
+        "200":
+          description: Deliverable weights updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deliverable"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Unprocessable – total deliverable percentages would exceed 100.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 1.2 Create Evaluation Rubric
+  # ─────────────────────────────────────────────
+  /deliverables/{deliverableId}/rubrics:
+    get:
+      tags: [rubrics]
+      summary: List rubrics for a deliverable
+      operationId: listRubrics
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR]
+
+        Returns all rubrics (active and historical) associated with a deliverable
+        stored in D1. Active rubric is used by Process 1.5 for sprint evaluations.
+      parameters:
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: If true, returns only the currently active rubric.
+      responses:
+        "200":
+          description: List of rubrics for the deliverable
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rubric"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [rubrics]
+      summary: Create a new evaluation rubric for a deliverable
+      operationId: createRubric
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Creates a new rubric (with questions and grading criteria) for a deliverable
+        in D1. On creation, the new rubric becomes the active rubric and any
+        previously active rubric for this deliverable is deactivated.
+
+        **Postconditions (_effects_):**
+        - New rubric + questions are stored in D1.
+        - Previous active rubric (if any) is deactivated (preserved for history).
+      parameters:
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRubricRequest"
+      responses:
+        "201":
+          description: Rubric created and set as active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rubric"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 1.3 Map Sprint to Deliverables
+  # 1.4 Set Story Point Targets
+  # ─────────────────────────────────────────────
+  /sprints:
+    post:
+      tags: [sprints]
+      summary: Create a sprint config with deliverable mappings and story point target
+      operationId: createSprintConfig
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Creates a sprint configuration in D2 that:
+        - Maps the sprint to one or more deliverables with a contributionPercentage (1.3).
+        - Sets the targetStoryPoints for the sprint (1.4).
+
+        **Preconditions (_requires_):**
+        - All referenced deliverableIds MUST exist in D1.
+        - The sum of contributionPercentage across all mappings for a single deliverable
+          MUST NOT exceed 100.
+
+        **Postconditions (_effects_):**
+        - Sprint config + deliverable mappings are persisted in D2.
+        - targetStoryPoints is persisted in D2.
+        - D2 config section is read-only for Process 8 after this point.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSprintConfigRequest"
+      responses:
+        "201":
+          description: Sprint config created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SprintConfig"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Conflict – a config for this sprint already exists.
+        "422":
+          description: Unprocessable – contribution percentages for a deliverable would exceed 100.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /sprints/{sprintId}:
+    patch:
+      tags: [sprints]
+      summary: Update a sprint config (deliverable mappings or story point target)
+      operationId: updateSprintConfig
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Updates the deliverable mappings (contributionPercentage) or
+        targetStoryPoints of an existing sprint config in D2.
+      parameters:
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSprintConfigRequest"
+      responses:
+        "200":
+          description: Sprint config updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SprintConfig"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Unprocessable – contribution percentages would exceed 100.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 1.5 Record Sprint Evaluation
+  # ─────────────────────────────────────────────
+  /sprint-evaluations:
+    post:
+      tags: [sprint-evaluations]
+      summary: Record a sprint evaluation for a group
+      operationId: recordSprintEvaluation
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [ADVISOR]
+
+        Records a sprint evaluation (SCRUM or CODE_REVIEW type) for a group.
+        The Advisor fills in rubric responses (Soft Grade A/B/C/D/F per question)
+        based on the active rubric fetched from D1.
+        The computed averageScore and final status are stored in D2.
+
+        **Preconditions (_requires_):**
+        - An active sprint window MUST exist (phase=SCRUM, provided by Process 4).
+        - The group MUST be ASSIGNED to the calling Advisor.
+        - An active rubric MUST exist in D1 for the relevant deliverable.
+
+        **Postconditions (_effects_):**
+        - SprintEvaluation record (type, averageScore, status) is written to D2.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordSprintEvaluationRequest"
+      responses:
+        "201":
+          description: Sprint evaluation recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SprintEvaluation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Conflict – an evaluation of this type already exists for this group/sprint.
+        "423":
+          description: Locked – no active sprint window is open for this phase.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /sprint-evaluations/{evaluationId}:
+    get:
+      tags: [sprint-evaluations]
+      summary: Get a sprint evaluation record
+      operationId: getSprintEvaluation
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR]
+
+        Returns a single sprint evaluation record from D2.
+      parameters:
+        - name: evaluationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Sprint evaluation record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SprintEvaluation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 1.6 Record Deliverable Evaluation
+  # ─────────────────────────────────────────────
+  /deliverable-evaluations:
+    post:
+      tags: [deliverable-evaluations]
+      summary: Record a deliverable evaluation for a group
+      operationId: recordDeliverableEvaluation
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [ADVISOR, ADMIN]
+
+        Committee (Advisors + Jury) submits a final grade for a group's deliverable.
+        The deliverableGrade and groupId are written to D2.
+
+        **Preconditions (_requires_):**
+        - The deliverable MUST exist in D1.
+        - The group MUST exist and be ASSIGNED.
+
+        **Postconditions (_effects_):**
+        - DeliverableEvaluation record (groupId, deliverableGrade) is persisted in D2.
+        - Record becomes available for Process 8 (Grade Calc) to compute final grades.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordDeliverableEvaluationRequest"
+      responses:
+        "201":
+          description: Deliverable evaluation recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverableEvaluation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Conflict – a deliverable evaluation already exists for this group/deliverable.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /deliverable-evaluations/{evaluationId}:
+    get:
+      tags: [deliverable-evaluations]
+      summary: Get a deliverable evaluation record
+      operationId: getDeliverableEvaluation
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR, ADMIN]
+
+        Returns a single deliverable evaluation record from D2.
+      parameters:
+        - name: evaluationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deliverable evaluation record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverableEvaluation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+
+    # ── Deliverable ──────────────────────────────
+    Deliverable:
+      type: object
+      properties:
+        deliverableId:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-0000-4000-8000-000000000001"
+        name:
+          type: string
+          example: "Sprint Demo"
+        categoryWeight:
+          type: number
+          format: float
+          description: Weight of this deliverable category relative to final grade (0–1)
+          example: 0.4
+        subWeight:
+          type: number
+          format: float
+          description: Sub-weight within the category (0–1)
+          example: 0.25
+        deliverablePercentage:
+          type: number
+          format: float
+          description: Contribution percentage of this deliverable toward total (0–100)
+          example: 30.0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [deliverableId, name, categoryWeight, subWeight, deliverablePercentage]
+
+    CreateDeliverableRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Sprint Demo"
+        categoryWeight:
+          type: number
+          format: float
+          example: 0.4
+        subWeight:
+          type: number
+          format: float
+          example: 0.25
+        deliverablePercentage:
+          type: number
+          format: float
+          description: Contribution percentage of this deliverable (0–100). Total across all deliverables must not exceed 100.
+          example: 30.0
+      required: [name, categoryWeight, subWeight, deliverablePercentage]
+
+    UpdateDeliverableRequest:
+      type: object
+      properties:
+        categoryWeight:
+          type: number
+          format: float
+        subWeight:
+          type: number
+          format: float
+        deliverablePercentage:
+          type: number
+          format: float
+          description: Updated contribution percentage. Total across all deliverables must not exceed 100.
+
+    PaginatedDeliverables:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Deliverable"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
+
+    # ── Rubric ───────────────────────────────────
+    Rubric:
+      type: object
+      properties:
+        rubricId:
+          type: string
+          format: uuid
+        deliverableId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Sprint 1 SCRUM Rubric"
+        isActive:
+          type: boolean
+          description: True if this is the currently active rubric for the deliverable
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubricQuestion"
+        createdAt:
+          type: string
+          format: date-time
+      required: [rubricId, deliverableId, name, isActive, questions]
+
+    RubricQuestion:
+      type: object
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        criteriaName:
+          type: string
+          example: "Team communication quality"
+        criteriaWeight:
+          type: number
+          format: float
+          description: Weight of this criterion within the rubric (0–1)
+          example: 0.2
+      required: [questionId, criteriaName, criteriaWeight]
+
+    CreateRubricRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Sprint 2 CODE_REVIEW Rubric"
+        questions:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CreateRubricQuestion"
+      required: [name, questions]
+
+    CreateRubricQuestion:
+      type: object
+      properties:
+        criteriaName:
+          type: string
+          example: "Code readability"
+        criteriaWeight:
+          type: number
+          format: float
+          description: Weight of this criterion within the rubric. All weights in a rubric must sum to 1.
+          example: 0.3
+      required: [criteriaName, criteriaWeight]
+
+    # ── Sprint Config ─────────────────────────────
+    SprintConfig:
+      type: object
+      properties:
+        sprintId:
+          type: string
+          format: uuid
+        targetStoryPoints:
+          type: integer
+          description: Minimum story points target for this sprint
+          example: 40
+        deliverableMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SprintDeliverableMapping"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [sprintId, targetStoryPoints, deliverableMappings]
+
+    SprintDeliverableMapping:
+      type: object
+      properties:
+        deliverableId:
+          type: string
+          format: uuid
+        contributionPercentage:
+          type: number
+          format: float
+          description: Percentage this sprint contributes toward the deliverable grade (0–100)
+          example: 25.0
+      required: [deliverableId, contributionPercentage]
+
+    CreateSprintConfigRequest:
+      type: object
+      properties:
+        sprintId:
+          type: string
+          format: uuid
+          description: ID of the sprint being configured (must already exist in the schedule system)
+        targetStoryPoints:
+          type: integer
+          minimum: 0
+          example: 40
+        deliverableMappings:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SprintDeliverableMapping"
+      required: [sprintId, targetStoryPoints, deliverableMappings]
+
+    UpdateSprintConfigRequest:
+      type: object
+      properties:
+        targetStoryPoints:
+          type: integer
+          minimum: 0
+        deliverableMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SprintDeliverableMapping"
+
+    # ── Sprint Evaluation ─────────────────────────
+    SprintEvaluation:
+      type: object
+      properties:
+        evaluationId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        sprintId:
+          type: string
+          format: uuid
+        evaluationType:
+          type: string
+          enum: [SCRUM, CODE_REVIEW]
+        rubricId:
+          type: string
+          format: uuid
+          description: The active rubric used at time of evaluation
+        responses:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubricResponse"
+        averageScore:
+          type: number
+          format: float
+          description: Computed average score from rubric responses
+          example: 3.4
+        status:
+          type: string
+          enum: [DRAFT, SUBMITTED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [evaluationId, groupId, sprintId, evaluationType, rubricId, responses, averageScore, status]
+
+    RubricResponse:
+      type: object
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        softGrade:
+          type: string
+          enum: [A, B, C, D, F]
+          description: Advisor's qualitative grade for this rubric criterion
+      required: [questionId, softGrade]
+
+    RecordSprintEvaluationRequest:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        sprintId:
+          type: string
+          format: uuid
+        evaluationType:
+          type: string
+          enum: [SCRUM, CODE_REVIEW]
+        responses:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/RubricResponse"
+      required: [groupId, sprintId, evaluationType, responses]
+
+    # ── Deliverable Evaluation ────────────────────
+    DeliverableEvaluation:
+      type: object
+      properties:
+        evaluationId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        deliverableId:
+          type: string
+          format: uuid
+        deliverableGrade:
+          type: string
+          enum: [A, B, C, D, F]
+          description: Final grade assigned by the Committee for this deliverable
+        gradedBy:
+          type: string
+          format: uuid
+          description: userId of the committee member who submitted the grade
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [evaluationId, groupId, deliverableId, deliverableGrade, gradedBy]
+
+    RecordDeliverableEvaluationRequest:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        deliverableId:
+          type: string
+          format: uuid
+        deliverableGrade:
+          type: string
+          enum: [A, B, C, D, F]
+          description: Final committee grade for this group's deliverable
+      required: [groupId, deliverableId, deliverableGrade]
+
+    # ── Shared ────────────────────────────────────
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+
+  responses:
+    BadRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Forbidden:
+      description: Authenticated but insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    NotFound:
+      description: Deliverable, rubric, sprint config, or evaluation not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT from login; send as Authorization Bearer
+
+security:
+  - BearerAuth: []

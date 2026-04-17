@@ -666,4 +666,88 @@ describe('CommitteesService', () => {
       ).rejects.toBeInstanceOf(InternalServerErrorException);
     });
   });
+
+  // ─── removeCommitteeAdvisor ───────────────────────────────────────────────
+
+  describe('removeCommitteeAdvisor', () => {
+    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const advisorUserId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const coordinatorId = 'coord-123';
+
+    it('happy path: existing advisor link → resolves void and calls updateOne', async () => {
+      const committeeWithAdvisor = {
+        ...mockCommittee,
+        advisors: [{ advisorId: advisorUserId, assignedAt: new Date() }],
+      };
+
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(committeeWithAdvisor),
+      });
+      mockCommitteeModel.updateOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+      });
+
+      await expect(
+        service.removeCommitteeAdvisor(committeeId, advisorUserId, coordinatorId),
+      ).resolves.toBeUndefined();
+
+      expect(mockCommitteeModel.updateOne).toHaveBeenCalledWith(
+        { id: committeeId },
+        { $set: { advisors: [] } },
+      );
+    });
+
+    it('happy path: advisor stored as advisorUserId field → still found and removed', async () => {
+      const committeeWithAdvisor = {
+        ...mockCommittee,
+        advisors: [{ advisorUserId, assignedAt: new Date() }],
+      };
+
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(committeeWithAdvisor),
+      });
+      mockCommitteeModel.updateOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+      });
+
+      await expect(
+        service.removeCommitteeAdvisor(committeeId, advisorUserId, coordinatorId),
+      ).resolves.toBeUndefined();
+
+      expect(mockCommitteeModel.updateOne).toHaveBeenCalled();
+    });
+
+    it('failure: committee not found → NotFoundException', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.removeCommitteeAdvisor(committeeId, advisorUserId, coordinatorId),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('failure: advisor link not found → NotFoundException', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          ...mockCommittee,
+          advisors: [{ advisorId: 'different-id', assignedAt: new Date() }],
+        }),
+      });
+
+      await expect(
+        service.removeCommitteeAdvisor(committeeId, advisorUserId, coordinatorId),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('failure: repository throws → InternalServerErrorException', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockRejectedValue(new Error('db error')),
+      });
+
+      await expect(
+        service.removeCommitteeAdvisor(committeeId, advisorUserId, coordinatorId),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
+    });
+  });
 });

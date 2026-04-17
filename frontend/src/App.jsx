@@ -8,6 +8,7 @@ import GroupLifecyclePage from './pages/GroupLifecyclePage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import PhaseSchedulingPage from './pages/PhaseSchedulingPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Layout } from './components/layout/Layout';
@@ -47,6 +48,14 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
+            <Route
+              path="/phases/schedule"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <PhaseSchedulingPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
 
             <Route path="/admin" element={

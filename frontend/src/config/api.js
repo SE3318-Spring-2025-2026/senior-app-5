@@ -22,6 +22,7 @@ export const apiConfig = {
     submissions: {
       uploadDocument: (submissionId) => `/submissions/${submissionId}/documents`,
     },
+    activityLogs: '/admin/activity',
   },
 };
 

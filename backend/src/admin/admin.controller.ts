@@ -1,4 +1,4 @@
-import { Controller, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -22,5 +22,13 @@ export class AdminController {
     @Body() body: MoveStudentDto,
   ) {
     return this.adminService.moveStudentToGroup(studentId, body.groupId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get recent activity logs' })
+  @Get('activity')
+  @Roles(Role.Coordinator)
+  async getActivityLogs() {
+    return this.adminService.getActivityLogs();
   }
 }

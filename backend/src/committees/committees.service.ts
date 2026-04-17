@@ -247,4 +247,58 @@ export class CommitteesService {
       );
     }
   }
+
+  async removeJuryMember(
+    committeeId: string,
+    userId: string,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<void> {
+    try {
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
+
+      if (!committee) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      const memberExists = (committee.jury as Array<{ userId: string }>).some(
+        (j) => j.userId === userId,
+      );
+
+      if (!memberExists) {
+        throw new NotFoundException(
+          `Jury member with user ID '${userId}' not found in committee '${committeeId}'.`,
+        );
+      }
+
+      await this.committeeModel
+        .findOneAndUpdate({ id: committeeId }, { $pull: { jury: { userId } } })
+        .exec();
+
+      this.logger.log({
+        event: 'jury_member_removed',
+        committeeId,
+        removedUserId: userId,
+        coordinatorId,
+        correlationId,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({
+        event: 'jury_member_remove_failed',
+        committeeId,
+        userId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to remove jury member due to an unexpected error.',
+      );
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -17,6 +18,7 @@ import {
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -177,6 +179,43 @@ export class CommitteesController {
     return this.committeesService.listCommitteeGroups(
       committeeId,
       query,
+      correlationId,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'removeJuryMember',
+    summary: 'Remove a jury member from a committee (COORDINATOR only)',
+  })
+  @ApiNoContentResponse({ description: 'Jury member removed successfully' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
+  @ApiNotFoundResponse({
+    description: 'Committee or jury assignment not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Delete(':committeeId/jury-members/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeJuryMember(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Request() req: RequestWithUser,
+  ): Promise<void> {
+    const coordinatorId =
+      req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+    await this.committeesService.removeJuryMember(
+      committeeId,
+      userId,
+      coordinatorId,
       correlationId,
     );
   }

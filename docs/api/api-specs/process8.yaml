@@ -84,12 +84,6 @@ paths:
           schema:
             type: string
             format: uuid
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/FetchStoryPointsRequest"
       responses:
         "200":
           description: Story points fetched and verified successfully
@@ -153,10 +147,10 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /groups/{groupId}/sprints/{sprintId}/story-points/override:
+  /groups/{groupId}/sprints/{sprintId}/story-points/{studentId}:
     patch:
       tags: [story-points]
-      summary: Override story points for a student in a sprint
+      summary: Override story points for a specific student in a sprint
       operationId: overrideStoryPoints
       security:
         - BearerAuth: []
@@ -167,8 +161,12 @@ paths:
         student in a sprint. Sets source to COORDINATOR_OVERRIDE, which supersedes
         JIRA_GITHUB and MANUAL records for grade calculation.
 
+        **Preconditions (_requires_):**
+        - A story point record MUST already exist in D2 for this (studentId, sprintId).
+
         **Postconditions (_effects_):**
         - Story point record updated in D2 with source: COORDINATOR_OVERRIDE.
+        - COORDINATOR_OVERRIDE cannot be downgraded by a subsequent JIRA_GITHUB fetch.
       parameters:
         - name: groupId
           in: path
@@ -182,6 +180,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The student whose story points are being overridden
       requestBody:
         required: true
         content:
@@ -503,30 +508,15 @@ components:
             $ref: "#/components/schemas/StudentStoryPointRecord"
       required: [groupId, sprintId, records]
 
-    FetchStoryPointsRequest:
-      type: object
-      description: Optional request body. If omitted, uses default fetch for all students in the group.
-      properties:
-        studentIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Optional subset of studentIds to fetch. Defaults to all students in the group.
-
     OverrideStoryPointsRequest:
       type: object
       properties:
-        studentId:
-          type: string
-          format: uuid
-          description: The student whose story points are being overridden
         completedPoints:
           type: integer
           minimum: 0
           description: Override value for completed story points
           example: 18
-      required: [studentId, completedPoints]
+      required: [completedPoints]
 
     # ── Committee Grade ───────────────────────────
     CommitteeGradeResult:

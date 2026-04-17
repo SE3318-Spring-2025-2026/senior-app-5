@@ -46,6 +46,7 @@ describe('CommitteesController', () => {
       listCommitteeGroups: jest.fn(),
       listCommitteeAdvisors: jest.fn(),
       listCommittees: jest.fn(),
+      removeJuryMember: jest.fn(),
       assignGroupToCommittee: jest.fn(),
     };
 
@@ -748,6 +749,37 @@ describe('CommitteesController', () => {
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
+  // ─── DELETE /committees/:committeeId/jury-members/:userId ────────────────────
+
+  describe('DELETE /committees/:committeeId/jury-members/:userId', () => {
+    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+    it('happy path: valid COORDINATOR + existing jury member → returns undefined (204)', async () => {
+      jest.spyOn(service, 'removeJuryMember').mockResolvedValue(undefined);
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      const result = await controller.removeJuryMember(
+        committeeId,
+        userId,
+        req,
+      );
+
+      expect(result).toBeUndefined();
+      expect(service.removeJuryMember).toHaveBeenCalledWith(
+        committeeId,
+        userId,
+        coordinatorUser.userId,
+        undefined,
+      );
+    });
+
+    it('committee not found → propagates NotFoundException (404)', async () => {
+      jest
+        .spyOn(service, 'removeJuryMember')
+        .mockRejectedValue(
+          new NotFoundException(
+            `Committee with ID '${committeeId}' not found.`,
   describe('POST /committees/:committeeId/groups', () => {
     const committeeId = mockCommittee.id;
     const payload = { groupId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' };
@@ -801,6 +833,17 @@ describe('CommitteesController', () => {
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
+        controller.removeJuryMember(committeeId, userId, req),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('jury member not found → propagates NotFoundException (404)', async () => {
+      jest
+        .spyOn(service, 'removeJuryMember')
+        .mockRejectedValue(
+          new NotFoundException(
+            `Jury member with user ID '${userId}' not found in committee '${committeeId}'.`,
+          ),
         controller.assignGroupToCommittee(committeeId, payload, req),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
@@ -814,6 +857,17 @@ describe('CommitteesController', () => {
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
+        controller.removeJuryMember(committeeId, userId, req),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('repository failure → propagates InternalServerErrorException (500)', async () => {
+      jest
+        .spyOn(service, 'removeJuryMember')
+        .mockRejectedValue(
+          new InternalServerErrorException(
+            'Failed to remove jury member due to an unexpected error.',
+          ),
         controller.assignGroupToCommittee(committeeId, payload, req),
       ).rejects.toMatchObject({ status: 423 });
     });
@@ -838,6 +892,25 @@ describe('CommitteesController', () => {
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
+        controller.removeJuryMember(committeeId, userId, req),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('non-COORDINATOR role via RolesGuard → throws ForbiddenException', () => {
+      const reflector = new Reflector();
+      const rolesGuard = new RolesGuard(reflector);
+
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
+
+      const ctx = {
+        switchToHttp: () => ({ getRequest: () => ({ user: studentUser }) }),
+        getHandler: () => ({}),
+        getClass: () => ({}),
+      } as unknown as ExecutionContext;
+
+      expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
         controller.assignGroupToCommittee(committeeId, payload, req),
       ).rejects.toBeInstanceOf(NotFoundException);
     });

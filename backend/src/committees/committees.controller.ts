@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -18,6 +19,7 @@ import {
   ApiConflictResponse,
   ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -222,6 +224,10 @@ export class CommitteesController {
 
   @ApiBearerAuth('access-token')
   @ApiOperation({
+    operationId: 'removeJuryMember',
+    summary: 'Remove a jury member from a committee (COORDINATOR only)',
+  })
+  @ApiNoContentResponse({ description: 'Jury member removed successfully' })
     operationId: 'assignGroupToCommittee',
     summary: 'Assign a group to a committee (COORDINATOR only)',
   })
@@ -233,6 +239,21 @@ export class CommitteesController {
   @ApiForbiddenResponse({
     description: 'Valid token but insufficient permissions',
   })
+  @ApiNotFoundResponse({
+    description: 'Committee or jury assignment not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Delete(':committeeId/jury-members/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeJuryMember(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Request() req: RequestWithUser,
+  ): Promise<void> {
   @ApiNotFoundResponse({ description: 'Committee or group not found' })
   @ApiConflictResponse({
     description: 'Group is already assigned to a committee',
@@ -253,6 +274,9 @@ export class CommitteesController {
       req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
     const correlationId =
       (req.headers['x-correlation-id'] as string) ?? undefined;
+    await this.committeesService.removeJuryMember(
+      committeeId,
+      userId,
 
     return this.committeesService.assignGroupToCommittee(
       committeeId,

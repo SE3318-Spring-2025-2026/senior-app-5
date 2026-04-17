@@ -34,6 +34,7 @@ describe('CommitteesService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     countDocuments: jest.fn(),
+    findOneAndUpdate: jest.fn(),
     updateOne: jest.fn(),
   };
 
@@ -633,6 +634,106 @@ describe('CommitteesService', () => {
         expect.any(Object),
       );
       expect(mockCommitteeModel.countDocuments).toHaveBeenCalledWith({});
+  // ─── removeJuryMember ─────────────────────────────────────────────────────
+
+  describe('removeJuryMember', () => {
+    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const coordinatorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+    it('happy path: jury member exists → member removed, returns void', async () => {
+      const committeeWithMember = {
+        ...mockCommittee,
+        id: committeeId,
+        jury: [{ userId, name: 'Jury User' }],
+      };
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(committeeWithMember),
+      });
+      mockCommitteeModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(committeeWithMember),
+      });
+
+      const result = await service.removeJuryMember(
+        committeeId,
+        userId,
+        coordinatorId,
+        'corr-xyz',
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockCommitteeModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { id: committeeId },
+        { $pull: { jury: { userId } } },
+      );
+    });
+
+    it('failure: committee not found → throws NotFoundException (404)', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.removeJuryMember(committeeId, userId, coordinatorId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('failure: committee not found → error message includes committeeId', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.removeJuryMember(committeeId, userId, coordinatorId),
+      ).rejects.toThrow(`Committee with ID '${committeeId}' not found.`);
+    });
+
+    it('failure: jury member not in committee → throws NotFoundException (404)', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, jury: [] }),
+      });
+
+      await expect(
+        service.removeJuryMember(committeeId, userId, coordinatorId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('failure: jury member not in committee → error message includes userId', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest
+          .fn()
+          .mockResolvedValue({ ...mockCommittee, id: committeeId, jury: [] }),
+      });
+
+      await expect(
+        service.removeJuryMember(committeeId, userId, coordinatorId),
+      ).rejects.toThrow(
+        `Jury member with user ID '${userId}' not found in committee '${committeeId}'.`,
+      );
+    });
+
+    it('failure: repository throws on findOne → throws InternalServerErrorException (500)', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockRejectedValue(new Error('DB timeout')),
+      });
+
+      await expect(
+        service.removeJuryMember(committeeId, userId, coordinatorId),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('failure: repository throws → error message is generic to caller', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockRejectedValue(new Error('DB timeout')),
+      });
+
+      await expect(
+        service.removeJuryMember(committeeId, userId, coordinatorId),
+      ).rejects.toThrow(
+        'Failed to remove jury member due to an unexpected error.',
+      );
   describe('assignGroupToCommittee', () => {
     const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const groupId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';

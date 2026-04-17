@@ -1,6 +1,12 @@
 import apiClient from './apiClient';
 import apiConfig from '../config/api';
 
+
+export async function getMySubmissions() {
+  const response = await apiClient.get(apiConfig.endpoints.submissions.mine);
+  return response.data;
+}
+
 export async function uploadSubmissionDocument(submissionId, file, onUploadProgress) {
   const formData = new FormData();
   formData.append('file', file);

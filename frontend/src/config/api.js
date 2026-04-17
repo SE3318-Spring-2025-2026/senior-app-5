@@ -20,6 +20,7 @@ export const apiConfig = {
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
     submissions: {
+      mine: '/submissions/me',
       uploadDocument: (submissionId) => `/submissions/${submissionId}/documents`,
     },
     activityLogs: '/admin/activity',

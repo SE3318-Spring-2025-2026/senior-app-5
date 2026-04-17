@@ -82,6 +82,7 @@ export default function SubmissionFileUpload({ submissionId, onUploadSuccess }) 
       setErrorMessage(getFriendlyError(error));
     } finally {
       setIsUploading(false);
+      setProgress(0);
     }
   };
 

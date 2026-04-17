@@ -19,6 +19,16 @@ export const apiConfig = {
     invites: '/invites/deliver',
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
+    schedules: '/schedules',
+    schedulesActive: '/schedules/active',
+    committees: '/committees',
+    committeeById: (committeeId) => `/committees/${committeeId}`,
+    committeeJuryMembers: (committeeId) => `/committees/${committeeId}/jury-members`,
+    committeeJuryMemberByUser: (committeeId, userId) => `/committees/${committeeId}/jury-members/${userId}`,
+    committeeAdvisors: (committeeId) => `/committees/${committeeId}/advisors`,
+    committeeAdvisorByUser: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}`,
+    committeeGroups: (committeeId) => `/committees/${committeeId}/groups`,
+    committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
   },
 };
 

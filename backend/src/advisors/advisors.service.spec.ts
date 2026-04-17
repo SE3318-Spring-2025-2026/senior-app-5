@@ -285,6 +285,10 @@ describe('AdvisorsService', () => {
       endDatetime: '2026-04-14T12:00:00.000Z',
     });
 
+    expect(mockScheduleModel.updateMany).toHaveBeenCalledWith(
+      { phase: SchedulePhase.ADVISOR_SELECTION, isActive: true },
+      { $set: { isActive: false } },
+    );
     expect(mockScheduleModel.create).toHaveBeenCalledWith({
       coordinatorId: 'coordinator-1',
       phase: SchedulePhase.ADVISOR_SELECTION,
@@ -300,6 +304,53 @@ describe('AdvisorsService', () => {
       endDatetime: '2026-04-14T12:00:00.000Z',
       createdAt: '2026-04-14T09:00:00.000Z',
     });
+  });
+
+  it('should supersede previous schedule only for the same phase', async () => {
+    mockScheduleModel.create.mockResolvedValue({
+      scheduleId: 'schedule-2',
+      coordinatorId: 'coordinator-1',
+      phase: SchedulePhase.COMMITTEE_ASSIGNMENT,
+      startDatetime: new Date('2026-05-01T08:00:00.000Z'),
+      endDatetime: new Date('2026-05-01T18:00:00.000Z'),
+      createdAt: new Date('2026-04-30T10:00:00.000Z'),
+    });
+
+    await service.setSchedule({
+      coordinatorId: 'coordinator-1',
+      phase: SchedulePhase.COMMITTEE_ASSIGNMENT,
+      startDatetime: '2026-05-01T08:00:00.000Z',
+      endDatetime: '2026-05-01T18:00:00.000Z',
+    });
+
+    expect(mockScheduleModel.updateMany).toHaveBeenCalledWith(
+      { phase: SchedulePhase.COMMITTEE_ASSIGNMENT, isActive: true },
+      { $set: { isActive: false } },
+    );
+  });
+
+  it('should reject schedule when coordinatorId is empty', async () => {
+    await expect(
+      service.setSchedule({
+        coordinatorId: '',
+        phase: SchedulePhase.ADVISOR_SELECTION,
+        startDatetime: '2026-04-14T10:00:00.000Z',
+        endDatetime: '2026-04-14T12:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('should map repository failure in setSchedule to internal server error', async () => {
+    mockScheduleModel.create.mockRejectedValue(new Error('db failure'));
+
+    await expect(
+      service.setSchedule({
+        coordinatorId: 'coordinator-1',
+        phase: SchedulePhase.ADVISOR_SELECTION,
+        startDatetime: '2026-04-14T10:00:00.000Z',
+        endDatetime: '2026-04-14T12:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 
   it('should reject schedule when endDatetime is not after startDatetime', async () => {

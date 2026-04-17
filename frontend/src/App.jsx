@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 import GroupLifecyclePage from './pages/GroupLifecyclePage';
+import CoordinatorManagementPage from './pages/CoordinatorManagementPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -33,6 +34,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
+            <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
           </Route>
 

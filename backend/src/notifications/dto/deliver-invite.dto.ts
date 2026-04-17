@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsMongoId, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class DeliverInviteDto {
@@ -7,7 +7,7 @@ export class DeliverInviteDto {
     description: 'MongoDB ObjectId of the invite recipient user',
   })
   @IsNotEmpty()
-  @IsString()
+  @IsMongoId()
   recipientUserId: string;
 
   @ApiProperty({
@@ -15,6 +15,6 @@ export class DeliverInviteDto {
     description: 'MongoDB ObjectId of the group to invite the user to',
   })
   @IsNotEmpty()
-  @IsString()
+  @IsMongoId()
   groupId: string;
 }

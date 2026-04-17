@@ -60,6 +60,7 @@ function EntitySearchSelect({
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState(null)
   const [error, setError] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
 
   const containerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -78,6 +79,7 @@ function EntitySearchSelect({
       setResults([])
       setLoading(false)
       setError('')
+      setHasSearched(false)
       return undefined
     }
 
@@ -94,6 +96,7 @@ function EntitySearchSelect({
         setResults(data)
         setOpen(true)
         setError('')
+        setHasSearched(true)
       } catch (err) {
         const message =
           err.response?.data?.message || err.message || 'Search failed.'
@@ -173,14 +176,17 @@ function EntitySearchSelect({
           </button>
         )}
         <input
-          type="hidden"
+          type="text"
           value={value ?? ''}
           readOnly
           required={required}
+          tabIndex={-1}
+          aria-hidden="true"
+          style={{ opacity: 0, width: 0, height: 0, position: 'absolute', pointerEvents: 'none' }}
         />
       </div>
 
-      {open && !selected && (loading || results.length > 0 || error) && (
+      {open && !selected && (loading || hasSearched || error) && (
         <ul className={styles.dropdown} role="listbox">
           {loading && <li className={styles.status}>Searching…</li>}
           {!loading && error && (

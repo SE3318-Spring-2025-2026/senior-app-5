@@ -42,6 +42,7 @@ interface GithubUserResponse {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary:
       'Search users by a whitelisted field (email, role, _id). Returns matching users without password hash.',
@@ -49,6 +50,7 @@ export class UsersController {
   @ApiQuery({ name: 'field', enum: ['email', 'role', '_id'], required: true })
   @ApiQuery({ name: 'value', type: String, required: true })
   @ApiQuery({ name: 'limit', type: Number, required: false })
+  @UseGuards(AuthGuard('jwt'))
   @Get('search')
   async searchUsers(
     @Query('field') field: string,

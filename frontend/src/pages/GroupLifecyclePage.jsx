@@ -115,7 +115,7 @@ function GroupLifecyclePage() {
       const response = await apiClient.get(apiConfig.endpoints.advisorValidation)
       setValidationResults(response.data || [])
       const message = response.data?.length
-n        ? `${response.data.length} group(s) require advisor validation.`
+        ? `${response.data.length} group(s) require advisor validation.`
         : 'All groups have advisor assignments.'
       setAdminStatus({ loading: false, message, error: '' })
       addLog('Validated advisor assignment status')

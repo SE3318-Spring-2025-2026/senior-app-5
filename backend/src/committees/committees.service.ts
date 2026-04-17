@@ -22,6 +22,11 @@ import {
   CommitteeAdvisorPageDto,
 } from './dto/committee-advisor-page.dto';
 import { Group, GroupDocument } from '../groups/group.entity';
+import { ListCommitteesQueryDto } from './dto/list-committees-query.dto';
+import {
+  CommitteeListItemDto,
+  CommitteePageDto,
+} from './dto/committee-page.dto';
 import {
   Schedule,
   ScheduleDocument,
@@ -42,6 +47,60 @@ export class CommitteesService {
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
   ) {}
+
+  async listCommittees(
+    query: ListCommitteesQueryDto,
+    callerRole: string,
+    correlationId?: string,
+  ): Promise<CommitteePageDto> {
+    try {
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+      const skip = (page - 1) * limit;
+
+      const filter: Record<string, unknown> = {};
+      if (query.name) {
+        filter['name'] = { $regex: query.name, $options: 'i' };
+      }
+
+      const [committees, total] = await Promise.all([
+        this.committeeModel
+          .find(filter, { jury: 0, advisors: 0, groups: 0 })
+          .skip(skip)
+          .limit(limit)
+          .exec(),
+        this.committeeModel.countDocuments(filter).exec(),
+      ]);
+
+      const data: CommitteeListItemDto[] = committees.map((c) => ({
+        id: c.id as string,
+        name: c.name,
+        createdAt: (c as any).createdAt as Date,
+        updatedAt: ((c as any).updatedAt as Date | null) ?? null,
+      }));
+
+      this.logger.log({
+        event: 'committees_listed',
+        callerRole,
+        page,
+        limit,
+        nameFilter: query.name ?? null,
+        resultCount: data.length,
+        correlationId,
+      });
+
+      return { data, total, page, limit };
+    } catch (error) {
+      this.logger.error({
+        event: 'committees_list_failed',
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to retrieve committees due to an unexpected error.',
+      );
+    }
+  }
 
   async createCommittee(
     dto: CreateCommitteeDto,

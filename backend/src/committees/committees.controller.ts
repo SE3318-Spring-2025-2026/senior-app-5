@@ -39,6 +39,8 @@ import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.d
 import { CommitteeGroupPageDto } from './dto/committee-group-page.dto';
 import { ListCommitteeAdvisorsQueryDto } from './dto/list-committee-advisors-query.dto';
 import { CommitteeAdvisorPageDto } from './dto/committee-advisor-page.dto';
+import { ListCommitteesQueryDto } from './dto/list-committees-query.dto';
+import { CommitteePageDto } from './dto/committee-page.dto';
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
 
@@ -50,6 +52,39 @@ interface RequestWithUser extends ExpressRequest {
 @Controller('committees')
 export class CommitteesController {
   constructor(private readonly committeesService: CommitteesService) {}
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'listCommittees',
+    summary: 'List committees with pagination (COORDINATOR only)',
+  })
+  @ApiOkResponse({
+    description: 'Committees returned successfully',
+    type: CommitteePageDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  async listCommittees(
+    @Query() query: ListCommitteesQueryDto,
+    @Request() req: RequestWithUser,
+  ): Promise<CommitteePageDto> {
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.listCommittees(
+      query,
+      req.user.role,
+      correlationId,
+    );
+  }
 
   @ApiBearerAuth('access-token')
   @ApiOperation({

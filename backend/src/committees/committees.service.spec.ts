@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import {
+  ConflictException,
   InternalServerErrorException,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { CommitteesService } from './committees.service';
 import { Committee } from './schemas/committee.schema';
@@ -10,6 +12,7 @@ import { Group } from '../groups/group.entity';
 import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
 import { ListCommitteeAdvisorsQueryDto } from './dto/list-committee-advisors-query.dto';
 import { ListCommitteesQueryDto } from './dto/list-committees-query.dto';
+import { Schedule } from '../advisors/schemas/schedule.schema';
 
 describe('CommitteesService', () => {
   let service: CommitteesService;
@@ -31,9 +34,14 @@ describe('CommitteesService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     countDocuments: jest.fn(),
+    updateOne: jest.fn(),
   };
 
   const mockGroupModel = {
+    findOne: jest.fn(),
+  };
+
+  const mockScheduleModel = {
     findOne: jest.fn(),
   };
 
@@ -50,6 +58,10 @@ describe('CommitteesService', () => {
         {
           provide: getModelToken(Group.name),
           useValue: mockGroupModel,
+        },
+        {
+          provide: getModelToken(Schedule.name),
+          useValue: mockScheduleModel,
         },
       ],
     }).compile();
@@ -621,6 +633,181 @@ describe('CommitteesService', () => {
         expect.any(Object),
       );
       expect(mockCommitteeModel.countDocuments).toHaveBeenCalledWith({});
+  describe('assignGroupToCommittee', () => {
+    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const groupId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const advisorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+    function mockOpenSchedule() {
+      const start = new Date(Date.now() - 10 * 60 * 1000);
+      const end = new Date(Date.now() + 10 * 60 * 1000);
+      mockScheduleModel.findOne.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          lean: jest.fn().mockReturnValue({
+            exec: jest
+              .fn()
+              .mockResolvedValue({ startDatetime: start, endDatetime: end }),
+          }),
+        }),
+      });
+    }
+
+    it('happy path: advisor auto-linked when missing', async () => {
+      mockOpenSchedule();
+      mockCommitteeModel.findOne
+        .mockReturnValueOnce({
+          exec: jest
+            .fn()
+            .mockResolvedValue({ ...mockCommittee, id: committeeId, advisors: [], groups: [] }),
+        })
+        .mockReturnValueOnce({
+          lean: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+        });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ groupId, assignedAdvisorId: advisorId }),
+        }),
+      });
+      mockCommitteeModel.updateOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+      });
+
+      const result = await service.assignGroupToCommittee(
+        committeeId,
+        { groupId },
+        'coord-1',
+      );
+
+      expect(result.groupId).toBe(groupId);
+      expect(result.assignedByUserId).toBe('coord-1');
+      expect(result.assignedAt).toBeInstanceOf(Date);
+      expect(mockCommitteeModel.updateOne).toHaveBeenCalled();
+    });
+
+    it('happy path: advisor already linked -> no duplicate advisor link', async () => {
+      mockOpenSchedule();
+      mockCommitteeModel.findOne
+        .mockReturnValueOnce({
+          exec: jest.fn().mockResolvedValue({
+            ...mockCommittee,
+            id: committeeId,
+            advisors: [{ advisorId, assignedAt: now, assignedByUserId: 'coord-0' }],
+            groups: [],
+          }),
+        })
+        .mockReturnValueOnce({
+          lean: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+        });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ groupId, assignedAdvisorId: advisorId }),
+        }),
+      });
+      mockCommitteeModel.updateOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+      });
+
+      await service.assignGroupToCommittee(committeeId, { groupId }, 'coord-1');
+
+      const updatePayload = mockCommitteeModel.updateOne.mock.calls[0][1].$set;
+      expect(updatePayload.advisors).toHaveLength(1);
+      expect(updatePayload.advisors[0].advisorId).toBe(advisorId);
+    });
+
+    it('failure: group already assigned -> 409', async () => {
+      mockOpenSchedule();
+      mockCommitteeModel.findOne
+        .mockReturnValueOnce({
+          exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId }),
+        })
+        .mockReturnValueOnce({
+          lean: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue({ id: 'existing-committee' }),
+          }),
+        });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ groupId, assignedAdvisorId: advisorId }),
+        }),
+      });
+
+      await expect(
+        service.assignGroupToCommittee(committeeId, { groupId }, 'coord-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('failure: group has no advisor -> 422', async () => {
+      mockOpenSchedule();
+      mockCommitteeModel.findOne.mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId }),
+      });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ groupId, assignedAdvisorId: null }),
+        }),
+      });
+
+      await expect(
+        service.assignGroupToCommittee(committeeId, { groupId }, 'coord-1'),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('failure: schedule window closed -> 423', async () => {
+      mockScheduleModel.findOne.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          lean: jest.fn().mockReturnValue({
+            exec: jest
+              .fn()
+              .mockResolvedValue({
+                startDatetime: new Date(Date.now() - 20 * 60 * 1000),
+                endDatetime: new Date(Date.now() - 10 * 60 * 1000),
+              }),
+          }),
+        }),
+      });
+
+      await expect(
+        service.assignGroupToCommittee(committeeId, { groupId }, 'coord-1'),
+      ).rejects.toMatchObject({ status: 423 });
+    });
+
+    it('failure: committee not found -> 404', async () => {
+      mockOpenSchedule();
+      mockCommitteeModel.findOne.mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.assignGroupToCommittee(committeeId, { groupId }, 'coord-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('failure: group not found -> 404', async () => {
+      mockOpenSchedule();
+      mockCommitteeModel.findOne.mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId }),
+      });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+      });
+
+      await expect(
+        service.assignGroupToCommittee(committeeId, { groupId }, 'coord-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('failure: repository throws -> 500', async () => {
+      mockScheduleModel.findOne.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          lean: jest.fn().mockReturnValue({
+            exec: jest.fn().mockRejectedValue(new Error('db error')),
+          }),
+        }),
+      });
+
+      await expect(
+        service.assignGroupToCommittee(committeeId, { groupId }, 'coord-1'),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
     });
   });
 });

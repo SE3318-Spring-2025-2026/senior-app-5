@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  ConflictException,
   ExecutionContext,
   ForbiddenException,
+  HttpException,
   InternalServerErrorException,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
@@ -43,6 +46,7 @@ describe('CommitteesController', () => {
       listCommitteeGroups: jest.fn(),
       listCommitteeAdvisors: jest.fn(),
       listCommittees: jest.fn(),
+      assignGroupToCommittee: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -744,6 +748,113 @@ describe('CommitteesController', () => {
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
+  describe('POST /committees/:committeeId/groups', () => {
+    const committeeId = mockCommittee.id;
+    const payload = { groupId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' };
+
+    it('valid COORDINATOR, valid body -> 201 with CommitteeGroupResponse', async () => {
+      jest.spyOn(service, 'assignGroupToCommittee').mockResolvedValue({
+        groupId: payload.groupId,
+        assignedAt: now,
+        assignedByUserId: coordinatorUser.userId,
+      });
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      const result = await controller.assignGroupToCommittee(committeeId, payload, req);
+
+      expect(result).toEqual({
+        groupId: payload.groupId,
+        assignedAt: now,
+        assignedByUserId: coordinatorUser.userId,
+      });
+    });
+
+    it('delegates to service with committeeId, body, coordinatorId, correlationId', async () => {
+      jest.spyOn(service, 'assignGroupToCommittee').mockResolvedValue({
+        groupId: payload.groupId,
+        assignedAt: now,
+        assignedByUserId: coordinatorUser.userId,
+      });
+
+      const req = {
+        user: coordinatorUser,
+        headers: { 'x-correlation-id': 'corr-38' },
+      } as any;
+      await controller.assignGroupToCommittee(committeeId, payload, req);
+
+      expect(service.assignGroupToCommittee).toHaveBeenCalledWith(
+        committeeId,
+        payload,
+        coordinatorUser.userId,
+        'corr-38',
+      );
+    });
+
+    it('group has no advisor -> propagates 422', async () => {
+      jest
+        .spyOn(service, 'assignGroupToCommittee')
+        .mockRejectedValue(
+          new UnprocessableEntityException(
+            'Group does not have a confirmed advisor assignment.',
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.assignGroupToCommittee(committeeId, payload, req),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('schedule window closed -> propagates 423', async () => {
+      jest
+        .spyOn(service, 'assignGroupToCommittee')
+        .mockRejectedValue(
+          new HttpException('Committee assignment schedule window is closed.', 423),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.assignGroupToCommittee(committeeId, payload, req),
+      ).rejects.toMatchObject({ status: 423 });
+    });
+
+    it('group already assigned -> propagates 409', async () => {
+      jest
+        .spyOn(service, 'assignGroupToCommittee')
+        .mockRejectedValue(new ConflictException('Group is already assigned to a committee.'));
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.assignGroupToCommittee(committeeId, payload, req),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('committee not found -> propagates 404', async () => {
+      jest
+        .spyOn(service, 'assignGroupToCommittee')
+        .mockRejectedValue(
+          new NotFoundException(`Committee with ID '${committeeId}' not found.`),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.assignGroupToCommittee(committeeId, payload, req),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('repository failure -> propagates 500', async () => {
+      jest
+        .spyOn(service, 'assignGroupToCommittee')
+        .mockRejectedValue(
+          new InternalServerErrorException(
+            'Failed to assign group to committee due to an unexpected error.',
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.assignGroupToCommittee(committeeId, payload, req),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
     });
   });
 });

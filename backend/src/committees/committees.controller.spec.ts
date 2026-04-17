@@ -42,6 +42,7 @@ describe('CommitteesController', () => {
       getCommitteeByGroupId: jest.fn(),
       listCommitteeGroups: jest.fn(),
       listCommitteeAdvisors: jest.fn(),
+      listCommittees: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -616,6 +617,128 @@ describe('CommitteesController', () => {
 
       const ctx = {
         switchToHttp: () => ({ getRequest: () => ({ user: studentUser }) }),
+        getHandler: () => ({}),
+        getClass: () => ({}),
+      } as unknown as ExecutionContext;
+
+      expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
+    });
+  });
+
+  // ─── GET /committees (listCommittees) ─────────────────────────────────────
+
+  describe('GET /committees', () => {
+    const mockPage = {
+      data: [
+        { id: 'uuid-1', name: 'Committee 1', createdAt: now, updatedAt: null },
+        { id: 'uuid-2', name: 'Committee 2', createdAt: now, updatedAt: null },
+      ],
+      total: 2,
+      page: 1,
+      limit: 20,
+    };
+
+    it('happy path: valid COORDINATOR, default params → 200 with CommitteePage shape', async () => {
+      jest.spyOn(service, 'listCommittees').mockResolvedValue(mockPage);
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      const result = await controller.listCommittees({ page: 1, limit: 20 } as any, req);
+
+      expect(result).toMatchObject({
+        data: expect.any(Array),
+        total: 2,
+        page: 1,
+        limit: 20,
+      });
+    });
+
+    it('delegates to service with correct query, role, correlationId', async () => {
+      jest.spyOn(service, 'listCommittees').mockResolvedValue(mockPage);
+
+      const query = { page: 1, limit: 20, name: 'Test' } as any;
+      const req = {
+        user: coordinatorUser,
+        headers: { 'x-correlation-id': 'corr-28' },
+      } as any;
+      await controller.listCommittees(query, req);
+
+      expect(service.listCommittees).toHaveBeenCalledWith(
+        query,
+        Role.Coordinator,
+        'corr-28',
+      );
+    });
+
+    it('empty: no committees → data: [], total: 0', async () => {
+      jest.spyOn(service, 'listCommittees').mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+      });
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      const result = await controller.listCommittees({ page: 1, limit: 20 } as any, req);
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('items do not contain jury, advisors, or groups arrays', async () => {
+      jest.spyOn(service, 'listCommittees').mockResolvedValue(mockPage);
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      const result = await controller.listCommittees({ page: 1, limit: 20 } as any, req);
+
+      result.data.forEach((item: any) => {
+        expect(item).not.toHaveProperty('jury');
+        expect(item).not.toHaveProperty('advisors');
+        expect(item).not.toHaveProperty('groups');
+      });
+    });
+
+    it('repository failure → propagates InternalServerErrorException (500)', async () => {
+      jest
+        .spyOn(service, 'listCommittees')
+        .mockRejectedValue(
+          new InternalServerErrorException(
+            'Failed to retrieve committees due to an unexpected error.',
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.listCommittees({ page: 1, limit: 20 } as any, req),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('non-COORDINATOR role via RolesGuard → throws ForbiddenException', () => {
+      const reflector = new Reflector();
+      const rolesGuard = new RolesGuard(reflector);
+
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
+
+      const ctx = {
+        switchToHttp: () => ({ getRequest: () => ({ user: advisorUser }) }),
+        getHandler: () => ({}),
+        getClass: () => ({}),
+      } as unknown as ExecutionContext;
+
+      expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
+    });
+
+    it('TEAM_LEADER role via RolesGuard → throws ForbiddenException (403)', () => {
+      const reflector = new Reflector();
+      const rolesGuard = new RolesGuard(reflector);
+
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue([Role.Coordinator]);
+
+      const ctx = {
+        switchToHttp: () => ({ getRequest: () => ({ user: teamLeaderUser }) }),
         getHandler: () => ({}),
         getClass: () => ({}),
       } as unknown as ExecutionContext;

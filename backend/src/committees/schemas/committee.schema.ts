@@ -23,6 +23,15 @@ export class Committee {
 
   @Prop({ type: [JuryMemberSchema], default: [] })
   juryMembers: JuryMember[];
+
+  @Prop({ type: String, default: null })
+  advisorId?: string | null;
+
+  @Prop({ type: Date, default: null })
+  advisorAssignedAt?: Date | null;
+
+  @Prop({ type: String, default: null })
+  advisorAssignedBy?: string | null;
 }
 
 export const CommitteeSchema = SchemaFactory.createForClass(Committee);

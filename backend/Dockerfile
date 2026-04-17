@@ -3,6 +3,6 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npm run build
+RUN npx @nestjs/cli build
 EXPOSE 3001
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/src/main.js"]

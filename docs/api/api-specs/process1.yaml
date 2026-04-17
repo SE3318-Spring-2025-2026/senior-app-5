@@ -262,6 +262,48 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+  
+  /deliverables/{deliverableId}/rubrics/{rubricId}:
+    delete:
+      tags: [rubrics]
+      summary: Delete an evaluation rubric
+      operationId: deleteRubric
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Deletes a specific rubric from D1.
+        
+        **CRITICAL RULE (Veri Bütünlüğü Koruması):** A rubric CANNOT be deleted if it is already referenced by any existing `SprintEvaluation` in D2. 
+        If it has been used to grade students, the backend MUST reject the deletion and return a 409 Conflict. 
+        In such cases, the rubric should just remain `isActive: false` as historical data.
+      parameters:
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: rubricId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Rubric successfully deleted (No Content)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict – Rubric is already in use by sprint evaluations and cannot be deleted.
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   # ─────────────────────────────────────────────
   # 1.3 Map Sprint to Deliverables

@@ -16,6 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiConflictResponse,
   ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
   ApiNoContentResponse,
@@ -23,6 +24,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnprocessableEntityResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
@@ -37,6 +39,8 @@ import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.d
 import { CommitteeGroupPageDto } from './dto/committee-group-page.dto';
 import { ListCommitteeAdvisorsQueryDto } from './dto/list-committee-advisors-query.dto';
 import { CommitteeAdvisorPageDto } from './dto/committee-advisor-page.dto';
+import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
+import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
 
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
@@ -189,6 +193,13 @@ export class CommitteesController {
     summary: 'Remove a jury member from a committee (COORDINATOR only)',
   })
   @ApiNoContentResponse({ description: 'Jury member removed successfully' })
+    operationId: 'assignGroupToCommittee',
+    summary: 'Assign a group to a committee (COORDINATOR only)',
+  })
+  @ApiCreatedResponse({
+    description: 'Group assigned successfully',
+    type: CommitteeGroupResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({
     description: 'Valid token but insufficient permissions',
@@ -208,6 +219,22 @@ export class CommitteesController {
     @Param('userId', new ParseUUIDPipe()) userId: string,
     @Request() req: RequestWithUser,
   ): Promise<void> {
+  @ApiNotFoundResponse({ description: 'Committee or group not found' })
+  @ApiConflictResponse({
+    description: 'Group is already assigned to a committee',
+  })
+  @ApiUnprocessableEntityResponse({
+    description: 'Group does not have a confirmed advisor assignment',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Post(':committeeId/groups')
+  @HttpCode(HttpStatus.CREATED)
+  async assignGroupToCommittee(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Body() dto: AssignCommitteeGroupDto,
+    @Request() req: RequestWithUser,
+  ): Promise<CommitteeGroupResponseDto> {
     const coordinatorId =
       req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
     const correlationId =
@@ -215,6 +242,10 @@ export class CommitteesController {
     await this.committeesService.removeJuryMember(
       committeeId,
       userId,
+
+    return this.committeesService.assignGroupToCommittee(
+      committeeId,
+      dto,
       coordinatorId,
       correlationId,
     );

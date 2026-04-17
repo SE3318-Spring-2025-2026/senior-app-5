@@ -30,6 +30,8 @@ A system process is a series of steps performed by users, committees, or the sys
 | Set story point requirements | Frontend, Backend | Sprint ID, Minimum Story Points |
 | Configure sprint weights | Frontend, Backend, Database | Sprint ID, Deliverable ID, Sprint Weight |
 | Map deliverable percentages | Frontend, Backend | Deliverable ID, Deliverable Percentage, Total Percentage |
+| Record Sprint Evaluation | Frontend, Backend | Group ID, SprintID |
+| Record Deliverable Evaluation | Frontend, Backend | Deliverable ID, Deliverable Grade, GroupID |
 
 ---
 

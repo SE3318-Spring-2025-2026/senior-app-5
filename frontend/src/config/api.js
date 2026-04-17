@@ -19,6 +19,7 @@ export const apiConfig = {
     invites: '/invites/deliver',
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
+    activityLogs: '/admin/activity',
   },
 };
 

@@ -17,6 +17,7 @@ import MembersPage from './pages/admin/MembersPage';
 import InvitesPage from './pages/admin/InvitesPage';
 import AdvisorsPage from './pages/admin/AdvisorsPage';
 import SanitizationPage from './pages/admin/SanitizationPage';
+import ActivityPage from './pages/admin/ActivityPage';
 import './App.css';
 
 const RootRedirect = () => {
@@ -59,6 +60,7 @@ function App() {
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
+              <Route path="activity" element={<ActivityPage />} />
             </Route>
           </Route>
 

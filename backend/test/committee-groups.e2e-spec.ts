@@ -18,12 +18,14 @@ describe('Committee Groups (e2e)', () => {
 
   const now = new Date('2025-06-02T12:00:00.000Z');
   const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  const validGroupId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
   const mockCommitteesService = {
     createCommittee: jest.fn(),
     getCommitteeById: jest.fn(),
     getCommitteeByGroupId: jest.fn(),
     listCommitteeGroups: jest.fn(),
+    assignGroupToCommittee: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -125,6 +127,68 @@ describe('Committee Groups (e2e)', () => {
     expect(mockCommitteesService.listCommitteeGroups).toHaveBeenCalledWith(
       committeeId,
       expect.objectContaining({ page: 1, limit: 20 }),
+      undefined,
+    );
+  });
+
+  it('POST No JWT -> 401', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/committees/${committeeId}/groups`)
+      .send({ groupId: validGroupId })
+      .expect(401);
+  });
+
+  it('POST ADVISOR role -> 403', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/committees/${committeeId}/groups`)
+      .set('Authorization', 'Bearer test-token')
+      .set('x-test-role', Role.Professor)
+      .send({ groupId: validGroupId })
+      .expect(403);
+  });
+
+  it('POST TEAM_LEADER role -> 403', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/committees/${committeeId}/groups`)
+      .set('Authorization', 'Bearer test-token')
+      .set('x-test-role', Role.TeamLeader)
+      .send({ groupId: validGroupId })
+      .expect(403);
+  });
+
+  it('POST missing groupId -> 400', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/committees/${committeeId}/groups`)
+      .set('Authorization', 'Bearer test-token')
+      .set('x-test-role', Role.Coordinator)
+      .send({})
+      .expect(400);
+  });
+
+  it('POST valid COORDINATOR, valid body -> 201 with CommitteeGroupResponse', async () => {
+    mockCommitteesService.assignGroupToCommittee.mockResolvedValue({
+      groupId: validGroupId,
+      assignedAt: now,
+      assignedByUserId: 'test-user',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post(`/api/v1/committees/${committeeId}/groups`)
+      .set('Authorization', 'Bearer test-token')
+      .set('x-test-role', Role.Coordinator)
+      .send({ groupId: validGroupId })
+      .expect(201);
+
+    expect(response.body).toEqual({
+      groupId: validGroupId,
+      assignedAt: now.toISOString(),
+      assignedByUserId: 'test-user',
+    });
+
+    expect(mockCommitteesService.assignGroupToCommittee).toHaveBeenCalledWith(
+      committeeId,
+      { groupId: validGroupId },
+      'test-user',
       undefined,
     );
   });

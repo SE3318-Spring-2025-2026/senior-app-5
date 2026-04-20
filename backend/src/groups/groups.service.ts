@@ -1,15 +1,17 @@
-import { Injectable, NotFoundException} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Group, GroupDocument, GroupStatus } from './group.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { Submission } from '../submissions/schemas/submission.schema';
+import { User, UserDocument } from '../users/data/user.schema';
 
 @Injectable()
 export class GroupsService {
   constructor(
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
     @InjectModel(Submission.name) private submissionModel: Model<Submission>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
   async createGroup(createGroupDto: CreateGroupDto): Promise<Group> {
@@ -23,6 +25,31 @@ export class GroupsService {
 
   async findGroupById(groupId: string): Promise<Group | null> {
     return this.groupModel.findOne({ groupId }).exec();
+  }
+
+  async addMember(groupId: string, memberUserId: string) {
+    const group = await this.findGroupById(groupId);
+    if (!group) {
+      throw new NotFoundException(`Group not found for groupId: ${groupId}`);
+    }
+
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(
+        memberUserId,
+        { teamId: groupId },
+        { new: true, select: '-passwordHash' },
+      )
+      .exec();
+
+    if (!updatedUser) {
+      throw new NotFoundException(`User not found for id: ${memberUserId}`);
+    }
+
+    return {
+      groupId,
+      memberUserId,
+      user: updatedUser,
+    };
   }
 
   async validateStatementOfWork(groupId: string) {

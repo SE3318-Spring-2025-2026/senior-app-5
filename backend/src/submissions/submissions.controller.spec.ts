@@ -91,5 +91,16 @@ describe('SubmissionsController', () => {
       const result = await controller.findOne(req as any, mockSubmission._id);
       expect(result).toEqual(mockSubmission);
     });
+
+    it('should throw ForbiddenException if Student tries to view another group\'s submission', async () => {
+      const req = { user: { role: 'Student', groupId: 'group-123' } };
+      const mockSubmission = { _id: '64f1a2b3c4d5e6f7a8b9c0d1', groupId: 'different-group' };
+      
+      mockSubmissionsService.findOne.mockResolvedValue(mockSubmission);
+
+      await expect(controller.findOne(req as any, mockSubmission._id)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
   });
 });

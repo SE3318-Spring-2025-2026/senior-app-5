@@ -57,6 +57,9 @@ export class SubmissionsService {
   async getCompleteness(submissionId: string) {
     const submission = await this.findById(submissionId);
     const phase = await this.phasesService.findByPhaseId(submission.phaseId);
+    if (!phase) {
+      throw new NotFoundException(`Phase with ID ${submission.phaseId} not found.`);
+    }
     const missingFields: string[] = [];
     const requiredFields = phase.requiredFields || [];
     for (const field of requiredFields) {

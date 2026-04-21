@@ -35,4 +35,22 @@ export class SubmissionsService {
     };
   }
 
+  async findAll(groupId?: string) {
+    // If the groupId parameter is included, find only that group; if not, find all of them.
+    const query = groupId ? { groupId } : {};
+    
+    // timestamps: Since it is true, we arrange the newest ones at the top according to the createdAt field.
+    return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async findOne(id: string) {
+    const submission = await this.submissionModel.findById(id).exec();
+    
+    if (!submission) {
+      throw new NotFoundException(`Submission with ID ${id} not found.`);
+    }
+    
+    return submission;
+  }
+  
 }

@@ -16,7 +16,8 @@ import AdminLayout from './components/AdminLayout';
 import GroupsPage from './pages/admin/GroupsPage';
 import MembersPage from './pages/admin/MembersPage';
 import InvitesPage from './pages/admin/InvitesPage';
-import AdvisorsPage from './pages/admin/AdvisorsPage';
+import AdvisorsPage from './pages/admin/AdvisorsPage';  
+import ProfessorsPage from './pages/admin/ProfessorPage';
 import SanitizationPage from './pages/admin/SanitizationPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import './App.css';
@@ -68,6 +69,7 @@ function App() {
               <Route path="members" element={<MembersPage />} />
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
+              <Route path="professors" element={<ProfessorsPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
               <Route path="activity" element={<ActivityPage />} />
             </Route>

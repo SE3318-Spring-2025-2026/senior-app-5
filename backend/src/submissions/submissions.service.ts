@@ -22,10 +22,6 @@ export class SubmissionsService {
     return submission;
   }
 
-  
-  
-  
-  
   async createSubmission(createSubmissionDto: CreateSubmissionDto) {
     const phase = await this.phasesService.findByPhaseId(createSubmissionDto.phaseId);
 
@@ -46,12 +42,10 @@ export class SubmissionsService {
     return submission.save();
   }
 
-
-  
   async uploadDocument(submissionId: string, file: Express.Multer.File) {
     const submission = await this.findById(submissionId);
 
-    // 2. Prepare file information (metadata)
+    // Prepare file information (metadata) with proper encoding
     const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
     const newDocument = {
@@ -70,26 +64,15 @@ export class SubmissionsService {
     };
   }
 
-
-  
-  
-  
-  
   async findAll(groupId?: string) {
-    // If the groupId parameter is included, find only that group; if not, find all of them.
+    // Filter by groupId if provided; otherwise, fetch all submissions.
     const query = groupId ? { groupId } : {};
     
-    // timestamps: Since it is true, we arrange the newest ones at the top according to the createdAt field.
+    // Sort by newest first using the createdAt timestamp.
     return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }
 
-  async findOne(id: string) {
-    const submission = await this.submissionModel.findById(id).exec();
-    
-    if (!submission) {
-      throw new NotFoundException(`Submission with ID ${id} not found.`);
-    }
-    
-    return submission;
+  async findOne(id: string): Promise<SubmissionDocument> {
+    return this.findById(id);
   }
 }

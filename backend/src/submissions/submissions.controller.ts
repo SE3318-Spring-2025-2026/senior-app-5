@@ -26,16 +26,22 @@ export class SubmissionsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all submissions. Filter by groupId for students.' })
-  @ApiQuery({ name: 'groupId', required: false, type: String, description: 'Required for Students, optional for Coordinators' })
+  @ApiQuery({ name: 'groupId', required: false, type: String })
   async findAll(@Req() req: any, @Query('groupId') groupId?: string) {
     const userRole = req.user.role;
+    const userGroupId = req.user.teamId || req.user.groupId;
 
-    // RULE: If student, groupId is mandatory. If not, throw an error.
-    if (userRole === 'Student' && !groupId) {
-      throw new BadRequestException('Students must provide their groupId to view submissions.');
+    if (userRole === 'Student') {
+      if (!groupId) {
+        throw new BadRequestException('Students must provide their groupId to view submissions.');
+      }
+      
+      // SECURITY CHECK: Student can only request his/her own group
+      if (groupId !== userGroupId) {
+        throw new ForbiddenException('You do not have permission to view other groups\' submissions.');
+      }
     }
 
-   // Coordinators can see everything without sending parameters
     return this.submissionsService.findAll(groupId);
   }
 

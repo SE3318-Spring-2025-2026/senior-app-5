@@ -56,13 +56,10 @@ describe('SubmissionsController', () => {
     });
 
     it('should allow Student to fetch their own group submissions', async () => {
-      const req = { user: { role: 'Student' } };
+      const req = { user: { role: 'Student', groupId: 'group-123' } }; 
       const groupId = 'group-123';
-      
-      await controller.findAll(req, groupId);
-      
-      // Verify that the service is called with the correct groupId
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+  
+      await controller.findAll(req as any, groupId);
       expect(service.findAll).toHaveBeenCalledWith(groupId);
     });
   });

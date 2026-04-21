@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
+import EntitySearchSelect from '../components/EntitySearchSelect'
 import styles from './GroupLifecyclePage.module.css'
 
 const formatLocalDateTime = (isoString) => {
@@ -114,7 +115,7 @@ function GroupLifecyclePage() {
       const response = await apiClient.get(apiConfig.endpoints.advisorValidation)
       setValidationResults(response.data || [])
       const message = response.data?.length
-n        ? `${response.data.length} group(s) require advisor validation.`
+        ? `${response.data.length} group(s) require advisor validation.`
         : 'All groups have advisor assignments.'
       setAdminStatus({ loading: false, message, error: '' })
       addLog('Validated advisor assignment status')
@@ -158,10 +159,17 @@ n        ? `${response.data.length} group(s) require advisor validation.`
               Group Name
               <input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Student project group" required />
             </label>
-            <label>
-              Leader User ID
-              <input value={leaderUserId} onChange={(e) => setLeaderUserId(e.target.value)} placeholder="UUID like user-1234" required />
-            </label>
+            <EntitySearchSelect
+              label="Leader"
+              endpoint={apiConfig.endpoints.userSearch}
+              searchField="email"
+              returnField="_id"
+              displayField="email"
+              value={leaderUserId}
+              onChange={setLeaderUserId}
+              placeholder="Search a user by email"
+              required
+            />
             <button type="submit" disabled={groupStatus.loading}>
               {groupStatus.loading ? 'Creating…' : 'Create Group'}
             </button>
@@ -182,10 +190,17 @@ n        ? `${response.data.length} group(s) require advisor validation.`
               Group ID
               <input value={groupIdForMembers} onChange={(e) => setGroupIdForMembers(e.target.value)} placeholder="UUID of group" required />
             </label>
-            <label>
-              Member User ID
-              <input value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)} placeholder="UUID of member" required />
-            </label>
+            <EntitySearchSelect
+              label="Member"
+              endpoint={apiConfig.endpoints.userSearch}
+              searchField="email"
+              returnField="_id"
+              displayField="email"
+              value={memberUserId}
+              onChange={setMemberUserId}
+              placeholder="Search a user by email"
+              required
+            />
             <button type="submit" disabled={memberStatus.loading}>
               {memberStatus.loading ? 'Adding…' : 'Add Member'}
             </button>
@@ -200,10 +215,17 @@ n        ? `${response.data.length} group(s) require advisor validation.`
               Group ID
               <input value={inviteGroupId} onChange={(e) => setInviteGroupId(e.target.value)} placeholder="UUID of group" required />
             </label>
-            <label>
-              Recipient User ID
-              <input value={recipientUserId} onChange={(e) => setRecipientUserId(e.target.value)} placeholder="UUID of recipient" required />
-            </label>
+            <EntitySearchSelect
+              label="Recipient"
+              endpoint={apiConfig.endpoints.userSearch}
+              searchField="email"
+              returnField="_id"
+              displayField="email"
+              value={recipientUserId}
+              onChange={setRecipientUserId}
+              placeholder="Search a user by email"
+              required
+            />
             <button type="submit" disabled={inviteStatus.loading}>
               {inviteStatus.loading ? 'Delivering…' : 'Deliver Invite'}
             </button>

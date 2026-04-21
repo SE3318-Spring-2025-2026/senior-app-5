@@ -1,3 +1,4 @@
+import { InvitesModule } from './invites/invites.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -12,7 +13,6 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -25,6 +25,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
     NotificationsModule,
     PhasesModule,
     SubmissionsModule,
+    InvitesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

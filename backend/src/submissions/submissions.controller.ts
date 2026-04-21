@@ -29,13 +29,11 @@ import { Request } from 'express';
 export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
-
   @Post()
   @ApiOperation({ summary: 'Create a new submission' })
   async create(@Body() createSubmissionDto: CreateSubmissionDto) {
     return this.submissionsService.createSubmission(createSubmissionDto);
   }
-
 
   @Get()
   @ApiOperation({ summary: 'Get all submissions. Filter by groupId for students.' })
@@ -49,7 +47,7 @@ export class SubmissionsController {
         throw new BadRequestException('Students must provide their groupId to view submissions.');
       }
       
-      // SECURITY CHECK : Student can only request his/her own group
+      // SECURITY CHECK: Student can only request his/her own group
       if (groupId !== userGroupId) {
         throw new ForbiddenException('You do not have permission to view other groups\' submissions.');
       }
@@ -61,7 +59,7 @@ export class SubmissionsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get submission details by ID' })
   async findOne(@Req() req: Request & { user: any }, @Param('id') id: string) { 
-    // CAST ERROR FIX : Format check to prevent 500 errors
+    // CAST ERROR FIX: Format check to prevent 500 errors
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       throw new BadRequestException('Invalid submission ID format');
     }

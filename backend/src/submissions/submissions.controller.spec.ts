@@ -61,7 +61,7 @@ describe('SubmissionsController', () => {
       expect(service.findAll).toHaveBeenCalledWith(groupId);
     });
 
-  // SECURITY TEST: Student trying to retrieve someone else's data
+    // SECURITY TEST: Student trying to retrieve someone else's data
     it('should throw ForbiddenException if Student tries to fetch another groups data', async () => {
       const req = { user: { role: 'Student', groupId: 'my-group-id' } };
       const maliciousGroupId = 'someone-elses-group-id';

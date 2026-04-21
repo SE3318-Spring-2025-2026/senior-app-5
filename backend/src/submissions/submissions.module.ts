@@ -4,7 +4,7 @@ import { SubmissionsService } from './submissions.service';
 import { SubmissionsController } from './submissions.controller';
 import { PhasesModule } from '../phases/phases.module';
 import { Submission, SubmissionSchema } from './schemas/submission.schema';
-import { GroupMemberGuard } from './guards/group-member.guard'; // Yeni Guard
+import { GroupMemberGuard } from '../auth/guards/group-member.guard';
 
 @Module({
   imports: [

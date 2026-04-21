@@ -19,7 +19,7 @@ describe('SubmissionsService', () => {
       ...payload,
       save: mockSave,
     }));
-  mockSubmissionModel.findById = mockFindById;
+  mockSubmissionModel as any).findById = mockFindById;
 
   beforeEach(async () => {
     mockSave.mockReset();

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UsersService } from '../users/users.service';
@@ -15,16 +10,13 @@ export class AdminService {
 
   constructor(
     private readonly usersService: UsersService,
-    
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
   ) {}
 
   async moveStudentToGroup(studentId: string, groupId: string) {
-    
     const student = await this.usersService.findById(studentId);
     if (!student) throw new NotFoundException('Student not found');
 
-    
     const group = await this.groupModel.findOne({ groupId: groupId }).exec();
     
     if (!group) {
@@ -32,7 +24,6 @@ export class AdminService {
       throw new BadRequestException('Invalid groupId: No matching Group UUID found');
     }
 
-    
     const updatedUser = await this.usersService.updateUserTeam(studentId, groupId);
     if (!updatedUser) throw new NotFoundException('User update failed');
 
@@ -41,11 +32,9 @@ export class AdminService {
 
   async getActivityLogs() {
     return [
-      { 
-        timestamp: new Date(), 
-        user: 'System', 
-        action: 'Admin Service initialized for student management' 
-      },
+      { timestamp: new Date('2024-04-14T10:00:00Z'), user: 'Coordinator1', action: 'Moved student to group' },
+      { timestamp: new Date('2024-04-14T09:30:00Z'), user: 'Coordinator1', action: 'Created new group' },
+      { timestamp: new Date('2024-04-14T08:45:00Z'), user: 'Admin', action: 'Deleted user' },
     ];
   }
 }

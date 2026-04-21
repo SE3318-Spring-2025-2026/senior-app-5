@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -30,5 +30,23 @@ export class AdminController {
   @Roles(Role.Coordinator)
   async getActivityLogs() {
     return this.adminService.getActivityLogs();
+  }
+
+  
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get all groups and their advisor assignment status' })
+  @Get('advisor-validation')
+  @Roles(Role.Coordinator, Role.Admin)
+  async getAdvisorValidation() {
+    return this.adminService.getAdvisorValidation();
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Remove groups without advisors and unlink their members' })
+  @Post('sanitization/execute')
+  @Roles(Role.Coordinator, Role.Admin)
+  async executeSanitization() {
+    return this.adminService.executeSanitization();
   }
 }

@@ -12,7 +12,6 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),

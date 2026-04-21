@@ -1,13 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection } from 'mongoose';
 import { UsersService } from '../users/users.service';
-import { TeamsService } from '../teams/teams.service';
 import { Group, GroupDocument } from '../groups/group.entity';
 import { User, UserDocument } from '../users/data/user.schema';
 
@@ -17,30 +11,23 @@ export class AdminService {
 
   constructor(
     private readonly usersService: UsersService,
-    private readonly teamsService: TeamsService,
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectConnection() private readonly connection: Connection, 
   ) {}
 
   async moveStudentToGroup(studentId: string, groupId: string) {
+    
     const student = await this.usersService.findById(studentId);
     if (!student) throw new NotFoundException('Student not found');
 
-    const team = await this.teamsService.findById(groupId);
-    if (!team) throw new BadRequestException('Invalid groupId');
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) throw new BadRequestException('Invalid groupId');
 
     const updatedUser = await this.usersService.updateUserTeam(studentId, groupId);
-    if (!updatedUser) throw new NotFoundException('Student not found');
+    if (!updatedUser) throw new NotFoundException('User update failed');
 
     return updatedUser;
-  }
-
-  async getActivityLogs() {
-    return [
-      { timestamp: new Date('2024-04-14T10:00:00Z'), user: 'Coordinator1', action: 'Moved student to group' },
-      { timestamp: new Date('2024-04-14T09:30:00Z'), user: 'Coordinator1', action: 'Created new group' },
-      { timestamp: new Date('2024-04-14T08:45:00Z'), user: 'Admin', action: 'Deleted user' },
-    ];
   }
 
   async getAdvisorValidation() {
@@ -53,48 +40,63 @@ export class AdminService {
     }));
   }
 
- 
+  
   async executeSanitization(deadline: string) {
-    this.logger.log(`Starting group sanitization for groups created before: ${deadline}`);
-    
-    
-    const query = { 
-      createdAt: { $lt: new Date(deadline) },
-      $or: [
-        { advisorUserId: { $exists: false } },
-        { advisorUserId: null },
-        { advisorUserId: "" }
-      ] 
-    };
+    const targetDate = new Date(deadline);
+    const session = await this.connection.startSession(); 
 
-    const orphanGroups = await this.groupModel.find(query).exec();
+    session.startTransaction();
+    try {
+      
+      const orphanGroups = await this.groupModel.find({
+        createdAt: { $lt: targetDate },
+        $or: [
+          { advisorUserId: { $exists: false } },
+          { advisorUserId: null },
+          { advisorUserId: '' }
+        ]
+      }).session(session).exec();
 
-    if (orphanGroups.length === 0) {
-      return { 
-        message: 'No unassigned groups found post-deadline.', 
-        deletedCount: 0 
+      if (orphanGroups.length === 0) {
+        await session.abortTransaction();
+        session.endSession();
+        return { message: 'No unassigned groups found for the given deadline.', deletedCount: 0 };
+      }
+
+      const groupIdsToDelete = orphanGroups.map(g => g.groupId);
+
+      
+      await this.userModel.updateMany(
+        { teamId: { $in: groupIdsToDelete } },
+        { $unset: { teamId: '' } }
+      ).session(session).exec();
+
+      
+      const deleteResult = await this.groupModel.deleteMany({
+        groupId: { $in: groupIdsToDelete }
+      }).session(session).exec();
+
+      
+      await session.commitTransaction();
+      session.endSession();
+
+      return {
+        message: 'Sanitization executed successfully',
+        deletedGroupsCount: deleteResult.deletedCount,
+        unlinkedGroupIds: groupIdsToDelete,
       };
+    } catch (error) {
+      
+      await session.abortTransaction();
+      session.endSession();
+      this.logger.error(`Sanitization failed: ${error.message}`);
+      throw new Error('Sanitization aborted due to an internal error.');
     }
+  }
 
-    const groupIdsToDelete = orphanGroups.map(g => g.groupId);
-
-    
-    await this.userModel.updateMany(
-      { teamId: { $in: groupIdsToDelete } },
-      { $unset: { teamId: "" } } 
-    ).exec();
-
-    
-    const deleteResult = await this.groupModel.deleteMany({
-      groupId: { $in: groupIdsToDelete }
-    }).exec();
-
-    this.logger.log(`Sanitization complete. Deleted ${deleteResult.deletedCount} groups.`);
-
-    return {
-      message: 'Post-deadline sanitization executed successfully',
-      deletedGroupsCount: deleteResult.deletedCount,
-      unlinkedGroupIds: groupIdsToDelete,
-    };
+  async getActivityLogs() {
+    return [
+      { timestamp: new Date(), user: 'System', action: 'Admin service active' }
+    ];
   }
 }

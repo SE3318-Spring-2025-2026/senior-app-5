@@ -1,14 +1,16 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { SubmissionsService } from './submissions.service';
-import { SubmissionsController } from './submissions.controller';
+import { PhasesModule } from '../phases/phases.module';
 import { Submission, SubmissionSchema } from './schemas/submission.schema';
+import { SubmissionsController } from './submissions.controller';
+import { SubmissionsService } from './submissions.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Submission.name, schema: SubmissionSchema }])
+    MongooseModule.forFeature([{ name: Submission.name, schema: SubmissionSchema }]),
+    PhasesModule,
   ],
   providers: [SubmissionsService],
-  controllers: [SubmissionsController]
+  controllers: [SubmissionsController],
 })
 export class SubmissionsModule {}

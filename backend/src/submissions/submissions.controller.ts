@@ -12,6 +12,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionsService } from './submissions.service';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @Controller('submissions')
 export class SubmissionsController {
@@ -23,6 +24,9 @@ export class SubmissionsController {
   }
 
   @Get(':submissionId/completeness')
+  @ApiOperation({ summary: 'Check if a submission meets all phase requirements' })
+  @ApiResponse({ status: 200, description: 'Completeness status returned successfully.' })
+  @ApiResponse({ status: 404, description: 'Submission or Phase not found.' })
   async getCompleteness(@Param('submissionId') submissionId: string) {
     return this.submissionsService.getCompleteness(submissionId);
   }

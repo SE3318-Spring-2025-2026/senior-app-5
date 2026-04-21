@@ -82,18 +82,13 @@ export class SubmissionsService {
     const requiredFields = phase.requiredFields || [];
 
     for (const field of requiredFields) {
-      if (field === 'title' && !submission.title) {
-        missingFields.push('title');
-      } else if (field === 'documents' && (!submission.documents || submission.documents.length === 0)) {
-        missingFields.push('documents');
-      } else if (field === 'groupId' && !submission.groupId) {
-        missingFields.push('groupId');
-      } else if (field === 'type' && !submission.type) {
-        missingFields.push('type');
-      } else if (field === 'phaseId' && !submission.phaseId) {
-        missingFields.push('phaseId');
+      if (field === 'documents') {
+        if (!submission.documents || submission.documents.length === 0) {
+          missingFields.push('documents');
+        }
+      } else if (!submission[field]) {
+        missingFields.push(field);
       }
-      // Add more fields as needed
     }
 
     const isComplete = missingFields.length === 0;

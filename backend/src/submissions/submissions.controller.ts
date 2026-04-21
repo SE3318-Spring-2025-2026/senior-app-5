@@ -13,7 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionsService } from './submissions.service';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'; 
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; 
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { GroupMemberGuard } from '../auth/guards/group-member.guard';

@@ -67,9 +67,20 @@ export class SubmissionsService {
         if (!submission.documents || submission.documents.length === 0) {
           missingFields.push('documents');
         }
-      } else if (!submission.get(field)) {
-        missingFields.push(field);
-      }
+    } else {
+      const isFieldInSchema = submission.schema.path(field);
+      if (!isFieldInSchema) {
+          console.warn(`Warning: Field '${field}' does not exist in the Submission schema. Skipping check.`);
+    continue; 
+    }
+
+  // 2. Değeri al ve sadece null, undefined veya boş string ise eksik say
+  // Böylece 0 veya false gibi geçerli değerler eksik sayılmaz
+  const value = submission.get(field);
+  if (value === undefined || value === null || value === '') {
+    missingFields.push(field);
+  }
+}
     }
     const isComplete = missingFields.length === 0;
     return {

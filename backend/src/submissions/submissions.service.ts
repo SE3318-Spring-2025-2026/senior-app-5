@@ -65,4 +65,45 @@ export class SubmissionsService {
       document: newDocument,
     };
   }
+
+  async findById(submissionId: string): Promise<Submission> {
+    const submission = await this.submissionModel.findById(submissionId).exec();
+    if (!submission) {
+      throw new NotFoundException(`Submission with ID ${submissionId} not found.`);
+    }
+    return submission;
+  }
+
+  async getCompleteness(submissionId: string) {
+    const submission = await this.findById(submissionId);
+    const phase = await this.phasesService.findByPhaseId(submission.phaseId);
+
+    const missingFields: string[] = [];
+    const requiredFields = phase.requiredFields || [];
+
+    for (const field of requiredFields) {
+      if (field === 'title' && !submission.title) {
+        missingFields.push('title');
+      } else if (field === 'documents' && (!submission.documents || submission.documents.length === 0)) {
+        missingFields.push('documents');
+      } else if (field === 'groupId' && !submission.groupId) {
+        missingFields.push('groupId');
+      } else if (field === 'type' && !submission.type) {
+        missingFields.push('type');
+      } else if (field === 'phaseId' && !submission.phaseId) {
+        missingFields.push('phaseId');
+      }
+      // Add more fields as needed
+    }
+
+    const isComplete = missingFields.length === 0;
+
+    return {
+      submissionId,
+      isComplete,
+      missingFields,
+      requiredFields,
+      phaseId: submission.phaseId,
+    };
+  }
 }

@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Param,
   Post,
   UploadedFile,
@@ -19,6 +20,11 @@ export class SubmissionsController {
   @Post()
   async create(@Body() createSubmissionDto: CreateSubmissionDto) {
     return this.submissionsService.createSubmission(createSubmissionDto);
+  }
+
+  @Get(':submissionId/completeness')
+  async getCompleteness(@Param('submissionId') submissionId: string) {
+    return this.submissionsService.getCompleteness(submissionId);
   }
 
   @Post(':submissionId/documents')

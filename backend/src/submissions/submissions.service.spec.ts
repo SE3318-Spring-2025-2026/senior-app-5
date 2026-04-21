@@ -10,16 +10,21 @@ describe('SubmissionsService', () => {
   let phasesService: { findByPhaseId: jest.Mock };
 
   const mockSave = jest.fn();
+  const mockFindById = jest.fn().mockReturnValue({
+    exec: jest.fn(),
+  });
   const mockSubmissionModel = jest
     .fn()
     .mockImplementation((payload: Record<string, unknown>) => ({
       ...payload,
       save: mockSave,
     }));
+  mockSubmissionModel.findById = mockFindById;
 
   beforeEach(async () => {
     mockSave.mockReset();
     mockSubmissionModel.mockClear();
+    mockFindById.mockReset();
 
     phasesService = {
       findByPhaseId: jest.fn(),
@@ -128,5 +133,89 @@ describe('SubmissionsService', () => {
     expect(mockSubmissionModel).toHaveBeenCalledTimes(1);
     expect(mockSave).toHaveBeenCalledTimes(1);
     expect(result).toEqual(savedSubmission);
+  });
+
+  describe('findById', () => {
+    it('should return submission when found', async () => {
+      const submission = { _id: 'sub-1', title: 'Test' };
+      mockFindById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(submission),
+      });
+
+      const result = await service.findById('sub-1');
+
+      expect(mockFindById).toHaveBeenCalledWith('sub-1');
+      expect(result).toEqual(submission);
+    });
+
+    it('should throw NotFoundException when submission not found', async () => {
+      mockFindById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(service.findById('sub-1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getCompleteness', () => {
+    it('should return completeness when all required fields are present', async () => {
+      const submission = {
+        _id: 'sub-1',
+        title: 'Test Proposal',
+        groupId: 'group-1',
+        type: 'INITIAL',
+        phaseId: 'phase-1',
+        documents: [{ originalName: 'doc.pdf', mimeType: 'application/pdf', uploadedAt: new Date() }],
+      };
+      const phase = {
+        phaseId: 'phase-1',
+        requiredFields: ['title', 'documents'],
+      };
+
+      mockFindById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(submission),
+      });
+      phasesService.findByPhaseId.mockResolvedValue(phase);
+
+      const result = await service.getCompleteness('sub-1');
+
+      expect(result).toEqual({
+        submissionId: 'sub-1',
+        isComplete: true,
+        missingFields: [],
+        requiredFields: ['title', 'documents'],
+        phaseId: 'phase-1',
+      });
+    });
+
+    it('should return incompleteness when required fields are missing', async () => {
+      const submission = {
+        _id: 'sub-1',
+        title: '',
+        groupId: 'group-1',
+        type: 'INITIAL',
+        phaseId: 'phase-1',
+        documents: [],
+      };
+      const phase = {
+        phaseId: 'phase-1',
+        requiredFields: ['title', 'documents'],
+      };
+
+      mockFindById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(submission),
+      });
+      phasesService.findByPhaseId.mockResolvedValue(phase);
+
+      const result = await service.getCompleteness('sub-1');
+
+      expect(result).toEqual({
+        submissionId: 'sub-1',
+        isComplete: false,
+        missingFields: ['title', 'documents'],
+        requiredFields: ['title', 'documents'],
+        phaseId: 'phase-1',
+      });
+    });
   });
 });

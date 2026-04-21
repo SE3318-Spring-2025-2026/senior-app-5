@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../utils/apiClient';
 import styles from './DocumentsPage.module.css';
 import { useNavigate } from 'react-router-dom';
+
 const DocumentsPage = () => {
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
@@ -10,7 +11,6 @@ const DocumentsPage = () => {
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
-  
         const userStr = localStorage.getItem('user');
         const localUser = userStr ? JSON.parse(userStr) : null;
 
@@ -22,15 +22,19 @@ const DocumentsPage = () => {
         let endpoint = '/submissions';
         const userGroupId = localUser.teamId || localUser.groupId;
 
-
         if (localUser.role === 'Student') {
           if (!userGroupId) {
-            setStatus({ loading: false, error: 'You are not assigned to any group yet. Please contact your coordinator.' });
+            setStatus({ 
+              loading: false, 
+              error: 'You are not assigned to any group yet. Please contact your coordinator.' 
+            });
             return;
           }
           endpoint += `?groupId=${userGroupId}`;
+        } else if (localUser.role !== 'Coordinator') {
+          setStatus({ loading: false, error: 'Unrecognized user role. Access denied.' });
+          return;
         }
-
 
         const response = await apiClient.get(endpoint);
         setSubmissions(response.data);
@@ -89,25 +93,24 @@ const DocumentsPage = () => {
                 {submissions.map((sub) => (
                   <tr key={sub._id}>
                     <td className={styles.highlight}>{sub.title}</td>
-                    <td>{sub.type}</td>
+                    <td>{sub.type ?? '—'}</td>
                     <td>
                       <span className={`${styles.badge} ${styles[sub.status?.toLowerCase().replace(/\s+/g, '')] || ''}`}>
                         {sub.status}
                       </span>
                     </td>
-                          <td>
-                                {(sub.submittedAt || sub.createdAt) 
-                                 ? new Date(sub.submittedAt || sub.createdAt).toLocaleDateString() 
-                                : 'No Date'}
-                            </td>
-                    
                     <td>
-                      <button 
-                      className={styles.smallButton}
-                      onClick={() => navigate(`/documents/${sub._id}`)}
+                      {(sub.submittedAt || sub.createdAt)
+                        ? new Date(sub.submittedAt || sub.createdAt).toLocaleDateString()
+                        : 'No Date'}
+                    </td>
+                    <td>
+                      <button
+                        className={styles.smallButton}
+                        onClick={() => navigate(`/documents/${sub._id}`)}
                       >
                         View Details
-                        </button>
+                      </button>
                     </td>
                   </tr>
                 ))}

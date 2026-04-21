@@ -4,22 +4,31 @@ import apiClient from '../utils/apiClient';
 import styles from './DocumentsPage.module.css';
 
 const SubmissionDetailsPage = () => {
-  const { id } = useParams(); 
+  const { id } = useParams();
   const navigate = useNavigate();
   
   const [submission, setSubmission] = useState(null);
   const [status, setStatus] = useState({ loading: true, error: '' });
 
   useEffect(() => {
+    const localUser = localStorage.getItem('user');
+    if (!localUser) {
+      setStatus({ loading: false, error: 'You must be logged in to view this page.' });
+      return;
+    }
+
     const fetchSubmissionDetails = async () => {
       try {
-        
         const response = await apiClient.get(`/submissions/${id}`);
         setSubmission(response.data);
         setStatus({ loading: false, error: '' });
       } catch (error) {
         console.error("Fetch error:", error);
-        setStatus({ loading: false, error: 'Failed to load submission details.' });
+        if (error.response?.status === 403) {
+          setStatus({ loading: false, error: 'You do not have permission to view this submission.' });
+        } else {
+          setStatus({ loading: false, error: 'Failed to load submission details.' });
+        }
       }
     };
 
@@ -27,14 +36,23 @@ const SubmissionDetailsPage = () => {
   }, [id]);
 
   if (status.loading) {
-    return <div className={styles.pageContainer}><div className={styles.loading}>Loading details...</div></div>;
+    return (
+      <div className={styles.pageContainer}>
+        <div className={styles.loading}>Loading details...</div>
+      </div>
+    );
   }
 
   if (status.error) {
     return (
       <div className={styles.pageContainer}>
         <div className={styles.errorBox}>{status.error}</div>
-        <button onClick={() => navigate(-1)} className={styles.smallButton}>&larr; Go Back</button>
+        <button 
+          onClick={() => navigate('/login')} 
+          className={styles.smallButton}
+        >
+          Go to Login
+        </button>
       </div>
     );
   }
@@ -45,8 +63,8 @@ const SubmissionDetailsPage = () => {
     <div className={styles.pageContainer}>
       <button 
         onClick={() => navigate('/documents')} 
-        className={styles.secondaryButton} 
-        style={{ marginBottom: '20px', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}
+        className={styles.smallButton} 
+        style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}
       >
         &larr; Back to List
       </button>
@@ -57,14 +75,22 @@ const SubmissionDetailsPage = () => {
       </div>
 
       <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1fr 1fr' }}>
-  
+        
         <div className={styles.infoBox} style={{ textAlign: 'left' }}>
           <h3 style={{ color: '#f8fafc', marginBottom: '15px' }}>General Information</h3>
-          <p><strong>Type:</strong> {submission.type}</p>
-          <p><strong>Status:</strong> <span className={`${styles.badge} ${styles[submission.status?.toLowerCase().replace(/\s+/g, '')] || ''}`}>{submission.status}</span></p>
+          <p><strong>Type:</strong> {submission.type ?? '—'}</p>
+          <p>
+            <strong>Status:</strong> 
+            <span className={`${styles.badge} ${styles[submission.status?.toLowerCase().replace(/\s+/g, '')] || ''}`}>
+              {submission.status}
+            </span>
+          </p>
           <p><strong>Group ID:</strong> {submission.groupId}</p>
-          <p><strong>Submitted On:</strong> {new Date(submission.submittedAt || submission.createdAt).toLocaleString()}</p>
+          <p>
+            <strong>Submitted On:</strong> {new Date(submission.submittedAt || submission.createdAt).toLocaleString()}
+          </p>
         </div>
+
 
         <div className={styles.infoBox} style={{ textAlign: 'left' }}>
           <h3 style={{ color: '#f8fafc', marginBottom: '15px' }}>Attached Documents</h3>

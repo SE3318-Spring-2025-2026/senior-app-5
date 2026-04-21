@@ -1,3 +1,4 @@
+import 'multer';
 import {
   BadRequestException,
   Injectable,
@@ -43,15 +44,10 @@ export class SubmissionsService {
     return submission.save();
   }
 
-  async uploadDocument(
-    submissionId: string,
-    file: { originalname: string; mimetype: string },
-  ) {
+  async uploadDocument(submissionId: string, file: Express.Multer.File) {
     const submission = await this.submissionModel.findById(submissionId);
     if (!submission) {
-      throw new NotFoundException(
-        `Submission with ID ${submissionId} not found.`,
-      );
+      throw new NotFoundException(`Submission with ID ${submissionId} not found.`);
     }
 
     const newDocument = {

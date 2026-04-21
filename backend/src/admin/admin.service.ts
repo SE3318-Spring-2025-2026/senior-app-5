@@ -37,4 +37,25 @@ export class AdminService {
 
     return updatedUser;
   }
+
+  async getActivityLogs() {
+    // Mock data for now. In a real implementation, this would fetch from a database or log files
+    return [
+      {
+        timestamp: new Date('2024-04-14T10:00:00Z'),
+        user: 'Coordinator1',
+        action: 'Moved student to group',
+      },
+      {
+        timestamp: new Date('2024-04-14T09:30:00Z'),
+        user: 'Coordinator1',
+        action: 'Created new group',
+      },
+      {
+        timestamp: new Date('2024-04-14T08:45:00Z'),
+        user: 'Admin',
+        action: 'Deleted user',
+      },
+    ];
+  }
 }

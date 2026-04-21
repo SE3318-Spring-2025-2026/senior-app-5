@@ -22,25 +22,21 @@ export class SubmissionsController {
   }
 
   @Post(':submissionId/documents')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      fileFilter: (req, file, callback) => {
-        if (!file.originalname.match(/\.(pdf|doc|docx|png|jpg|jpeg)$/)) {
-          return callback(
-            new BadRequestException(
-              'Only PDF, Word, and Image files are allowed!',
-            ),
-            false,
-          );
-        }
-        callback(null, true);
-      },
-      limits: { fileSize: 5 * 1024 * 1024 },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', {
+    fileFilter: (req, file, callback) => {
+      if (!file.originalname.match(/\.(pdf|doc|docx|png|jpg|jpeg)$/)) {
+        return callback(
+          new BadRequestException('Only PDF, Word, and Image files are allowed!'),
+          false,
+        );
+      }
+      callback(null, true);
+    },
+    limits: { fileSize: 5 * 1024 * 1024 },
+  }))
   async uploadFile(
     @Param('submissionId') submissionId: string,
-    @UploadedFile() file: { originalname: string; mimetype: string },
+    @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) {
       throw new BadRequestException('File is required or invalid file type.');

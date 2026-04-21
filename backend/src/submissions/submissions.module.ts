@@ -7,9 +7,7 @@ import { SubmissionsService } from './submissions.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: Submission.name, schema: SubmissionSchema },
-    ]),
+    MongooseModule.forFeature([{ name: Submission.name, schema: SubmissionSchema }]),
     PhasesModule,
   ],
   providers: [SubmissionsService],

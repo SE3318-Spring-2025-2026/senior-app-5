@@ -6,30 +6,28 @@ export type SubmissionDocument = HydratedDocument<Submission>;
 @Schema({ timestamps: true })
 export class Submission {
   @Prop({ required: true })
-  title: string;
+  title!: string;
 
   @Prop({ default: 'Pending' })
-  status: string;
+  status!: string;
 
   @Prop({ required: true })
-  groupId: string;
+  groupId!: string;
 
   @Prop({ required: true })
-  type: string;
+  type!: string;
 
   @Prop({ required: true })
-  phaseId: string;
+  phaseId!: string;
 
   @Prop({ type: Date, required: true })
-  submittedAt: Date;
+  submittedAt!: Date;
 
-  @Prop([
-    {
-      originalName: { type: String, required: true },
-      mimeType: { type: String, required: true },
-      uploadedAt: { type: Date, default: Date.now },
-    },
-  ])
+  @Prop([{
+    originalName: { type: String, required: true },
+    mimeType: { type: String, required: true },
+    uploadedAt: { type: Date, default: Date.now },
+  }])
   documents?: Array<{
     originalName: string;
     mimeType: string;

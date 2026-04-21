@@ -30,7 +30,6 @@ describe('SubmissionsService', () => {
         SubmissionsService,
         {
           provide: getModelToken(Submission.name),
-
           useValue: mockSubmissionModel,
         },
         {

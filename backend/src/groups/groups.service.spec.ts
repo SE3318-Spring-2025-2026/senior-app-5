@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { GroupsService } from './groups.service';
 import { Group, GroupStatus } from './group.entity';
+import { Submission } from '../submissions/schemas/submission.schema';
 
 describe('GroupsService', () => {
   let service: GroupsService;
@@ -30,6 +31,14 @@ describe('GroupsService', () => {
           provide: getModelToken(Group.name),
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           useValue: mockGroupModel,
+        },
+        {
+          provide: getModelToken(Submission.name),
+          useValue: jest.fn(),
+        },
+        {
+          provide: getModelToken('User'),
+          useValue: jest.fn(),
         },
       ],
     }).compile();

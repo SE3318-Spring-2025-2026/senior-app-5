@@ -1,13 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { randomUUID } from 'crypto';
 import { HydratedDocument } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type PhaseDocument = HydratedDocument<Phase>;
 
 @Schema({ timestamps: true })
 export class Phase {
   @Prop({ type: String, default: () => randomUUID(), unique: true })
-  phaseId: string;
+  phaseId!: string;
 
   @Prop({ type: Date })
   submissionStart?: Date;

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
-import styles from './DocumentsPage.module.css'; // Aynı CSS'i kullanarak tema bütünlüğünü koruyoruz
+import styles from './DocumentsPage.module.css';
 
 const SubmissionDetailsPage = () => {
-  const { id } = useParams(); // URL'den ID'yi alır (örneğin: /documents/123 -> id: 123)
+  const { id } = useParams(); 
   const navigate = useNavigate();
   
   const [submission, setSubmission] = useState(null);
@@ -13,7 +13,7 @@ const SubmissionDetailsPage = () => {
   useEffect(() => {
     const fetchSubmissionDetails = async () => {
       try {
-        // Backend'deki GET /submissions/:id endpoint'ine istek atıyoruz
+        
         const response = await apiClient.get(`/submissions/${id}`);
         setSubmission(response.data);
         setStatus({ loading: false, error: '' });
@@ -43,7 +43,6 @@ const SubmissionDetailsPage = () => {
 
   return (
     <div className={styles.pageContainer}>
-      {/* Geri Dön Butonu */}
       <button 
         onClick={() => navigate('/documents')} 
         className={styles.secondaryButton} 
@@ -58,7 +57,7 @@ const SubmissionDetailsPage = () => {
       </div>
 
       <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1fr 1fr' }}>
-        {/* Sol Taraf: Özet Bilgiler */}
+  
         <div className={styles.infoBox} style={{ textAlign: 'left' }}>
           <h3 style={{ color: '#f8fafc', marginBottom: '15px' }}>General Information</h3>
           <p><strong>Type:</strong> {submission.type}</p>
@@ -67,7 +66,6 @@ const SubmissionDetailsPage = () => {
           <p><strong>Submitted On:</strong> {new Date(submission.submittedAt || submission.createdAt).toLocaleString()}</p>
         </div>
 
-        {/* Sağ Taraf: Ekli Dosyalar */}
         <div className={styles.infoBox} style={{ textAlign: 'left' }}>
           <h3 style={{ color: '#f8fafc', marginBottom: '15px' }}>Attached Documents</h3>
           

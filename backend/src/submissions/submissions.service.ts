@@ -18,8 +18,9 @@ export class SubmissionsService {
     }
 
     // 2. Prepare file information (metadata)
+    const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
     const newDocument = {
-      originalName: file.originalname,
+      originalName: decodedFileName,
       mimeType: file.mimetype,
       uploadedAt: new Date(),
     };

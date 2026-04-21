@@ -14,7 +14,6 @@ export class SubmissionsService {
     private readonly phasesService: PhasesService,
   ) {}
 
-  
   async findById(id: string): Promise<SubmissionDocument> {
     const submission = await this.submissionModel.findById(id).exec();
     if (!submission) {
@@ -44,11 +43,13 @@ export class SubmissionsService {
   }
 
   async uploadDocument(submissionId: string, file: Express.Multer.File) {
-    
     const submission = await this.findById(submissionId);
 
+    // Prepare file information (metadata) with proper encoding
+    const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
     const newDocument = {
-      originalName: file.originalname,
+      originalName: decodedFileName,
       mimeType: file.mimetype,
       uploadedAt: new Date(),
     };
@@ -61,5 +62,17 @@ export class SubmissionsService {
       message: 'Document uploaded and linked successfully',
       document: newDocument,
     };
+  }
+
+  async findAll(groupId?: string) {
+    // Filter by groupId if provided; otherwise, fetch all submissions.
+    const query = groupId ? { groupId } : {};
+    
+    // Sort by newest first using the createdAt timestamp.
+    return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async findOne(id: string): Promise<SubmissionDocument> {
+    return this.findById(id);
   }
 }

@@ -1,8 +1,10 @@
 import {
   Controller,
+  Get,
   Post,
   Param,
   Body,
+  Query,
   UseGuards,
   Request,
   ForbiddenException,
@@ -12,7 +14,12 @@ import { Request as ExpressRequest } from 'express';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
 import { LinkGithubDto } from './dto/link-github.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
 interface JwtUser {
   userId: string;
@@ -34,6 +41,25 @@ interface GithubUserResponse {
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary:
+      'Search users by a whitelisted field (email, role, _id). Returns matching users without password hash.',
+  })
+  @ApiQuery({ name: 'field', enum: ['email', 'role', '_id'], required: true })
+  @ApiQuery({ name: 'value', type: String, required: true })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  @UseGuards(AuthGuard('jwt'))
+  @Get('search')
+  async searchUsers(
+    @Query('field') field: string,
+    @Query('value') value: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    return this.usersService.searchUsers(field, value, parsedLimit);
+  }
 
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Link authenticated user account to GitHub' })

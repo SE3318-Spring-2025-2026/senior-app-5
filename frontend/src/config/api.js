@@ -16,7 +16,9 @@ export const apiConfig = {
     },
     groups: '/groups',
     groupMembers: (groupId) => `/groups/${groupId}/members`,
+    userSearch: '/users/search',
     invites: '/invites/deliver',
+    phaseSchedule: (phaseId) => `/phases/${phaseId}/schedule`,
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
     submissions: {

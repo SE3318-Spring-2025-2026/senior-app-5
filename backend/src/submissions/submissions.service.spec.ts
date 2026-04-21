@@ -1,30 +1,47 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
-import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { PhasesService } from '../phases/phases.service';
 import { SubmissionsService } from './submissions.service';
 import { Submission } from './schemas/submission.schema';
 
 describe('SubmissionsService', () => {
   let service: SubmissionsService;
+  let phasesService: { findByPhaseId: jest.Mock };
 
-  // Step 1: We create a dummy object that imitates the database (Mongoose)
-  const mockSubmissionModel = {
-    find: jest.fn().mockReturnThis(),
-    sort: jest.fn().mockReturnThis(),
-    exec: jest.fn(),
-    findById: jest.fn().mockReturnThis(),
-    save: jest.fn(),
-  };
+  const mockSave = jest.fn();
+  
+  const mockSubmissionModel: any = jest
+    .fn()
+    .mockImplementation((payload: Record<string, unknown>) => ({
+      ...payload,
+      save: mockSave,
+    }));
+
+  mockSubmissionModel.find = jest.fn().mockReturnThis();
+  mockSubmissionModel.sort = jest.fn().mockReturnThis();
+  mockSubmissionModel.exec = jest.fn();
+  mockSubmissionModel.findById = jest.fn().mockReturnThis();
 
   beforeEach(async () => {
-    jest.clearAllMocks(); //Purge old calls before each test
+    jest.clearAllMocks();
+    mockSave.mockReset();
+    mockSubmissionModel.mockClear();
+
+    phasesService = {
+      findByPhaseId: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SubmissionsService,
         {
           provide: getModelToken(Submission.name),
-          useValue: mockSubmissionModel, // Use our dummy object instead of real DB
+          useValue: mockSubmissionModel,
+        },
+        {
+          provide: PhasesService,
+          useValue: phasesService,
         },
       ],
     }).compile();
@@ -44,11 +61,8 @@ describe('SubmissionsService', () => {
 
       const result = await service.findAll();
 
-     // Check if there is an empty object in find({})
       expect(mockSubmissionModel.find).toHaveBeenCalledWith({});
-      // Check if the correct sorting is applied
       expect(mockSubmissionModel.sort).toHaveBeenCalledWith({ createdAt: -1 });
-      // Check if the returned result matches our mock data
       expect(result).toEqual(mockSubmissions);
     });
 
@@ -58,7 +72,6 @@ describe('SubmissionsService', () => {
 
       await service.findAll(groupId);
 
-      // Does it filter only those belonging to that group?
       expect(mockSubmissionModel.find).toHaveBeenCalledWith({ groupId });
       expect(mockSubmissionModel.sort).toHaveBeenCalledWith({ createdAt: -1 });
     });
@@ -76,13 +89,99 @@ describe('SubmissionsService', () => {
     });
 
     it('should throw NotFoundException if submission not found', async () => {
-      // We assume it returns null if it is not found in the database
       mockSubmissionModel.exec.mockResolvedValueOnce(null);
 
-      //We expect it to throw NotFoundException
-      await expect(service.findOne('invalid-id')).rejects.toThrow(
-        NotFoundException,
+      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+
+  
+  
+  
+  describe('createSubmission', () => {
+    it('should return 404 when phaseId is invalid', async () => {
+      phasesService.findByPhaseId.mockRejectedValue(
+        new NotFoundException('Phase not found'),
       );
+
+      await expect(
+        service.createSubmission({
+          title: 'Proposal',
+          groupId: 'group-1',
+          type: 'INITIAL',
+          phaseId: 'missing-phase',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should return 400 when submission window is not configured', async () => {
+      phasesService.findByPhaseId.mockResolvedValue({
+        phaseId: 'phase-1',
+        submissionStart: undefined,
+        submissionEnd: undefined,
+      });
+
+      await expect(
+        service.createSubmission({
+          title: 'Proposal',
+          groupId: 'group-1',
+          type: 'INITIAL',
+          phaseId: 'phase-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should return 400 when submission is outside configured window', async () => {
+      const now = new Date();
+      const oneHour = 60 * 60 * 1000;
+
+      phasesService.findByPhaseId.mockResolvedValue({
+        phaseId: 'phase-1',
+        submissionStart: new Date(now.getTime() - 2 * oneHour),
+        submissionEnd: new Date(now.getTime() - oneHour),
+      });
+
+      await expect(
+        service.createSubmission({
+          title: 'Proposal',
+          groupId: 'group-1',
+          type: 'INITIAL',
+          phaseId: 'phase-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should save submission when request time is within configured window', async () => {
+      const now = new Date();
+      const oneHour = 60 * 60 * 1000;
+      const savedSubmission = {
+        _id: 'submission-1',
+        title: 'Proposal',
+        groupId: 'group-1',
+        type: 'INITIAL',
+        phaseId: 'phase-1',
+        status: 'Pending',
+        submittedAt: now,
+      };
+
+      phasesService.findByPhaseId.mockResolvedValue({
+        phaseId: 'phase-1',
+        submissionStart: new Date(now.getTime() - oneHour),
+        submissionEnd: new Date(now.getTime() + oneHour),
+      });
+      mockSave.mockResolvedValue(savedSubmission);
+
+      const result = await service.createSubmission({
+        title: 'Proposal',
+        groupId: 'group-1',
+        type: 'INITIAL',
+        phaseId: 'phase-1',
+      });
+
+      expect(mockSubmissionModel).toHaveBeenCalledTimes(1);
+      expect(mockSave).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(savedSubmission);
     });
   });
 });

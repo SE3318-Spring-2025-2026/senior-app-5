@@ -10,15 +10,18 @@ services:
       - mongo_data:/data/db
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
-      - "3001:3001" 
+      - "3001:3001"
     depends_on:
       - mongo
     environment:
-      PORT: 3001 
+      NODE_ENV: production
+      PORT: 3001
       MONGODB_URI: mongodb://root:rootpass@mongo:27017/senior-app?authSource=admin
-      JWT_SECRET: ${JWT_SECRET} 
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_jwt_access_secret}
 
 volumes:
   mongo_data:

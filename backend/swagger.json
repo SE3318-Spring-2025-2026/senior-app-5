@@ -243,6 +243,26 @@
         ]
       }
     },
+    "/api/v1/admin/activity": {
+      "get": {
+        "operationId": "AdminController_getActivityLogs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get recent activity logs",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/api/v1/groups": {
       "post": {
         "operationId": "GroupsController_createGroup",
@@ -290,6 +310,29 @@
         "summary": "Deliver an invite to a recipient",
         "tags": [
           "Invites"
+        ]
+      }
+    },
+    "/api/v1/submissions/{submissionId}/documents": {
+      "post": {
+        "operationId": "SubmissionsController_uploadFile",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Submissions"
         ]
       }
     }
@@ -391,6 +434,12 @@
           "role": {
             "type": "string",
             "example": "Professor",
+            "enum": [
+              "Student",
+              "Coordinator",
+              "Admin",
+              "Professor"
+            ],
             "description": "User role to assign"
           }
         },

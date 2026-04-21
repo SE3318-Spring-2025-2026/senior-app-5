@@ -8,6 +8,7 @@ import GroupLifecyclePage from './pages/GroupLifecyclePage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import PhaseSchedulingPage from './pages/PhaseSchedulingPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Layout } from './components/layout/Layout';
@@ -17,8 +18,10 @@ import MembersPage from './pages/admin/MembersPage';
 import InvitesPage from './pages/admin/InvitesPage';
 import AdvisorsPage from './pages/admin/AdvisorsPage';
 import SanitizationPage from './pages/admin/SanitizationPage';
+
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
+import ActivityPage from './pages/admin/ActivityPage';
 import './App.css';
 
 const RootRedirect = () => {
@@ -48,8 +51,20 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
+            
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
+            
+
+            <Route
+              path="/phases/schedule"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <PhaseSchedulingPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="/admin" element={
               <ProtectedRoute requiredRole="Coordinator">
                 <AdminLayout />
@@ -61,6 +76,8 @@ function App() {
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
+
+              <Route path="activity" element={<ActivityPage />} />
             </Route>
           </Route>
 

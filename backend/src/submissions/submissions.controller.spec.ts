@@ -11,6 +11,7 @@ describe('SubmissionsController', () => {
     findAll: jest.fn(),
     findOne: jest.fn(),
     uploadDocument: jest.fn(),
+    createSubmission: jest.fn(), 
   };
 
   beforeEach(async () => {
@@ -33,7 +34,6 @@ describe('SubmissionsController', () => {
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
-
 
   describe('findAll', () => {
     it('should allow Coordinator to fetch all submissions without groupId', async () => {

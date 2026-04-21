@@ -12,6 +12,7 @@ function AdminLayout() {
     { label: 'Invites', path: '/admin/invites' },
     { label: 'Advisors', path: '/admin/advisors' },
     { label: 'Sanitization', path: '/admin/sanitization' },
+    { label: 'Activity Logs', path: '/admin/activity' },
   ]
 
   const isActive = (path) => location.pathname === path
@@ -24,7 +25,7 @@ function AdminLayout() {
             <p className={styles.badge}>Admin Control Panel</p>
             <h1>Coordinator Admin Panel</h1>
             <p className={styles.lead}>
-              Manage groups, members, invites, advisors, and sanitization.
+              Manage groups, members, invites, advisors, sanitization, and activity logs.
             </p>
           </div>
         </header>

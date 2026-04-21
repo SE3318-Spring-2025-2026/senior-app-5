@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Patch,
   Body,
   Param,
@@ -23,7 +22,7 @@ export class AdminController {
 
   @Patch('students/:studentId/group')
   @Roles(Role.Coordinator, Role.Admin)
-  @ApiOperation({ summary: 'Move a student into a different group' })
+  @ApiOperation({ summary: 'Move a student into a different group (Fixes #151)' })
   async moveStudentToGroup(
     @Param('studentId') studentId: string,
     @Body('groupId') groupId: string,
@@ -36,21 +35,5 @@ export class AdminController {
   @ApiOperation({ summary: 'Get recent activity logs' })
   async getActivityLogs() {
     return this.adminService.getActivityLogs();
-  }
-
-  
-
-  @Get('advisor-validation')
-  @Roles(Role.Coordinator, Role.Admin)
-  @ApiOperation({ summary: 'Check group-advisor assignment health' })
-  async getAdvisorValidation() {
-    return this.adminService.getAdvisorValidation();
-  }
-
-  @Post('sanitization/execute')
-  @Roles(Role.Coordinator, Role.Admin)
-  @ApiOperation({ summary: 'Clean up groups without advisors (Destructive)' })
-  async executeSanitization() {
-    return this.adminService.executeSanitization();
   }
 }

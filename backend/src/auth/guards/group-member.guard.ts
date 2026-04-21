@@ -1,5 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { SubmissionsService } from '../submissions.service';
+import { SubmissionsService } from '../../submissions/submissions.service';
 
 @Injectable()
 export class GroupMemberGuard implements CanActivate {

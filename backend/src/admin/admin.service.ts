@@ -18,62 +18,33 @@ export class AdminService {
   constructor(
     private readonly usersService: UsersService,
     private readonly teamsService: TeamsService,
-    // Veritabanı sorguları için Group ve User modellerini enjekte ediyoruz
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
   async moveStudentToGroup(studentId: string, groupId: string) {
-    // Check if student exists
     const student = await this.usersService.findById(studentId);
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
+    if (!student) throw new NotFoundException('Student not found');
 
-    // Check if group (team) exists
     const team = await this.teamsService.findById(groupId);
-    if (!team) {
-      throw new BadRequestException('Invalid groupId');
-    }
+    if (!team) throw new BadRequestException('Invalid groupId');
 
-    // Update student's teamId
-    const updatedUser = await this.usersService.updateUserTeam(
-      studentId,
-      groupId,
-    );
-    if (!updatedUser) {
-      throw new NotFoundException('Student not found');
-    }
+    const updatedUser = await this.usersService.updateUserTeam(studentId, groupId);
+    if (!updatedUser) throw new NotFoundException('Student not found');
 
     return updatedUser;
   }
 
   async getActivityLogs() {
-    // Mock data for now. In a real implementation, this would fetch from a database or log files
     return [
-      {
-        timestamp: new Date('2024-04-14T10:00:00Z'),
-        user: 'Coordinator1',
-        action: 'Moved student to group',
-      },
-      {
-        timestamp: new Date('2024-04-14T09:30:00Z'),
-        user: 'Coordinator1',
-        action: 'Created new group',
-      },
-      {
-        timestamp: new Date('2024-04-14T08:45:00Z'),
-        user: 'Admin',
-        action: 'Deleted user',
-      },
+      { timestamp: new Date('2024-04-14T10:00:00Z'), user: 'Coordinator1', action: 'Moved student to group' },
+      { timestamp: new Date('2024-04-14T09:30:00Z'), user: 'Coordinator1', action: 'Created new group' },
+      { timestamp: new Date('2024-04-14T08:45:00Z'), user: 'Admin', action: 'Deleted user' },
     ];
   }
 
-  
-
   async getAdvisorValidation() {
     const groups = await this.groupModel.find({}, 'groupId groupName advisorUserId status').exec();
-    
     return groups.map(group => ({
       groupId: group.groupId,
       groupName: group.groupName,
@@ -82,21 +53,25 @@ export class AdminService {
     }));
   }
 
-  async executeSanitization() {
-    this.logger.log('Starting group sanitization process...');
+ 
+  async executeSanitization(deadline: string) {
+    this.logger.log(`Starting group sanitization for groups created before: ${deadline}`);
     
     
-    const orphanGroups = await this.groupModel.find({ 
+    const query = { 
+      createdAt: { $lt: new Date(deadline) },
       $or: [
         { advisorUserId: { $exists: false } },
         { advisorUserId: null },
         { advisorUserId: "" }
       ] 
-    }).exec();
+    };
+
+    const orphanGroups = await this.groupModel.find(query).exec();
 
     if (orphanGroups.length === 0) {
       return { 
-        message: 'No unassigned groups found. Sanitization complete.', 
+        message: 'No unassigned groups found post-deadline.', 
         deletedCount: 0 
       };
     }
@@ -117,7 +92,7 @@ export class AdminService {
     this.logger.log(`Sanitization complete. Deleted ${deleteResult.deletedCount} groups.`);
 
     return {
-      message: 'Sanitization executed successfully',
+      message: 'Post-deadline sanitization executed successfully',
       deletedGroupsCount: deleteResult.deletedCount,
       unlinkedGroupIds: groupIdsToDelete,
     };

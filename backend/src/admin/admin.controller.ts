@@ -32,8 +32,6 @@ export class AdminController {
     return this.adminService.getActivityLogs();
   }
 
-  
-
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get all groups and their advisor assignment status' })
   @Get('advisor-validation')
@@ -43,10 +41,11 @@ export class AdminController {
   }
 
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Remove groups without advisors and unlink their members' })
+  @ApiOperation({ summary: 'Remove groups without advisors post-deadline' })
   @Post('sanitization/execute')
   @Roles(Role.Coordinator, Role.Admin)
-  async executeSanitization() {
-    return this.adminService.executeSanitization();
+  async executeSanitization(@Body('sanitizationRunDateTime') deadline: string) {
+    
+    return this.adminService.executeSanitization(deadline);
   }
 }

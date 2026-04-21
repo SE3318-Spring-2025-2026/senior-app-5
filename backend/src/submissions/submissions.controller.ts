@@ -9,10 +9,11 @@ import {
   UploadedFile, 
   UseInterceptors, 
   BadRequestException, 
-  UseGuards
+  UseGuards,                 
+  ForbiddenException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags ,ApiQuery} from '@nestjs/swagger';
 import { SubmissionsService } from './submissions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -25,6 +26,7 @@ export class SubmissionsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all submissions. Filter by groupId for students.' })
+  @ApiQuery({ name: 'groupId', required: false, type: String, description: 'Required for Students, optional for Coordinators' })
   async findAll(@Req() req: any, @Query('groupId') groupId?: string) {
     const userRole = req.user.role;
 
@@ -39,8 +41,15 @@ export class SubmissionsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get submission details by ID' })
-  async findOne(@Param('id') id: string) {
-    return this.submissionsService.findOne(id);
+  async findOne(@Req() req: any, @Param('id') id: string) { 
+    const submission = await this.submissionsService.findOne(id);
+    const userRole = req.user.role;
+
+    if (userRole === 'Student' && submission.groupId !== req.user.teamId && submission.groupId !== req.user.groupId) {
+      throw new ForbiddenException('You do not have permission to view this submission.');
+    }
+
+    return submission;
   }
 
 

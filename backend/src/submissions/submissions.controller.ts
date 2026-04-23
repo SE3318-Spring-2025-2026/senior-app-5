@@ -56,9 +56,8 @@ export class SubmissionsController {
       throw new ForbiddenException('You do not have permission to view this submission.');
       }
   }
-
   return this.submissionsService.getCompleteness(submissionId);
-
+  }
   @Get()
   @ApiOperation({ summary: 'Get all submissions. Filter by groupId for students.' })
   @ApiQuery({ name: 'groupId', required: false, type: String })

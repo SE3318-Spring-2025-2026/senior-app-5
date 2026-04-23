@@ -28,14 +28,12 @@ describe('Submissions (e2e)', () => {
     phaseModel = moduleFixture.get<Model<PhaseDocument>>(getModelToken(Phase.name));
     submissionModel = moduleFixture.get<Model<SubmissionDocument>>(getModelToken(Submission.name));
 
-    // JWT token üret — Coordinator rolüyle (ownership kontrolü bypass)
     authToken = jwt.sign(
       { sub: 'test-user-id', email: 'test@test.com', role: 'Coordinator' },
       'dev_access_secret_change_me',
       { expiresIn: '1h' },
     );
 
-    // Seed test data
     testPhase = await phaseModel.create({
       phaseId: 'test-phase-1',
       requiredFields: ['title', 'documents'],
@@ -69,10 +67,10 @@ describe('Submissions (e2e)', () => {
     await app.close();
   });
 
-  describe('GET /submissions/:submissionId/completeness', () => {
+  describe('GET /api/v1/submissions/:submissionId/completeness', () => {
     it('should return 200 and completeness data for valid submission', () => {
       return request(app.getHttpServer())
-        .get(`/submissions/${testSubmission._id}/completeness`)
+        .get(`/api/v1/submissions/${testSubmission._id}/completeness`)
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
         .expect((res) => {
@@ -97,7 +95,7 @@ describe('Submissions (e2e)', () => {
       });
 
       return request(app.getHttpServer())
-        .get(`/submissions/${incompleteSubmission._id}/completeness`)
+        .get(`/api/v1/submissions/${incompleteSubmission._id}/completeness`)
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
         .expect((res) => {
@@ -116,20 +114,20 @@ describe('Submissions (e2e)', () => {
 
     it('should return 401 when no auth token provided', () => {
       return request(app.getHttpServer())
-        .get(`/submissions/${testSubmission._id}/completeness`)
+        .get(`/api/v1/submissions/${testSubmission._id}/completeness`)
         .expect(401);
     });
 
     it('should return 400 for invalid submission ID format', () => {
       return request(app.getHttpServer())
-        .get('/submissions/invalid-id/completeness')
+        .get('/api/v1/submissions/invalid-id/completeness')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(400);
     });
 
     it('should return 404 for non-existent submission', () => {
       return request(app.getHttpServer())
-        .get('/submissions/64f1a2b3c4d5e6f7a8b9c0d1/completeness')
+        .get('/api/v1/submissions/64f1a2b3c4d5e6f7a8b9c0d1/completeness')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(404);
     });

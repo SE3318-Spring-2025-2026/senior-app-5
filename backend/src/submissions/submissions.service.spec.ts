@@ -82,22 +82,26 @@ describe('SubmissionsService', () => {
   });
 
   describe('findOne', () => {
-    it('should return a submission if found', async () => {
-      const mockSubmission = { _id: 'sub-1', title: 'Test Proposal' };
-      mockSubmissionModel.exec.mockResolvedValueOnce(mockSubmission);
-
-      const result = await service.findOne('sub-1');
-
-      expect(mockSubmissionModel.findById).toHaveBeenCalledWith('sub-1');
-      expect(result).toEqual(mockSubmission);
+  it('should return a submission if found', async () => {
+    const mockSubmission = { _id: 'sub-1', title: 'Test Proposal' };
+    mockFindById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(mockSubmission),
     });
 
-    it('should throw NotFoundException if submission not found', async () => {
-      mockSubmissionModel.exec.mockResolvedValueOnce(null);
+    const result = await service.findOne('sub-1');
 
-      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
-    });
+    expect(mockFindById).toHaveBeenCalledWith('sub-1');
+    expect(result).toEqual(mockSubmission);
   });
+
+  it('should throw NotFoundException if submission not found', async () => {
+    mockFindById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+  });
+});
 
   describe('createSubmission', () => {
     it('should return 404 when phaseId is invalid', async () => {

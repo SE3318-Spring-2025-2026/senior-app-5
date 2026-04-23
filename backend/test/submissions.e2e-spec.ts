@@ -7,6 +7,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Phase, PhaseDocument } from '../src/phases/phase.entity';
 import { Submission, SubmissionDocument } from '../src/submissions/schemas/submission.schema';
+import * as jwt from 'jsonwebtoken';
 
 describe('Submissions (e2e)', () => {
   let app: INestApplication<App>;
@@ -14,6 +15,7 @@ describe('Submissions (e2e)', () => {
   let submissionModel: Model<SubmissionDocument>;
   let testPhase: PhaseDocument;
   let testSubmission: SubmissionDocument;
+  let authToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -26,12 +28,19 @@ describe('Submissions (e2e)', () => {
     phaseModel = moduleFixture.get<Model<PhaseDocument>>(getModelToken(Phase.name));
     submissionModel = moduleFixture.get<Model<SubmissionDocument>>(getModelToken(Submission.name));
 
+    // JWT token üret — Coordinator rolüyle (ownership kontrolü bypass)
+    authToken = jwt.sign(
+      { sub: 'test-user-id', email: 'test@test.com', role: 'Coordinator' },
+      'dev_access_secret_change_me',
+      { expiresIn: '1h' },
+    );
+
     // Seed test data
     testPhase = await phaseModel.create({
       phaseId: 'test-phase-1',
       requiredFields: ['title', 'documents'],
-      submissionStart: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-      submissionEnd: new Date(Date.now() + 1000 * 60 * 60), // 1 hour from now
+      submissionStart: new Date(Date.now() - 1000 * 60 * 60),
+      submissionEnd: new Date(Date.now() + 1000 * 60 * 60),
     });
 
     testSubmission = await submissionModel.create({
@@ -48,10 +57,9 @@ describe('Submissions (e2e)', () => {
         },
       ],
     });
-  }, 30000); // Increase timeout to 30 seconds
+  }, 30000);
 
   afterAll(async () => {
-    // Clean up test data
     if (testSubmission) {
       await submissionModel.deleteOne({ _id: testSubmission._id });
     }
@@ -65,6 +73,7 @@ describe('Submissions (e2e)', () => {
     it('should return 200 and completeness data for valid submission', () => {
       return request(app.getHttpServer())
         .get(`/submissions/${testSubmission._id}/completeness`)
+        .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
         .expect((res) => {
           expect(res.body).toEqual({
@@ -78,18 +87,18 @@ describe('Submissions (e2e)', () => {
     });
 
     it('should return 200 and incompleteness data when fields are missing', async () => {
-      // Create incomplete submission
       const incompleteSubmission = await submissionModel.create({
-        title: '', // missing title
+        title: '',
         groupId: 'test-group-2',
         type: 'INITIAL',
         phaseId: 'test-phase-1',
         submittedAt: new Date(),
-        documents: [], // missing documents
+        documents: [],
       });
 
       return request(app.getHttpServer())
         .get(`/submissions/${incompleteSubmission._id}/completeness`)
+        .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
         .expect((res) => {
           expect(res.body).toEqual({
@@ -101,14 +110,27 @@ describe('Submissions (e2e)', () => {
           });
         })
         .then(() => {
-          // Clean up
           return submissionModel.deleteOne({ _id: incompleteSubmission._id });
         });
     });
 
+    it('should return 401 when no auth token provided', () => {
+      return request(app.getHttpServer())
+        .get(`/submissions/${testSubmission._id}/completeness`)
+        .expect(401);
+    });
+
+    it('should return 400 for invalid submission ID format', () => {
+      return request(app.getHttpServer())
+        .get('/submissions/invalid-id/completeness')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(400);
+    });
+
     it('should return 404 for non-existent submission', () => {
       return request(app.getHttpServer())
-        .get('/submissions/nonexistent-id/completeness')
+        .get('/submissions/64f1a2b3c4d5e6f7a8b9c0d1/completeness')
+        .set('Authorization', `Bearer ${authToken}`)
         .expect(404);
     });
   });

@@ -29,11 +29,8 @@ describe('Submissions (e2e)', () => {
     phaseModel = moduleFixture.get<Model<PhaseDocument>>(getModelToken(Phase.name));
     submissionModel = moduleFixture.get<Model<SubmissionDocument>>(getModelToken(Submission.name));
     
-    // Veritabanı bağlantısını alıyoruz
     connection = moduleFixture.get<Connection>(getConnectionToken());
 
-    // 🟢 NİHAİ ÇÖZÜM: Hacker'ı fiziksel olarak veritabanına kaydediyoruz!
-    // Böylece JwtStrategy onu bulacak ve rolünü "Student" olarak onaylayacak.
     await connection.collection('users').insertOne({
       _id: new Types.ObjectId('222222222222222222222222'),
       email: 'hacker@test.com',
@@ -64,7 +61,6 @@ describe('Submissions (e2e)', () => {
       documents: [{ originalName: 'proposal.pdf', mimeType: 'application/pdf', uploadedAt: new Date() }],
     });
 
-    // Mongoose kurallarını ezip orijinal başvuruyu kaydediyoruz
     await submissionModel.updateOne(
       { _id: testSubmission._id },
       { $set: { groupId: '333333333333333333333333' } },
@@ -76,7 +72,6 @@ describe('Submissions (e2e)', () => {
   afterAll(async () => {
     if (testSubmission) await submissionModel.deleteOne({ _id: testSubmission._id });
     if (testPhase) await phaseModel.deleteOne({ _id: testPhase._id });
-    // Test bitince hacker'ı veritabanından siliyoruz
     await connection.collection('users').deleteOne({ _id: new Types.ObjectId('222222222222222222222222') });
     await app.close();
   });

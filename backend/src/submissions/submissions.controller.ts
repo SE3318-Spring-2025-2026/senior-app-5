@@ -16,7 +16,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionsService } from './submissions.service';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'; 
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; 
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { GroupMemberGuard } from '../auth/guards/group-member.guard';
@@ -35,6 +35,29 @@ export class SubmissionsController {
     return this.submissionsService.createSubmission(createSubmissionDto);
   }
 
+ @Get(':submissionId/completeness')
+ @ApiOperation({ summary: 'Check if a submission meets all phase requirements' })
+ @ApiResponse({ status: 200, description: 'Completeness status returned successfully.' })
+  @ApiResponse({ status: 404, description: 'Submission or Phase not found.' })
+  async getCompleteness(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+  ) {
+    if (!submissionId.match(/^[0-9a-fA-F]{24}$/)) {
+    throw new BadRequestException('Invalid submission ID format');
+    }
+    const userRole = req.user.role;
+    if (userRole === 'Student') {
+      const submission = await this.submissionsService.findOne(submissionId);
+    if (
+      submission.groupId !== req.user.teamId &&
+      submission.groupId !== req.user.groupId
+      ) {
+      throw new ForbiddenException('You do not have permission to view this submission.');
+      }
+  }
+  return this.submissionsService.getCompleteness(submissionId);
+  }
   @Get()
   @ApiOperation({ summary: 'Get all submissions. Filter by groupId for students.' })
   @ApiQuery({ name: 'groupId', required: false, type: String })
@@ -46,8 +69,6 @@ export class SubmissionsController {
       if (!groupId) {
         throw new BadRequestException('Students must provide their groupId to view submissions.');
       }
-      
-      // SECURITY CHECK: Student can only request his/her own group
       if (groupId !== userGroupId) {
         throw new ForbiddenException('You do not have permission to view other groups\' submissions.');
       }
@@ -59,7 +80,6 @@ export class SubmissionsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get submission details by ID' })
   async findOne(@Req() req: Request & { user: any }, @Param('id') id: string) { 
-    // CAST ERROR FIX: Format check to prevent 500 errors
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       throw new BadRequestException('Invalid submission ID format');
     }

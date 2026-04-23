@@ -22,7 +22,8 @@ export const apiConfig = {
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
     activityLogs: '/admin/activity',
-  },
+    adminProfessors: '/auth/admin/professors',
+  },  
 };
 
 export default apiConfig;

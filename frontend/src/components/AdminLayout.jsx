@@ -12,6 +12,7 @@ function AdminLayout() {
     { label: 'Invites', path: '/admin/invites' },
     { label: 'Advisors', path: '/admin/advisors' },
     { label: 'Sanitization', path: '/admin/sanitization' },
+    { label: 'Professors', path: '/admin/professors' },
     { label: 'Activity Logs', path: '/admin/activity' },
   ]
 

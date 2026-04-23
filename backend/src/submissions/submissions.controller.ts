@@ -95,7 +95,7 @@ export class SubmissionsController {
   }
 
   @Post(':submissionId/documents')
-  @UseGuards(GroupMemberGuard) 
+  @UseGuards(GroupMemberGuard)
   @ApiOperation({ summary: 'Upload documents to a specific submission' })
   @UseInterceptors(FileInterceptor('file', {
     fileFilter: (req, file, callback) => {

@@ -13,8 +13,8 @@ import { GroupMemberGuard } from '../auth/guards/group-member.guard';
   ],
   controllers: [SubmissionsController],
   providers: [
-    SubmissionsService, 
-    GroupMemberGuard 
+    SubmissionsService,
+    GroupMemberGuard
   ],
   exports: [SubmissionsService],
 })

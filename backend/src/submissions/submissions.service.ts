@@ -17,7 +17,9 @@ export class SubmissionsService {
   async findById(submissionId: string): Promise<SubmissionDocument> {
     const submission = await this.submissionModel.findById(submissionId).exec();
     if (!submission) {
-      throw new NotFoundException(`Submission with ID ${submissionId} not found.`);
+      throw new NotFoundException(
+        `Submission with ID ${submissionId} not found.`,
+      );
     }
     return submission;
   }

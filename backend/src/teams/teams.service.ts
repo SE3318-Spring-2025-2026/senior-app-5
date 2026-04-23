@@ -25,6 +25,7 @@ export class TeamsService {
         ),
       );
     } catch (error) {
+      void error;
       throw new HttpException(
         'Invalid or not found GitHub Repository ID.',
         HttpStatus.UNPROCESSABLE_ENTITY,
@@ -39,20 +40,24 @@ export class TeamsService {
         ),
       );
     } catch (error) {
+      void error;
       throw new HttpException(
         'Invalid or not found Jira Project Key.',
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
 
-    let updatedTeam;
+    let updatedTeam: TeamDocument | null;
     try {
-      updatedTeam = await this.teamModel.findByIdAndUpdate(
-        teamId,
-        { jiraProjectKey, githubRepositoryId },
-        { new: true },
-      );
+      updatedTeam = await this.teamModel
+        .findByIdAndUpdate(
+          teamId,
+          { jiraProjectKey, githubRepositoryId },
+          { returnDocument: 'after' },
+        )
+        .exec();
     } catch (error) {
+      void error;
       throw new HttpException(
         'Database error. Team ID might be invalid.',
         HttpStatus.BAD_REQUEST,

@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
 import GroupLifecyclePage from './pages/GroupLifecyclePage';
+import CoordinatorManagementPage from './pages/CoordinatorManagementPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -52,10 +53,9 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
-            
+            <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
-            
 
             <Route
               path="/phases/schedule"

@@ -1,0 +1,308 @@
+openapi: 3.0.3
+info:
+  title: Academic Project Management API - Rubric Management (Process 1.2)
+  description: Endpoints for managing evaluation rubrics tied to deliverables with criteria-based grading.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+paths:
+  /deliverables/{deliverableId}/rubrics:
+    get:
+      summary: List rubrics for a deliverable
+      tags:
+        - Rubrics
+      operationId: listRubrics
+      parameters:
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier for the deliverable
+        - name: activeOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: If true, return only the active rubric for this deliverable
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Rubrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rubric'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new rubric for a deliverable
+      tags:
+        - Rubrics
+      operationId: createRubric
+      parameters:
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier for the deliverable
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRubricRequest'
+      responses:
+        '201':
+          description: Rubric created successfully. Previous active rubric (if any) is deactivated atomically.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rubric'
+        '400':
+          description: Validation error - criteria weights must sum to exactly 1.0
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /deliverables/{deliverableId}/rubrics/{rubricId}:
+    delete:
+      summary: Delete a rubric
+      tags:
+        - Rubrics
+      operationId: deleteRubric
+      parameters:
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier for the deliverable
+        - name: rubricId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier for the rubric to delete
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Rubric deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - rubric is referenced in evaluations and cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Question:
+      type: object
+      required:
+        - questionId
+        - criteriaName
+        - criteriaWeight
+      properties:
+        questionId:
+          type: string
+          format: uuid
+          description: Unique identifier for the question
+          example: 123e4567-e89b-12d3-a456-426614174000
+        criteriaName:
+          type: string
+          description: Name of the evaluation criteria
+          example: Code Quality
+        criteriaWeight:
+          type: number
+          format: float
+          description: Weight for this criteria (0-1). All criteria weights must sum to exactly 1.0.
+          example: 0.5
+          minimum: 0
+          maximum: 1
+
+    CreateQuestionRequest:
+      type: object
+      required:
+        - criteriaName
+        - criteriaWeight
+      properties:
+        criteriaName:
+          type: string
+          description: Name of the evaluation criteria
+          example: Code Quality
+        criteriaWeight:
+          type: number
+          format: float
+          description: Weight for this criteria (0-1)
+          example: 0.5
+          minimum: 0
+          maximum: 1
+
+    Rubric:
+      type: object
+      required:
+        - rubricId
+        - deliverableId
+        - name
+        - isActive
+        - questions
+        - createdAt
+        - updatedAt
+      properties:
+        rubricId:
+          type: string
+          format: uuid
+          description: Unique identifier for the rubric
+          example: 123e4567-e89b-12d3-a456-426614174000
+        deliverableId:
+          type: string
+          format: uuid
+          description: Unique identifier for the deliverable
+          example: 123e4567-e89b-12d3-a456-426614174001
+        name:
+          type: string
+          description: Name of the rubric
+          example: Sprint 1 Evaluation Rubric
+        isActive:
+          type: boolean
+          description: Indicates if this is the active rubric for the deliverable
+          example: true
+        questions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Question'
+          description: Array of evaluation criteria questions
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the rubric was created
+          example: 2026-04-23T10:30:00.000Z
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the rubric was last updated
+          example: 2026-04-23T10:30:00.000Z
+
+    CreateRubricRequest:
+      type: object
+      required:
+        - name
+        - questions
+      properties:
+        name:
+          type: string
+          description: Name of the rubric
+          example: Sprint 1 Evaluation Rubric
+        questions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateQuestionRequest'
+          description: Array of evaluation criteria. Criteria weights must sum to exactly 1.0.
+          example:
+            - criteriaName: Code Quality
+              criteriaWeight: 0.5
+            - criteriaName: Documentation
+              criteriaWeight: 0.5
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+        - statusCode
+      properties:
+        message:
+          type: string
+          description: Error message
+          example: Criteria weights must sum to exactly 1.0. Current sum: 0.9
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Unauthorized
+            statusCode: 401
+
+    Forbidden:
+      description: Forbidden - insufficient permissions for the requested operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Insufficient permissions
+            statusCode: 403
+
+    NotFound:
+      description: Not Found - requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Deliverable not found
+            statusCode: 404
+
+    InternalServerError:
+      description: Internal Server Error - unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: An unexpected error occurred
+            statusCode: 500

@@ -19,7 +19,7 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async register(email: string, password: string, role: string = Role.Student) {
+  async register(email: string, password: string, role: Role = Role.Student) {
     if (!email || !password) {
       throw new BadRequestException('Email and password are required');
     }
@@ -38,7 +38,7 @@ export class AuthService {
       const user = await this.usersService.createUser({
         email,
         passwordHash,
-        role,
+          role,
       });
 
       this.logger.log(`User registered successfully: ${email} as ${role}`);

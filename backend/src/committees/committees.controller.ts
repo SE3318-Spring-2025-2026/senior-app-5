@@ -228,13 +228,6 @@ export class CommitteesController {
     summary: 'Remove a jury member from a committee (COORDINATOR only)',
   })
   @ApiNoContentResponse({ description: 'Jury member removed successfully' })
-    operationId: 'assignGroupToCommittee',
-    summary: 'Assign a group to a committee (COORDINATOR only)',
-  })
-  @ApiCreatedResponse({
-    description: 'Group assigned successfully',
-    type: CommitteeGroupResponseDto,
-  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({
     description: 'Valid token but insufficient permissions',
@@ -254,12 +247,40 @@ export class CommitteesController {
     @Param('userId', new ParseUUIDPipe()) userId: string,
     @Request() req: RequestWithUser,
   ): Promise<void> {
+    const coordinatorId =
+      req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+    await this.committeesService.removeJuryMember(
+      committeeId,
+      userId,
+      coordinatorId,
+      correlationId,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'assignGroupToCommittee',
+    summary: 'Assign a group to a committee (COORDINATOR only)',
+  })
+  @ApiCreatedResponse({
+    description: 'Group assigned successfully',
+    type: CommitteeGroupResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
   @ApiNotFoundResponse({ description: 'Committee or group not found' })
   @ApiConflictResponse({
     description: 'Group is already assigned to a committee',
   })
   @ApiUnprocessableEntityResponse({
     description: 'Group does not have a confirmed advisor assignment',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
   })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Coordinator)
@@ -274,10 +295,6 @@ export class CommitteesController {
       req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
     const correlationId =
       (req.headers['x-correlation-id'] as string) ?? undefined;
-    await this.committeesService.removeJuryMember(
-      committeeId,
-      userId,
-
     return this.committeesService.assignGroupToCommittee(
       committeeId,
       dto,

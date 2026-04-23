@@ -20,9 +20,7 @@ describe('SubmissionChecklist Component', () => {
 
   it('should display error if user is not assigned to a group', async () => {
     localStorage.setItem('user', JSON.stringify({ role: 'Student' })); 
-    
     render(<SubmissionChecklist />);
-    
     await waitFor(() => {
       expect(screen.getByText('You are not assigned to any group yet.')).toBeTruthy();
     });
@@ -30,17 +28,14 @@ describe('SubmissionChecklist Component', () => {
 
   it('should display error if there are no active submissions', async () => {
     localStorage.setItem('user', JSON.stringify({ role: 'Student', groupId: 'group1' }));
-    
     apiClient.get.mockResolvedValueOnce({ data: [] }); 
-
     render(<SubmissionChecklist />);
-    
     await waitFor(() => {
       expect(screen.getByText('No active submissions found to track.')).toBeTruthy();
     });
   });
 
-  it('should render requirements correctly on successful fetch', async () => {
+  it('should render requirements correctly based on real API structure', async () => {
     localStorage.setItem('user', JSON.stringify({ role: 'Student', groupId: 'group1' }));
 
     apiClient.get.mockResolvedValueOnce({
@@ -49,18 +44,22 @@ describe('SubmissionChecklist Component', () => {
 
     apiClient.get.mockResolvedValueOnce({
       data: {
-        requirements: [
-          { id: 1, name: 'Project Proposal', status: 'Complete' },
-          { id: 2, name: 'Final Report', status: 'Pending' }
-        ]
+        submissionId: "123",
+        isComplete: false,
+        missingFields: ["documents"],
+        requiredFields: ["title", "documents"],
+        phaseId: "phase-1"
       }
     });
 
     render(<SubmissionChecklist />);
 
     await waitFor(() => {
-      expect(screen.getByText('Project Proposal')).toBeTruthy();
-      expect(screen.getByText('Final Report')).toBeTruthy();
+
+      expect(screen.getByText('Title')).toBeTruthy();
+
+      expect(screen.getByText('Documents')).toBeTruthy();
+      
       expect(screen.getByText('COMPLETE')).toBeTruthy();
       expect(screen.getByText('PENDING')).toBeTruthy();
     });

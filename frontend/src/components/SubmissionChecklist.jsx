@@ -8,7 +8,6 @@ const SubmissionChecklist = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-
     const controller = new AbortController();
     const { signal } = controller;
 
@@ -23,7 +22,6 @@ const SubmissionChecklist = () => {
           return;
         }
 
-        // 1. find the group of user
         const groupId = localUser.teamId || localUser.groupId;
         if (!groupId) {
           setError('You are not assigned to any group yet.');
@@ -31,7 +29,6 @@ const SubmissionChecklist = () => {
           return;
         }
 
-        // 2. Pull the group's latest submission (signal'i isteğe ekliyoruz)
         const subRes = await apiClient.get(`/submissions?groupId=${groupId}`, { signal });
         const submissions = subRes.data;
 
@@ -41,31 +38,30 @@ const SubmissionChecklist = () => {
            return;
         }
 
-       // The most current submission from the backend appears at the top (index 0)
         const latestSubmissionId = submissions[0]._id;
-
         const completenessRes = await apiClient.get(`/submissions/${latestSubmissionId}/completeness`, { signal });
         
-        const data = completenessRes.data.requirements || completenessRes.data || [];
-        setRequirements(data);
+        const required = completenessRes.data.requiredFields || [];
+        const missing = completenessRes.data.missingFields || [];
+        
+        const mappedRequirements = required.map((field) => ({
+          name: field.charAt(0).toUpperCase() + field.slice(1),
+          isComplete: !missing.includes(field) 
+        }));
+
+        setRequirements(mappedRequirements);
         setLoading(false);
 
       } catch (err) {
-        if (err.name === 'CanceledError' || err.name === 'AbortError') {
-          return; 
-        }
-        
+        if (err.name === 'CanceledError' || err.name === 'AbortError') return;
         console.error("Failed to fetch completeness:", err);
         setError('Failed to load checklist data from the server.');
         setLoading(false);
       }
     };
-
+    
     fetchCompleteness();
-
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, []);
 
   if (loading) {
@@ -95,27 +91,16 @@ const SubmissionChecklist = () => {
       ) : (
         <ul className={styles.list}>
           {requirements.map((req) => {
-            const isComplete = req.status === 'Complete' || req.isMet === true;
-            const statusText = isComplete ? 'COMPLETE' : 'PENDING';
-            
-            const uniqueKey = req.id || req.name || req.requirementName;
-
+            const statusText = req.isComplete ? 'COMPLETE' : 'PENDING';
             return (
-              <li key={uniqueKey} className={styles.listItem}>
+              <li key={req.name} className={styles.listItem}>
                 <div className={styles.leftSection}>
-                  <span className={styles.icon}>
-                    {isComplete ? '✅' : '⏳'}
-                  </span>
-                  <span 
-                    className={`${styles.reqName} ${isComplete ? styles.completedText : ''}`}
-                  >
-                    {req.name || req.requirementName}
+                  <span className={styles.icon}>{req.isComplete ? '✅' : '⏳'}</span>
+                  <span className={`${styles.reqName} ${req.isComplete ? styles.completedText : ''}`}>
+                    {req.name}
                   </span>
                 </div>
-                
-                <span 
-                  className={`${styles.badge} ${isComplete ? styles.badgeComplete : styles.badgePending}`}
-                >
+                <span className={`${styles.badge} ${req.isComplete ? styles.badgeComplete : styles.badgePending}`}>
                   {statusText}
                 </span>
               </li>

@@ -36,23 +36,38 @@ describe('SubmissionsController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('getCompleteness', () => {
-    it('should return completeness data', async () => {
-      const completenessData = {
-        submissionId: 'sub-1',
-        isComplete: true,
-        missingFields: [],
-        requiredFields: ['title'],
-        phaseId: 'phase-1',
-      };
-      mockSubmissionsService.getCompleteness.mockResolvedValue(completenessData);
-
-      const result = await controller.getCompleteness('sub-1');
-
-      expect(mockSubmissionsService.getCompleteness).toHaveBeenCalledWith('sub-1');
-      expect(result).toEqual(completenessData);
-    });
+ describe('getCompleteness', () => {
+  it('should return completeness data', async () => {
+    const req = { user: { role: 'Coordinator' } };
+    const completenessData = {
+      submissionId: '64f1a2b3c4d5e6f7a8b9c0d1',
+      isComplete: true,
+      missingFields: [],
+      requiredFields: ['title'],
+      phaseId: 'phase-1',
+    };
+    mockSubmissionsService.getCompleteness.mockResolvedValue(completenessData);
+    const result = await controller.getCompleteness(req as any, '64f1a2b3c4d5e6f7a8b9c0d1');
+    expect(mockSubmissionsService.getCompleteness).toHaveBeenCalledWith('64f1a2b3c4d5e6f7a8b9c0d1');
+    expect(result).toEqual(completenessData);
   });
+
+  it('should throw BadRequestException for invalid ObjectId format', async () => {
+    const req = { user: { role: 'Coordinator' } };
+    await expect(controller.getCompleteness(req as any, 'invalid-id')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('should throw ForbiddenException if Student tries to view another group completeness', async () => {
+    const req = { user: { role: 'Student', groupId: 'my-group' } };
+    const mockSubmission = { _id: '64f1a2b3c4d5e6f7a8b9c0d1', groupId: 'different-group' };
+    mockSubmissionsService.findOne.mockResolvedValue(mockSubmission);
+    await expect(
+      controller.getCompleteness(req as any, '64f1a2b3c4d5e6f7a8b9c0d1'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+});
 
   describe('findAll', () => {
     it('should allow Coordinator to fetch all submissions without groupId', async () => {

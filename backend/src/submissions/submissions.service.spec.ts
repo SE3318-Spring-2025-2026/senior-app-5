@@ -25,7 +25,7 @@ describe('SubmissionsService', () => {
   mockSubmissionModel.find = jest.fn().mockReturnThis();
   mockSubmissionModel.sort = jest.fn().mockReturnThis();
   mockSubmissionModel.exec = jest.fn();
-  mockSubmissionModel.findById = jest.fn().mockReturnThis();
+  
 
   beforeEach(async () => {
     jest.clearAllMocks();

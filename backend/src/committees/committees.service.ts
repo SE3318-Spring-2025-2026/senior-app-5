@@ -363,6 +363,16 @@ export class CommitteesService {
         event: 'jury_member_remove_failed',
         committeeId,
         userId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to remove jury member due to an unexpected error.',
+      );
+    }
+  }
+
   async assignGroupToCommittee(
     committeeId: string,
     dto: AssignCommitteeGroupDto,
@@ -497,7 +507,6 @@ export class CommitteesService {
         error: (error as Error).message,
       });
       throw new InternalServerErrorException(
-        'Failed to remove jury member due to an unexpected error.',
         'Failed to assign group to committee due to an unexpected error.',
       );
     }

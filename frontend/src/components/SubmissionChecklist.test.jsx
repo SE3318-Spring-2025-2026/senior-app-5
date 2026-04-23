@@ -47,7 +47,6 @@ describe('SubmissionChecklist Component', () => {
       data: [{ _id: 'sub123' }]
     });
 
-
     apiClient.get.mockResolvedValueOnce({
       data: {
         requirements: [

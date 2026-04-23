@@ -8,6 +8,10 @@ const SubmissionChecklist = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const fetchCompleteness = async () => {
       try {
         const userStr = localStorage.getItem('user');
@@ -27,8 +31,8 @@ const SubmissionChecklist = () => {
           return;
         }
 
-        // 2. Pull the group's latest submission
-        const subRes = await apiClient.get(`/submissions?groupId=${groupId}`);
+        // 2. Pull the group's latest submission (signal'i isteğe ekliyoruz)
+        const subRes = await apiClient.get(`/submissions?groupId=${groupId}`, { signal });
         const submissions = subRes.data;
 
         if (!submissions || submissions.length === 0) {
@@ -40,13 +44,17 @@ const SubmissionChecklist = () => {
        // The most current submission from the backend appears at the top (index 0)
         const latestSubmissionId = submissions[0]._id;
 
-        const completenessRes = await apiClient.get(`/submissions/${latestSubmissionId}/completeness`);
+        const completenessRes = await apiClient.get(`/submissions/${latestSubmissionId}/completeness`, { signal });
         
         const data = completenessRes.data.requirements || completenessRes.data || [];
         setRequirements(data);
         setLoading(false);
 
       } catch (err) {
+        if (err.name === 'CanceledError' || err.name === 'AbortError') {
+          return; 
+        }
+        
         console.error("Failed to fetch completeness:", err);
         setError('Failed to load checklist data from the server.');
         setLoading(false);
@@ -54,6 +62,10 @@ const SubmissionChecklist = () => {
     };
 
     fetchCompleteness();
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   if (loading) {
@@ -82,12 +94,14 @@ const SubmissionChecklist = () => {
         <p style={{ color: '#94a3b8' }}>No specific requirements found for this phase.</p>
       ) : (
         <ul className={styles.list}>
-          {requirements.map((req, index) => {
+          {requirements.map((req) => {
             const isComplete = req.status === 'Complete' || req.isMet === true;
             const statusText = isComplete ? 'COMPLETE' : 'PENDING';
+            
+            const uniqueKey = req.id || req.name || req.requirementName;
 
             return (
-              <li key={req.id || index} className={styles.listItem}>
+              <li key={uniqueKey} className={styles.listItem}>
                 <div className={styles.leftSection}>
                   <span className={styles.icon}>
                     {isComplete ? '✅' : '⏳'}

@@ -40,8 +40,12 @@ export class SubmissionsService {
 
   async uploadDocument(submissionId: string, file: Express.Multer.File) {
     const submission = await this.findById(submissionId);
+
+    
+    const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
     const newDocument = {
-      originalName: file.originalname,
+      originalName: decodedFileName,
       mimeType: file.mimetype,
       uploadedAt: new Date(),
     };
@@ -67,20 +71,17 @@ export class SubmissionsService {
         if (!submission.documents || submission.documents.length === 0) {
           missingFields.push('documents');
         }
-    } else {
-      const isFieldInSchema = submission.schema.path(field);
-      if (!isFieldInSchema) {
+      } else {
+        const isFieldInSchema = this.submissionModel.schema.path(field);
+        if (!isFieldInSchema) {
           console.warn(`Warning: Field '${field}' does not exist in the Submission schema. Skipping check.`);
-    continue; 
-    }
-
-  // 2. Değeri al ve sadece null, undefined veya boş string ise eksik say
-  // Böylece 0 veya false gibi geçerli değerler eksik sayılmaz
-  const value = submission.get(field);
-  if (value === undefined || value === null || value === '') {
-    missingFields.push(field);
-  }
-}
+          continue;
+        }
+        const value = submission.get(field);
+        if (value === undefined || value === null || value === '') {
+          missingFields.push(field);
+        }
+      }
     }
     const isComplete = missingFields.length === 0;
     return {
@@ -90,5 +91,14 @@ export class SubmissionsService {
       requiredFields,
       phaseId: submission.phaseId,
     };
+  }
+
+  async findAll(groupId?: string) {
+    const query = groupId ? { groupId } : {};
+    return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async findOne(id: string): Promise<SubmissionDocument> {
+    return this.findById(id);
   }
 }

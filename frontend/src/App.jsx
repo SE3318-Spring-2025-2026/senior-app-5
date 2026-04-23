@@ -18,6 +18,9 @@ import MembersPage from './pages/admin/MembersPage';
 import InvitesPage from './pages/admin/InvitesPage';
 import AdvisorsPage from './pages/admin/AdvisorsPage';
 import SanitizationPage from './pages/admin/SanitizationPage';
+
+import DocumentsPage from './pages/DocumentsPage';
+import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import './App.css';
 
@@ -48,6 +51,11 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
+            
+            <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
+            
+
             <Route
               path="/phases/schedule"
               element={
@@ -56,7 +64,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/documents" element={<div>Documents Section - Coming Soon</div>} />
 
             <Route path="/admin" element={
               <ProtectedRoute requiredRole="Coordinator">
@@ -69,6 +76,7 @@ function App() {
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
+
               <Route path="activity" element={<ActivityPage />} />
             </Route>
           </Route>

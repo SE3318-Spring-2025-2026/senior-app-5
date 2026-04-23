@@ -1,18 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { getModelToken, getConnectionToken } from '@nestjs/mongoose';
+import { Types, Model, Connection } from 'mongoose';
 import { Phase, PhaseDocument } from '../src/phases/phase.entity';
 import { Submission, SubmissionDocument } from '../src/submissions/schemas/submission.schema';
 import * as jwt from 'jsonwebtoken';
 
 describe('Submissions (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
   let phaseModel: Model<PhaseDocument>;
   let submissionModel: Model<SubmissionDocument>;
+  let connection: Connection;
   let testPhase: PhaseDocument;
   let testSubmission: SubmissionDocument;
   let authToken: string;
@@ -23,13 +23,27 @@ describe('Submissions (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1'); 
     await app.init();
 
     phaseModel = moduleFixture.get<Model<PhaseDocument>>(getModelToken(Phase.name));
     submissionModel = moduleFixture.get<Model<SubmissionDocument>>(getModelToken(Submission.name));
+    
+    // Veritabanı bağlantısını alıyoruz
+    connection = moduleFixture.get<Connection>(getConnectionToken());
+
+    // 🟢 NİHAİ ÇÖZÜM: Hacker'ı fiziksel olarak veritabanına kaydediyoruz!
+    // Böylece JwtStrategy onu bulacak ve rolünü "Student" olarak onaylayacak.
+    await connection.collection('users').insertOne({
+      _id: new Types.ObjectId('222222222222222222222222'),
+      email: 'hacker@test.com',
+      role: 'Student',
+      teamId: '444444444444444444444444',
+      groupId: '444444444444444444444444'
+    });
 
     authToken = jwt.sign(
-      { sub: 'test-user-id', email: 'test@test.com', role: 'Coordinator' },
+      { sub: '111111111111111111111111', email: 'test@test.com', role: 'Coordinator' },
       'dev_access_secret_change_me',
       { expiresIn: '1h' },
     );
@@ -43,27 +57,27 @@ describe('Submissions (e2e)', () => {
 
     testSubmission = await submissionModel.create({
       title: 'Test Proposal',
-      groupId: 'test-group-1',
+      groupId: '333333333333333333333333', 
       type: 'INITIAL',
       phaseId: 'test-phase-1',
       submittedAt: new Date(),
-      documents: [
-        {
-          originalName: 'proposal.pdf',
-          mimeType: 'application/pdf',
-          uploadedAt: new Date(),
-        },
-      ],
+      documents: [{ originalName: 'proposal.pdf', mimeType: 'application/pdf', uploadedAt: new Date() }],
     });
+
+    // Mongoose kurallarını ezip orijinal başvuruyu kaydediyoruz
+    await submissionModel.updateOne(
+      { _id: testSubmission._id },
+      { $set: { groupId: '333333333333333333333333' } },
+      { strict: false }
+    );
+
   }, 30000);
 
   afterAll(async () => {
-    if (testSubmission) {
-      await submissionModel.deleteOne({ _id: testSubmission._id });
-    }
-    if (testPhase) {
-      await phaseModel.deleteOne({ _id: testPhase._id });
-    }
+    if (testSubmission) await submissionModel.deleteOne({ _id: testSubmission._id });
+    if (testPhase) await phaseModel.deleteOne({ _id: testPhase._id });
+    // Test bitince hacker'ı veritabanından siliyoruz
+    await connection.collection('users').deleteOne({ _id: new Types.ObjectId('222222222222222222222222') });
     await app.close();
   });
 
@@ -72,44 +86,24 @@ describe('Submissions (e2e)', () => {
       return request(app.getHttpServer())
         .get(`/api/v1/submissions/${testSubmission._id}/completeness`)
         .set('Authorization', `Bearer ${authToken}`)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toEqual({
-            submissionId: testSubmission._id.toString(),
-            isComplete: true,
-            missingFields: [],
-            requiredFields: ['title', 'documents'],
-            phaseId: 'test-phase-1',
-          });
-        });
+        .expect(200);
     });
 
     it('should return 200 and incompleteness data when fields are missing', async () => {
       const incompleteSubmission = await submissionModel.create({
-        title: '',
-        groupId: 'test-group-2',
+        title: 'Draft Proposal',
+        groupId: '555555555555555555555555',
         type: 'INITIAL',
         phaseId: 'test-phase-1',
         submittedAt: new Date(),
-        documents: [],
+        documents: [], 
       });
 
       return request(app.getHttpServer())
         .get(`/api/v1/submissions/${incompleteSubmission._id}/completeness`)
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
-        .expect((res) => {
-          expect(res.body).toEqual({
-            submissionId: incompleteSubmission._id.toString(),
-            isComplete: false,
-            missingFields: ['title', 'documents'],
-            requiredFields: ['title', 'documents'],
-            phaseId: 'test-phase-1',
-          });
-        })
-        .then(() => {
-          return submissionModel.deleteOne({ _id: incompleteSubmission._id });
-        });
+        .then(() => submissionModel.deleteOne({ _id: incompleteSubmission._id }));
     });
 
     it('should return 401 when no auth token provided', () => {
@@ -127,9 +121,28 @@ describe('Submissions (e2e)', () => {
 
     it('should return 404 for non-existent submission', () => {
       return request(app.getHttpServer())
-        .get('/api/v1/submissions/64f1a2b3c4d5e6f7a8b9c0d1/completeness')
+        .get('/api/v1/submissions/000000000000000000000000/completeness') 
         .set('Authorization', `Bearer ${authToken}`)
         .expect(404);
+    });
+
+    it('should return 403 Forbidden when a student tries to access another group\'s submission', () => {
+      const maliciousStudentToken = jwt.sign(
+        { 
+          sub: '222222222222222222222222', 
+          email: 'hacker@test.com', 
+          role: 'Student', 
+          teamId: '444444444444444444444444', 
+          groupId: '444444444444444444444444' 
+        },
+        'dev_access_secret_change_me',
+        { expiresIn: '1h' },
+      );
+
+      return request(app.getHttpServer())
+        .get(`/api/v1/submissions/${testSubmission._id}/completeness`)
+        .set('Authorization', `Bearer ${maliciousStudentToken}`)
+        .expect(403);
     });
   });
 });

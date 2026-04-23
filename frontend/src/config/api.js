@@ -21,7 +21,9 @@ export const apiConfig = {
     advisors: '/advisors',
     requests: '/requests',
     requestById: (requestId) => `/requests/${requestId}`,
+    userSearch: '/users/search',
     invites: '/invites/deliver',
+    phaseSchedule: (phaseId) => `/phases/${phaseId}/schedule`,
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
     schedules: '/schedules',
@@ -34,7 +36,9 @@ export const apiConfig = {
     committeeAdvisorByUser: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}`,
     committeeGroups: (committeeId) => `/committees/${committeeId}/groups`,
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
-  },
+    activityLogs: '/admin/activity',
+    adminProfessors: '/auth/admin/professors',
+  },  
 };
 
 export default apiConfig;

@@ -1,3 +1,4 @@
+import { InvitesModule } from './invites/invites.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -13,6 +14,7 @@ import { AdvisorsModule } from './advisors/advisors.module';
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CommitteesModule } from './committees/committees.module';
+import { InvitesModule } from './invites/invites.module';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { CommitteesModule } from './committees/committees.module';
     PhasesModule,
     SubmissionsModule,
     CommitteesModule,
+    InvitesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

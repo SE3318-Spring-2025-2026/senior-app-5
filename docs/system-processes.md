@@ -95,6 +95,10 @@ A system process is a series of steps performed by users, committees, or the sys
 | Verify submission completeness | Frontend, Backend, Database | Submission ID, Required Field List, Completeness Status |
 | Validate SoW Submission | Backend, Database | Group ID, SoW Submission Status, Revised Proposal Status |
 
+Current backend contract notes:
+- `POST /api/v1/submissions` validates `phaseId` against the stored phase schedule and rejects requests outside `submissionStart` and `submissionEnd` using server time.
+- `POST /api/v1/submissions/:submissionId/documents` uploads proposal files to an existing submission record.
+
 ---
 
 ## Process 7: Send Review

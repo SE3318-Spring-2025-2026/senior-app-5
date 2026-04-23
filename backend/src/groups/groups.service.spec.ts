@@ -41,6 +41,9 @@ describe('GroupsService', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           useValue: mockSubmissionModel,
         },
+        {
+          provide: getModelToken('User'),
+          useValue: jest.fn(),
       ],
     }).compile();
 

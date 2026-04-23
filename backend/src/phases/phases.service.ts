@@ -14,6 +14,14 @@ export class PhasesService {
     @InjectModel(Phase.name) private phaseModel: Model<PhaseDocument>,
   ) {}
 
+  async findByPhaseId(phaseId: string): Promise<Phase> {
+    const phase = await this.phaseModel.findOne({ phaseId }).exec();
+    if (!phase) {
+      throw new NotFoundException('Phase not found');
+    }
+    return phase;
+  }
+
   async updateSchedule(phaseId: string, dto: UpdatePhaseScheduleDto) {
     const submissionStart = new Date(dto.submissionStart);
     const submissionEnd = new Date(dto.submissionEnd);

@@ -1,8 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
+
+export type SubmissionDocument = HydratedDocument<Submission>;
 
 @Schema({ timestamps: true })
-export class Submission extends Document {
+export class Submission {
   @Prop({ required: true })
   title!: string;
 
@@ -15,6 +17,12 @@ export class Submission extends Document {
   @Prop({ required: true })
   type!: string;
 
+  @Prop({ required: true })
+  phaseId!: string;
+
+  @Prop({ type: Date, required: true })
+  submittedAt!: Date;
+
   //Array to hold metadata of documents
   @Prop([
     {
@@ -23,7 +31,7 @@ export class Submission extends Document {
       uploadedAt: { type: Date, default: Date.now },
     },
   ])
-  documents!: Array<{
+  documents?: Array<{
     originalName: string;
     mimeType: string;
     uploadedAt: Date;

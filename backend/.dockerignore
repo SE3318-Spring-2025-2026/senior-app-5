@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env
+npm-debug.log
+Dockerfile
+README.md
+README2.md

@@ -25,6 +25,10 @@ export class Group {
   @Prop({ required: true })
   leaderUserId!: string;
 
+  
+  @Prop({ type: String, required: false })
+  advisorUserId?: string;
+
   @Prop({
     type: String,
     enum: GroupStatus,

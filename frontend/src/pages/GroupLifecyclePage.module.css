@@ -48,6 +48,8 @@
 .sectionHeader h2 {
   margin: 0 0 6px;
   font-size: 20px;
+  color: #000000; 
+  font-weight: 700; 
 }
 
 .sectionHeader p {
@@ -68,8 +70,9 @@
   display: grid;
   gap: 8px;
   text-align: left;
-  color: #262626;
+  color: #000000; 
   font-size: 14px;
+  font-weight: 500;
 }
 
 .form input,

@@ -151,13 +151,11 @@ describe('CommitteesService', () => {
     it('successfully links an advisor to a committee with provided assignedAt', async () => {
       const assignedAtDate = new Date('2026-04-17T10:30:00.000Z');
 
-      const execFindOne = jest
-        .fn()
-        .mockResolvedValue({
-          committeeId,
-          name: 'Committee A',
-          advisorId: null,
-        });
+      const execFindOne = jest.fn().mockResolvedValue({
+        committeeId,
+        name: 'Committee A',
+        advisorId: null,
+      });
 
       const leanFindOne = jest.fn().mockReturnValue({ exec: execFindOne });
       mockCommitteeModel.findOne.mockReturnValueOnce({
@@ -165,15 +163,13 @@ describe('CommitteesService', () => {
         exec: execFindOne,
       });
 
-      const execFindOneAndUpdate = jest
-        .fn()
-        .mockResolvedValue({
-          committeeId,
-          name: 'Committee A',
-          advisorId: advisorUserId,
-          advisorAssignedAt: assignedAtDate,
-          advisorAssignedBy: coordinatorId,
-        });
+      const execFindOneAndUpdate = jest.fn().mockResolvedValue({
+        committeeId,
+        name: 'Committee A',
+        advisorId: advisorUserId,
+        advisorAssignedAt: assignedAtDate,
+        advisorAssignedBy: coordinatorId,
+      });
 
       mockCommitteeModel.findOneAndUpdate.mockReturnValue({
         exec: execFindOneAndUpdate,
@@ -206,27 +202,23 @@ describe('CommitteesService', () => {
 
     it('successfully links an advisor with default server time if assignedAt not provided', async () => {
       const now = new Date();
-      const execFindOne = jest
-        .fn()
-        .mockResolvedValue({
-          committeeId,
-          name: 'Committee A',
-          advisorId: null,
-        });
+      const execFindOne = jest.fn().mockResolvedValue({
+        committeeId,
+        name: 'Committee A',
+        advisorId: null,
+      });
 
       mockCommitteeModel.findOne.mockReturnValue({
         lean: jest.fn().mockReturnValue({ exec: execFindOne }),
         exec: execFindOne,
       });
 
-      const execFindOneAndUpdate = jest
-        .fn()
-        .mockResolvedValue({
-          committeeId,
-          name: 'Committee A',
-          advisorId: advisorUserId,
-          advisorAssignedBy: coordinatorId,
-        });
+      const execFindOneAndUpdate = jest.fn().mockResolvedValue({
+        committeeId,
+        name: 'Committee A',
+        advisorId: advisorUserId,
+        advisorAssignedBy: coordinatorId,
+      });
 
       mockCommitteeModel.findOneAndUpdate.mockReturnValue({
         exec: execFindOneAndUpdate,
@@ -248,19 +240,15 @@ describe('CommitteesService', () => {
       expect(result.advisorUserId).toEqual(advisorUserId);
       expect(result.assignedByUserId).toEqual(coordinatorId);
       expect(result.assignedAt).toBeDefined();
-      expect(result.assignedAt.getTime()).toBeGreaterThanOrEqual(
-        now.getTime(),
-      );
+      expect(result.assignedAt.getTime()).toBeGreaterThanOrEqual(now.getTime());
     });
 
     it('throws 409 Conflict when advisor is already linked to the committee', async () => {
-      const execFindOne = jest
-        .fn()
-        .mockResolvedValue({
-          committeeId,
-          name: 'Committee A',
-          advisorId: advisorUserId, // already linked
-        });
+      const execFindOne = jest.fn().mockResolvedValue({
+        committeeId,
+        name: 'Committee A',
+        advisorId: advisorUserId, // already linked
+      });
 
       mockCommitteeModel.findOne.mockReturnValue({
         lean: jest.fn().mockReturnValue({ exec: execFindOne }),
@@ -296,13 +284,11 @@ describe('CommitteesService', () => {
     });
 
     it('throws 404 when advisor user does not exist', async () => {
-      const execFindOne = jest
-        .fn()
-        .mockResolvedValue({
-          committeeId,
-          name: 'Committee A',
-          advisorId: null,
-        });
+      const execFindOne = jest.fn().mockResolvedValue({
+        committeeId,
+        name: 'Committee A',
+        advisorId: null,
+      });
 
       mockCommitteeModel.findOne.mockReturnValue({
         lean: jest.fn().mockReturnValue({ exec: execFindOne }),
@@ -322,13 +308,11 @@ describe('CommitteesService', () => {
     });
 
     it('throws 404 when user does not have advisor role', async () => {
-      const execFindOne = jest
-        .fn()
-        .mockResolvedValue({
-          committeeId,
-          name: 'Committee A',
-          advisorId: null,
-        });
+      const execFindOne = jest.fn().mockResolvedValue({
+        committeeId,
+        name: 'Committee A',
+        advisorId: null,
+      });
 
       mockCommitteeModel.findOne.mockReturnValue({
         lean: jest.fn().mockReturnValue({ exec: execFindOne }),

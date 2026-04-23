@@ -23,7 +23,11 @@ describe('NotificationService', () => {
       const groupId = 'group-456';
       const groupName = 'Test Group';
 
-      await service.sendAdvisorRemovalNotification(advisorId, groupId, groupName);
+      await service.sendAdvisorRemovalNotification(
+        advisorId,
+        groupId,
+        groupName,
+      );
 
       const notifications = service.getAllNotifications();
       expect(notifications.length).toBe(1);
@@ -40,7 +44,11 @@ describe('NotificationService', () => {
       const groupId = 'group-101';
       const groupName = 'Another Test Group';
 
-      await service.sendAdvisorAssignmentNotification(advisorId, groupId, groupName);
+      await service.sendAdvisorAssignmentNotification(
+        advisorId,
+        groupId,
+        groupName,
+      );
 
       const notifications = service.getAllNotifications();
       expect(notifications.length).toBe(1);
@@ -58,8 +66,16 @@ describe('NotificationService', () => {
       const groupId = 'group-1';
       const groupName = 'Test Group';
 
-      await service.sendAdvisorRemovalNotification(advisorId1, groupId, groupName);
-      await service.sendAdvisorAssignmentNotification(advisorId2, groupId, groupName);
+      await service.sendAdvisorRemovalNotification(
+        advisorId1,
+        groupId,
+        groupName,
+      );
+      await service.sendAdvisorAssignmentNotification(
+        advisorId2,
+        groupId,
+        groupName,
+      );
 
       const notifications = service.getAllNotifications();
       expect(notifications.length).toBe(2);
@@ -74,7 +90,11 @@ describe('NotificationService', () => {
       const groupId = 'group-456';
       const groupName = 'Test Group';
 
-      await service.sendAdvisorRemovalNotification(advisorId, groupId, groupName);
+      await service.sendAdvisorRemovalNotification(
+        advisorId,
+        groupId,
+        groupName,
+      );
       expect(service.getAllNotifications().length).toBe(1);
 
       service.clearNotifications();

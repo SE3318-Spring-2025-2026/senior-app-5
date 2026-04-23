@@ -135,7 +135,6 @@ describe('GroupsService', () => {
       });
 
       mockGroupModel.findOneAndUpdate = jest.fn().mockReturnValue({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         exec: jest.fn().mockResolvedValue({
           ...mockGroup,
           advisorId: newAdvisorId,
@@ -143,8 +142,12 @@ describe('GroupsService', () => {
       });
 
       mockUsersService.findById.mockResolvedValue(mockNewAdvisor);
-      mockNotificationService.sendAdvisorRemovalNotification.mockResolvedValue(undefined);
-      mockNotificationService.sendAdvisorAssignmentNotification.mockResolvedValue(undefined);
+      mockNotificationService.sendAdvisorRemovalNotification.mockResolvedValue(
+        undefined,
+      );
+      mockNotificationService.sendAdvisorAssignmentNotification.mockResolvedValue(
+        undefined,
+      );
 
       const result = await service.transferAdvisor(
         groupId,
@@ -163,21 +166,22 @@ describe('GroupsService', () => {
         { advisorId: newAdvisorId, advisorName: mockNewAdvisor.email },
         { new: true },
       );
-      expect(mockNotificationService.sendAdvisorRemovalNotification).toHaveBeenCalledWith(
-        currentAdvisorId,
-        groupId,
-        mockGroup.groupName,
-      );
-      expect(mockNotificationService.sendAdvisorAssignmentNotification).toHaveBeenCalledWith(
-        newAdvisorId,
-        groupId,
-        mockGroup.groupName,
-      );
+      expect(
+        mockNotificationService.sendAdvisorRemovalNotification,
+      ).toHaveBeenCalledWith(currentAdvisorId, groupId, mockGroup.groupName);
+      expect(
+        mockNotificationService.sendAdvisorAssignmentNotification,
+      ).toHaveBeenCalledWith(newAdvisorId, groupId, mockGroup.groupName);
     });
 
     it('should reject transfer if newAdvisorId equals currentAdvisorId', async () => {
       await expect(
-        service.transferAdvisor(groupId, currentAdvisorId, currentAdvisorId, coordinatorId),
+        service.transferAdvisor(
+          groupId,
+          currentAdvisorId,
+          currentAdvisorId,
+          coordinatorId,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -187,7 +191,12 @@ describe('GroupsService', () => {
       });
 
       await expect(
-        service.transferAdvisor(groupId, currentAdvisorId, newAdvisorId, coordinatorId),
+        service.transferAdvisor(
+          groupId,
+          currentAdvisorId,
+          newAdvisorId,
+          coordinatorId,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -202,7 +211,12 @@ describe('GroupsService', () => {
       });
 
       await expect(
-        service.transferAdvisor(groupId, currentAdvisorId, newAdvisorId, coordinatorId),
+        service.transferAdvisor(
+          groupId,
+          currentAdvisorId,
+          newAdvisorId,
+          coordinatorId,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -214,7 +228,12 @@ describe('GroupsService', () => {
       mockUsersService.findById.mockResolvedValue(null);
 
       await expect(
-        service.transferAdvisor(groupId, currentAdvisorId, newAdvisorId, coordinatorId),
+        service.transferAdvisor(
+          groupId,
+          currentAdvisorId,
+          newAdvisorId,
+          coordinatorId,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -230,7 +249,12 @@ describe('GroupsService', () => {
       mockUsersService.findById.mockResolvedValue(mockNewAdvisor);
 
       await expect(
-        service.transferAdvisor(groupId, currentAdvisorId, newAdvisorId, coordinatorId),
+        service.transferAdvisor(
+          groupId,
+          currentAdvisorId,
+          newAdvisorId,
+          coordinatorId,
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(mockGroupModel.findOneAndUpdate).toHaveBeenCalled();
     });

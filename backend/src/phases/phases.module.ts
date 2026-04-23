@@ -5,7 +5,9 @@ import { PhasesService } from './phases.service';
 import { Phase, PhaseSchema } from './phase.entity';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Phase.name, schema: PhaseSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: Phase.name, schema: PhaseSchema }]),
+  ],
   controllers: [PhasesController],
   providers: [PhasesService],
   exports: [PhasesService],

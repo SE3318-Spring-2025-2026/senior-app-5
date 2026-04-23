@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -84,7 +88,11 @@ describe('GroupsController', () => {
     it('should successfully transfer advisor with valid COORDINATOR token', async () => {
       jest.spyOn(service, 'transferAdvisor').mockResolvedValue(expectedResult);
 
-      const result = await controller.transferAdvisor(groupId, transferRequest, mockRequest);
+      const result = await controller.transferAdvisor(
+        groupId,
+        transferRequest,
+        mockRequest,
+      );
 
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.transferAdvisor).toHaveBeenCalledWith(
@@ -104,7 +112,11 @@ describe('GroupsController', () => {
 
       jest
         .spyOn(service, 'transferAdvisor')
-        .mockRejectedValue(new BadRequestException('New advisor must be different from current advisor'));
+        .mockRejectedValue(
+          new BadRequestException(
+            'New advisor must be different from current advisor',
+          ),
+        );
 
       await expect(
         controller.transferAdvisor(groupId, sameAdvisorRequest, mockRequest),
@@ -138,7 +150,9 @@ describe('GroupsController', () => {
     it('should return 404 if new advisor not found', async () => {
       jest
         .spyOn(service, 'transferAdvisor')
-        .mockRejectedValue(new NotFoundException(`Advisor ${newAdvisorId} not found`));
+        .mockRejectedValue(
+          new NotFoundException(`Advisor ${newAdvisorId} not found`),
+        );
 
       await expect(
         controller.transferAdvisor(groupId, transferRequest, mockRequest),

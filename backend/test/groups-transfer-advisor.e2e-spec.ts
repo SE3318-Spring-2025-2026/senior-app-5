@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  INestApplication,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
@@ -21,7 +25,8 @@ describe('Groups - Transfer Advisor (e2e)', () => {
     await app.init();
 
     groupsService = moduleFixture.get<GroupsService>(GroupsService);
-    notificationService = moduleFixture.get<NotificationService>(NotificationService);
+    notificationService =
+      moduleFixture.get<NotificationService>(NotificationService);
     notificationService.clearNotifications();
   });
 

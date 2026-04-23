@@ -13,6 +13,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CommitteesModule } from './committees/committees.module';
+import { DeliverablesModule } from './deliverables/deliverables.module';
+import { RubricsModule } from './rubrics/rubrics.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { CommitteesModule } from './committees/committees.module';
     PhasesModule,
     SubmissionsModule,
     CommitteesModule,
+    DeliverablesModule,
+    RubricsModule,
   ],
   controllers: [RootController, AppController],
   providers: [AppService],

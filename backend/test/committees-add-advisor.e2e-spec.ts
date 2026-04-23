@@ -50,7 +50,9 @@ describe('Committees - Add Advisor (e2e)', () => {
         role: 'Professor',
       };
 
-      jest.spyOn(usersService, 'findByIdAndRole').mockResolvedValue(mockAdvisor);
+      jest
+        .spyOn(usersService, 'findByIdAndRole')
+        .mockResolvedValue(mockAdvisor);
 
       // Mock committee model's findOne and findOneAndUpdate
       const mockCommittee = {
@@ -97,7 +99,9 @@ describe('Committees - Add Advisor (e2e)', () => {
         role: 'Professor',
       };
 
-      jest.spyOn(usersService, 'findByIdAndRole').mockResolvedValue(mockAdvisor);
+      jest
+        .spyOn(usersService, 'findByIdAndRole')
+        .mockResolvedValue(mockAdvisor);
 
       // Mock committee with advisor already linked
       const mockCommitteeWithAdvisor = {
@@ -211,7 +215,9 @@ describe('Committees - Add Advisor (e2e)', () => {
         role: 'Professor',
       };
 
-      jest.spyOn(usersService, 'findByIdAndRole').mockResolvedValue(mockAdvisor);
+      jest
+        .spyOn(usersService, 'findByIdAndRole')
+        .mockResolvedValue(mockAdvisor);
 
       const mockCommittee = {
         committeeId,
@@ -269,7 +275,9 @@ describe('Committees - Add Advisor (e2e)', () => {
         role: 'Professor',
       };
 
-      jest.spyOn(usersService, 'findByIdAndRole').mockResolvedValue(mockAdvisor);
+      jest
+        .spyOn(usersService, 'findByIdAndRole')
+        .mockResolvedValue(mockAdvisor);
 
       const mockCommittee = {
         committeeId,
@@ -345,7 +353,10 @@ describe('Committees - Add Advisor (e2e)', () => {
       );
 
       // Verify that findByIdAndRole was called with Professor role
-      expect(findByIdAndRoleSpy).toHaveBeenCalledWith(advisorUserId, 'Professor');
+      expect(findByIdAndRoleSpy).toHaveBeenCalledWith(
+        advisorUserId,
+        'Professor',
+      );
     });
   });
 });

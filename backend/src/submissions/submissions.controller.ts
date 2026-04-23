@@ -35,13 +35,29 @@ export class SubmissionsController {
     return this.submissionsService.createSubmission(createSubmissionDto);
   }
 
-  @Get(':submissionId/completeness')
-  @ApiOperation({ summary: 'Check if a submission meets all phase requirements' })
-  @ApiResponse({ status: 200, description: 'Completeness status returned successfully.' })
+ @Get(':submissionId/completeness')
+ @ApiOperation({ summary: 'Check if a submission meets all phase requirements' })
+ @ApiResponse({ status: 200, description: 'Completeness status returned successfully.' })
   @ApiResponse({ status: 404, description: 'Submission or Phase not found.' })
-  async getCompleteness(@Param('submissionId') submissionId: string) {
-    return this.submissionsService.getCompleteness(submissionId);
+  async getCompleteness(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+  ) {
+    if (!submissionId.match(/^[0-9a-fA-F]{24}$/)) {
+    throw new BadRequestException('Invalid submission ID format');
+    }
+    const userRole = req.user.role;
+    if (userRole === 'Student') {
+      const submission = await this.submissionsService.findOne(submissionId);
+    if (
+      submission.groupId !== req.user.teamId &&
+      submission.groupId !== req.user.groupId
+      ) {
+      throw new ForbiddenException('You do not have permission to view this submission.');
+      }
   }
+
+  return this.submissionsService.getCompleteness(submissionId);
 
   @Get()
   @ApiOperation({ summary: 'Get all submissions. Filter by groupId for students.' })

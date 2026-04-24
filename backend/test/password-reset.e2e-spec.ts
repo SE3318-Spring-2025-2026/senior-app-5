@@ -7,6 +7,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../src/users/data/user.schema';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto'; 
 
 describe('Password Reset (e2e) - Smoke Test', () => {
   let app: INestApplication<App>;
@@ -20,14 +21,11 @@ describe('Password Reset (e2e) - Smoke Test', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
-
     userModel = moduleFixture.get<Model<UserDocument>>(getModelToken(User.name));
-
-    // Gerçek bir test kullanıcısı oluştur
     const passwordHash = await bcrypt.hash('OldPassword123', 10);
-        testUser = await userModel.create({
-        email: 'reset-test@example.com',
-        passwordHash,             
+    testUser = await userModel.create({
+      email: 'reset-test@example.com',
+      passwordHash,
     });
   }, 30000);
 
@@ -50,7 +48,6 @@ describe('Password Reset (e2e) - Smoke Test', () => {
         });
     });
 
-   
     it('should return 202 for an unregistered email (security: no user enumeration)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/password-reset/request')
@@ -74,15 +71,28 @@ describe('Password Reset (e2e) - Smoke Test', () => {
   });
 
   describe('POST /api/v1/auth/password-reset/confirm', () => {
+    // 2. EKLENEN: Tam teşekküllü, gerçek raw token ile çalışan E2E Testi
     it('should return 200 and update password with a valid token (happy path)', async () => {
+      // Geçerli bir token oluştur ve veritabanına kaydet
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex'); 
+      const tokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+
+      await userModel.findByIdAndUpdate(testUser._id, {
+        passwordResetTokenHash: hashedToken,
+        passwordResetTokenExpiresAt: tokenExpiry,
+      });
       await request(app.getHttpServer())
-        .post('/api/v1/auth/password-reset/request')
-        .send({ email: 'reset-test@example.com' });
-
-      const userWithToken = await userModel.findById(testUser._id).exec();
-
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({ token: rawToken, newPassword: 'NewSecurePassword123!' })
+        .expect(200);
+      const updatedUser = await userModel.findById(testUser._id).exec();
       
-      expect(userWithToken).toBeTruthy();
+      expect(updatedUser?.passwordResetTokenHash).toBeUndefined();
+      expect(updatedUser?.passwordResetTokenExpiresAt).toBeUndefined();
+      
+      const isPasswordUpdated = await bcrypt.compare('NewSecurePassword123!', updatedUser!.passwordHash);
+      expect(isPasswordUpdated).toBe(true);
     });
 
     it('should return 400 for an invalid (non-existent) token', () => {

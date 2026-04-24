@@ -123,11 +123,21 @@ function StudentSubmissionPage() {
     setSubmitFeedback({ loading: true, message: '', error: '' });
 
     const latestWindowStatus = await fetchPhaseWindow();
-    if (!latestWindowStatus?.isActive) {
+    
+    if (!latestWindowStatus) {
       setSubmitFeedback({
         loading: false,
         message: '',
-        error: latestWindowStatus?.message || 'Submission window is not active. Upload is blocked.',
+        error: !phaseId || !phaseId.trim() ? 'Please enter a valid Phase ID first.' : 'Failed to fetch phase status. Upload is blocked.',
+      });
+      return;
+    }
+
+    if (!latestWindowStatus.isActive) {
+      setSubmitFeedback({
+        loading: false,
+        message: '',
+        error: latestWindowStatus.message || 'Submission window is not active. Upload is blocked.',
       });
       return;
     }

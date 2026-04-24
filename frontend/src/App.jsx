@@ -47,6 +47,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
+            <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
            
 

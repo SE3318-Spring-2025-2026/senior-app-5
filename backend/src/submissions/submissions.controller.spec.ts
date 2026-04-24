@@ -13,6 +13,7 @@ describe('SubmissionsController', () => {
     uploadDocument: jest.fn(),
     createSubmission: jest.fn(),
     getCompleteness: jest.fn(),
+    assertAuthorizedGroupMember: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -34,6 +35,52 @@ describe('SubmissionsController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('create', () => {
+    it('should authorize and create submission', async () => {
+      const req = { user: { userId: 'student-1', role: 'Student' } };
+      const dto = {
+        title: 'Proposal',
+        groupId: 'group-123',
+        type: 'INITIAL',
+        phaseId: 'phase-1',
+      };
+      const created = { _id: 'sub-1', ...dto };
+
+      mockSubmissionsService.assertAuthorizedGroupMember.mockResolvedValue(
+        undefined,
+      );
+      mockSubmissionsService.createSubmission.mockResolvedValue(created);
+
+      const result = await controller.create(req as any, dto);
+
+      expect(service.assertAuthorizedGroupMember).toHaveBeenCalledWith(
+        req.user,
+        dto.groupId,
+      );
+      expect(service.createSubmission).toHaveBeenCalledWith(dto);
+      expect(result).toEqual(created);
+    });
+
+    it('should throw ForbiddenException when authorization fails', async () => {
+      const req = { user: { userId: 'student-1', role: 'Student' } };
+      const dto = {
+        title: 'Proposal',
+        groupId: 'group-123',
+        type: 'INITIAL',
+        phaseId: 'phase-1',
+      };
+
+      mockSubmissionsService.assertAuthorizedGroupMember.mockRejectedValue(
+        new ForbiddenException('You are not authorized to submit for this group.'),
+      );
+
+      await expect(controller.create(req as any, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(service.createSubmission).not.toHaveBeenCalled();
+    });
   });
 
  describe('getCompleteness', () => {

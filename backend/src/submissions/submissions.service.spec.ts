@@ -1,7 +1,14 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Role } from '../auth/enums/role.enum';
+import { Group, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
+import { User } from '../users/data/user.schema';
 import { SubmissionsService } from './submissions.service';
 import { Submission } from './schemas/submission.schema';
 
@@ -29,11 +36,21 @@ describe('SubmissionsService', () => {
     path: jest.fn().mockReturnValue(true),
   };
 
+  const mockGroupModel = {
+    findOne: jest.fn(),
+  };
+
+  const mockUserModel = {
+    findById: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     mockSave.mockReset();
     mockSubmissionModel.mockClear();
     mockFindById.mockReset();
+    mockGroupModel.findOne.mockReset();
+    mockUserModel.findById.mockReset();
 
     phasesService = {
       findByPhaseId: jest.fn(),
@@ -45,6 +62,14 @@ describe('SubmissionsService', () => {
         {
           provide: getModelToken(Submission.name),
           useValue: mockSubmissionModel,
+        },
+        {
+          provide: getModelToken(Group.name),
+          useValue: mockGroupModel,
+        },
+        {
+          provide: getModelToken(User.name),
+          useValue: mockUserModel,
         },
         {
           provide: PhasesService,
@@ -222,6 +247,7 @@ describe('SubmissionsService', () => {
         type: 'INITIAL',
         phaseId: 'phase-1',
         documents: [{ originalName: 'doc.pdf', mimeType: 'application/pdf', uploadedAt: new Date() }],
+        get: jest.fn((field: string) => (submission as any)[field]),
       };
       const phase = {
         phaseId: 'phase-1',
@@ -252,6 +278,7 @@ describe('SubmissionsService', () => {
         type: 'INITIAL',
         phaseId: 'phase-1',
         documents: [],
+        get: jest.fn((field: string) => (submission as any)[field]),
       };
       const phase = {
         phaseId: 'phase-1',
@@ -272,6 +299,93 @@ describe('SubmissionsService', () => {
         requiredFields: ['title', 'documents'],
         phaseId: 'phase-1',
       });
+    });
+  });
+
+  describe('assertAuthorizedGroupMember', () => {
+    it('should allow admin users without membership lookup', async () => {
+      await expect(
+        service.assertAuthorizedGroupMember(
+          { userId: 'admin-id', role: Role.Admin },
+          'group-1',
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(mockGroupModel.findOne).not.toHaveBeenCalled();
+      expect(mockUserModel.findById).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when group does not exist', async () => {
+      mockGroupModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.assertAuthorizedGroupMember(
+          { userId: 'student-id', role: Role.Student },
+          'missing-group',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when group is not active', async () => {
+      mockGroupModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          status: GroupStatus.DISBANDED,
+        }),
+      });
+
+      await expect(
+        service.assertAuthorizedGroupMember(
+          { userId: 'student-id', role: Role.Student },
+          'group-1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException when user is not in target group', async () => {
+      mockGroupModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          status: GroupStatus.ACTIVE,
+        }),
+      });
+      mockUserModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: 'student-id',
+          teamId: 'group-2',
+        }),
+      });
+
+      await expect(
+        service.assertAuthorizedGroupMember(
+          { userId: 'student-id', role: Role.Student },
+          'group-1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should allow active group member', async () => {
+      mockGroupModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          groupId: 'group-1',
+          status: GroupStatus.ACTIVE,
+        }),
+      });
+      mockUserModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: 'student-id',
+          teamId: 'group-1',
+        }),
+      });
+
+      await expect(
+        service.assertAuthorizedGroupMember(
+          { userId: 'student-id', role: Role.Student },
+          'group-1',
+        ),
+      ).resolves.toBeUndefined();
     });
   });
 });

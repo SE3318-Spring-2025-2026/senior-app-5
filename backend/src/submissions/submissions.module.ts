@@ -7,7 +7,7 @@ import { Submission, SubmissionSchema } from './schemas/submission.schema';
 import { User, UserSchema } from '../users/data/user.schema';
 import { GroupMemberGuard } from '../auth/guards/group-member.guard';
 import { Group, GroupSchema } from '../groups/group.entity';
-import { User, UserSchema } from '../users/data/user.schema';
+
 
 @Module({
   imports: [

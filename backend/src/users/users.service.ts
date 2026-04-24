@@ -4,7 +4,6 @@ import { Model, Types } from 'mongoose';
 import * as crypto from 'crypto';
 import { User, UserDocument } from './data/user.schema';
 import { Role } from '../auth/enums/role.enum';
-import { User, UserDocument } from './data/user.schema';
 
 const USER_SEARCHABLE_FIELDS = ['email', 'role', '_id'] as const;
 export type UserSearchField = (typeof USER_SEARCHABLE_FIELDS)[number];
@@ -110,11 +109,11 @@ export class UsersService {
       )
       .exec();
   }
+
   private hashPasswordResetToken(token: string) {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  async updateUserTeam(studentId: string, teamId: string) {
   async updateUserTeam(
     studentId: string,
     teamId: string,

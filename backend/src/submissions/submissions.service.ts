@@ -6,14 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, isValidObjectId } from 'mongoose'; // <-- DÜZELTME BURADA
 import { Role } from '../auth/enums/role.enum';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument } from './schemas/submission.schema';
-import { User, UserDocument } from '../users/data/user.schema';
 
 type SubmissionActor = {
   userId?: string;

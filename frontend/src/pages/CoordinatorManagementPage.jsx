@@ -18,6 +18,9 @@ import {
   updateCommittee,
 } from '../utils/committeeService'
 
+
+import CreateCoordinatorForm from '../components/CreateCoordinatorForm'
+
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
 
@@ -341,6 +344,13 @@ function CoordinatorManagementPage() {
       </header>
 
       <div className={styles.grid}>
+        
+        
+        <SectionCard title="Create Coordinator" subtitle="Admin only: Register new coordinator accounts to the system.">
+          <CreateCoordinatorForm />
+        </SectionCard>
+        
+
         <SectionCard title="Schedule Management" subtitle="Create schedule and inspect active window.">
           <form className={styles.form} onSubmit={onCreateSchedule}>
             <label htmlFor="phaseInput">

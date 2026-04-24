@@ -32,7 +32,8 @@ export class SubmissionsController {
   @Get('me')
   @ApiOperation({ summary: 'Get submissions for current student user' })
   async getMySubmissions(@Req() req: Request & { user: any }) {
-    return this.submissionsService.findMySubmissions(req.user.userId);
+    const userGroup = req.user.teamId || req.user.groupId;
+    return this.submissionsService.findAll(userGroup);
   }
 
   @Post()
@@ -53,14 +54,20 @@ export class SubmissionsController {
       throw new BadRequestException('Invalid submission ID format');
     }
 
-    const userRole = req.user.role;
-    if (userRole === 'Student') {
+    const userRole = req.user?.role;
+    
+    if (userRole && String(userRole).toLowerCase() === 'student') {
       const submission = await this.submissionsService.findOne(submissionId);
-      if (submission.groupId !== req.user.teamId && submission.groupId !== req.user.groupId) {
+      
+      const subGroup = submission.groupId ? String(submission.groupId) : null;
+      const userTeam = req.user.teamId ? String(req.user.teamId) : null;
+      const userGroup = req.user.groupId ? String(req.user.groupId) : null;
+
+      if (!subGroup || (subGroup !== userTeam && subGroup !== userGroup)) {
         throw new ForbiddenException('You do not have permission to view this submission.');
       }
     }
-
+    
     return this.submissionsService.getCompleteness(submissionId);
   }
 

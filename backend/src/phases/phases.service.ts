@@ -26,9 +26,9 @@ export class PhasesService {
     const submissionStart = new Date(dto.submissionStart);
     const submissionEnd = new Date(dto.submissionEnd);
 
-    if (submissionEnd < submissionStart) {
+    if (submissionEnd <= submissionStart) {
       throw new BadRequestException(
-        'submissionEnd must be equal to or after submissionStart',
+        'submissionEnd must be strictly after submissionStart',
       );
     }
 

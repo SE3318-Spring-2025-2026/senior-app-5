@@ -54,7 +54,6 @@ export class SubmissionsController {
       throw new BadRequestException('Invalid submission ID format');
     }
 
-
     const userRole = req.user?.role;
     
     if (userRole && String(userRole).toLowerCase() === 'student') {

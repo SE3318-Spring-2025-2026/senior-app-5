@@ -23,11 +23,14 @@ export class Submission {
   @Prop({ type: Date, required: true })
   submittedAt!: Date;
 
-  @Prop([{
-    originalName: { type: String, required: true },
-    mimeType: { type: String, required: true },
-    uploadedAt: { type: Date, default: Date.now },
-  }])
+  //Array to hold metadata of documents
+  @Prop([
+    {
+      originalName: { type: String, required: true },
+      mimeType: { type: String, required: true },
+      uploadedAt: { type: Date, default: Date.now },
+    },
+  ])
   documents?: Array<{
     originalName: string;
     mimeType: string;

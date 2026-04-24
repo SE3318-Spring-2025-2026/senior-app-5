@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { User, UserDocument } from './data/user.schema';
 import { Role } from '../auth/enums/role.enum';
+import { User, UserDocument } from './data/user.schema';
 
 const USER_SEARCHABLE_FIELDS = ['email', 'role', '_id'] as const;
 export type UserSearchField = (typeof USER_SEARCHABLE_FIELDS)[number];
@@ -13,11 +13,11 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
-  findByEmail(email: string) {
+  findByEmail(email: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ email: email.toLowerCase().trim() }).exec();
   }
 
-  findById(id: string) {
+  findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id).exec();
   }
 
@@ -59,15 +59,25 @@ export class UsersService {
     });
   }
 
-  async updateUserTeam(studentId: string, teamId: string) {
+  async updateUserTeam(
+    studentId: string,
+    teamId: string,
+  ): Promise<UserDocument | null> {
     return this.userModel
-      .findByIdAndUpdate(studentId, { teamId }, { new: true })
+      .findByIdAndUpdate(studentId, { teamId }, { returnDocument: 'after' })
       .exec();
   }
 
-  async linkGithubAccount(userId: string, githubAccountId: string) {
+  async linkGithubAccount(
+    userId: string,
+    githubAccountId: string,
+  ): Promise<UserDocument | null> {
     return this.userModel
-      .findByIdAndUpdate(userId, { githubAccountId }, { new: true })
+      .findByIdAndUpdate(
+        userId,
+        { githubAccountId },
+        { returnDocument: 'after' },
+      )
       .exec();
   }
 }

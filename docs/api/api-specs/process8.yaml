@@ -1,0 +1,781 @@
+openapi: 3.0.3
+info:
+  title: Senior App — Process 8 Grade Calculation
+  description: |
+    Grade calculation lifecycle: story point verification, committee grade aggregation,
+    team scalar computation, deliverable weight application, final grade calculation,
+    grade history audit, and grade retrieval
+    (docs/system-processes.md — Process 8).
+
+    Authorization policy: canonical role names are uppercase
+    (COORDINATOR, TEAM_LEADER, ADVISOR, ADMIN, STUDENT).
+    [ANY] means any authenticated role with a valid JWT.
+
+    Cross-service dependencies:
+    - Process 1 (Config API): provides D1 (deliverable weights, rubrics) — read-only for Process 8.
+    - Process 5/6 (Committee API): writes committee rubric submissions to D3 — Process 8 only reads and aggregates.
+    - Process 6 (Schedule API): provides active sprint window (phase=SCRUM) consumed by 8.1.
+    - JIRA / GitHub API: external source for verified story points (priority: OVERRIDE > JIRA_GITHUB > MANUAL).
+
+    Final grade model: explicit trigger-and-persist.
+    GET /groups/{groupId}/final-grade returns stored data only.
+    POST /groups/{groupId}/calculate triggers computation and writes to D3, D4, and D5.
+    D5 (Grade History) is append-only — no update or delete.
+  version: 1.0.0
+  contact:
+    name: Backend Service Layer
+
+servers:
+  - url: http://localhost:3000
+    description: Local NestJS (or adjust per environment)
+
+tags:
+  - name: story-points
+    description: "8.1 – Fetch and verify story points from JIRA / GitHub"
+  - name: committee-grades
+    description: "8.2 – Aggregate committee deliverable grades"
+  - name: calculation
+    description: "8.3 / 8.4 / 8.5 / 8.6 – Trigger full grade calculation pipeline"
+  - name: grades
+    description: "8.8 – Retrieve individual and team grade results"
+  - name: grade-history
+    description: "8.7 – Append-only grade audit history"
+
+paths:
+
+  # ─────────────────────────────────────────────
+  # 8.1 Fetch & Verify Story Points
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/sprints/{sprintId}/story-points:
+    post:
+      tags: [story-points]
+      summary: Fetch and verify story points from JIRA / GitHub for a sprint
+      operationId: fetchAndVerifyStoryPoints
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR]
+
+        Triggers 8.1: fetches story point data from the external JIRA / GitHub API
+        for each student in the group for the given sprint, verifies against the
+        targetStoryPoints from D2, and writes verified records to D2.
+
+        Story point source priority:
+        1. COORDINATOR_OVERRIDE (explicit coordinator promotion)
+        2. JIRA_GITHUB (automated fetch — preferred)
+        3. MANUAL (advisor entry via Process 1 — fallback)
+
+        **Preconditions (_requires_):**
+        - An active sprint window MUST exist (phase=SCRUM, from Process 6).
+        - Sprint config (targetStoryPoints) MUST exist in D2 for this sprintId.
+
+        **Postconditions (_effects_):**
+        - Verified story point records (source: JIRA_GITHUB) are written to D2 per student.
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Story points fetched and verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryPointSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Unprocessable – sprint config or active sprint window not found.
+        "502":
+          description: Bad Gateway – JIRA / GitHub API unreachable or returned an error.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [story-points]
+      summary: Get verified story point records for a group sprint
+      operationId: getStoryPoints
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR]
+
+        Returns the currently stored verified story point records from D2
+        for each student in the group for the given sprint.
+        Includes source tag (JIRA_GITHUB / COORDINATOR_OVERRIDE / MANUAL).
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Verified story point records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryPointSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /groups/{groupId}/sprints/{sprintId}/story-points/{studentId}:
+    patch:
+      tags: [story-points]
+      summary: Override story points for a specific student in a sprint
+      operationId: overrideStoryPoints
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Coordinator explicitly overrides the verified story points for a specific
+        student in a sprint. Sets source to COORDINATOR_OVERRIDE, which supersedes
+        JIRA_GITHUB and MANUAL records for grade calculation.
+
+        **Preconditions (_requires_):**
+        - A story point record MUST already exist in D2 for this (studentId, sprintId).
+
+        **Postconditions (_effects_):**
+        - Story point record updated in D2 with source: COORDINATOR_OVERRIDE.
+        - COORDINATOR_OVERRIDE cannot be downgraded by a subsequent JIRA_GITHUB fetch.
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sprintId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The student whose story points are being overridden
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OverrideStoryPointsRequest"
+      responses:
+        "200":
+          description: Story point override applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentStoryPointRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 8.2 Aggregate Committee Deliverable Grades
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/deliverables/{deliverableId}/committee-grade:
+    get:
+      tags: [committee-grades]
+      summary: Get aggregated committee grade for a group deliverable
+      operationId: getCommitteeGrade
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR, ADMIN]
+
+        Returns the aggregated (averaged) committee grade for a group's deliverable
+        from D3. Committee rubric submissions are written by Process 5/6 — Process 8
+        only reads and aggregates those records.
+
+        **Preconditions (_requires_):**
+        - Committee evaluation records MUST exist in D3 for this group/deliverable.
+          If not yet graded, returns 404.
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: deliverableId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Aggregated committee grade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitteeGradeResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 8.3 / 8.4 / 8.5 / 8.6 – Calculate Final Grade
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/calculate:
+    post:
+      tags: [calculation]
+      summary: Trigger full grade calculation pipeline for a group
+      operationId: calculateGrade
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR]
+
+        Triggers the full grade calculation pipeline for a group (8.3 → 8.6):
+        - **8.3** Compute Team Scalar: aggregates sprint evaluations (SCRUM / CODE_REVIEW)
+          with contributionPercentage from D2 to produce a team scalar [0.0 – 1.0].
+        - **8.4** Apply Deliverable Weights: applies subWeight and categoryWeight from D1
+          to the averaged committee grades (rawGrade per deliverable) to compute
+          scaled deliverable grades (rawGrade × scalar × weight).
+        - **8.5** Calculate Individual Allowance: computes per-student allowance ratio
+          (completedPts / targetPts) using effective story points from D2
+          (priority: OVERRIDE > JIRA_GITHUB > MANUAL).
+        - **8.6** Calculate & Persist Final Grade: combines scaled grades and individual
+          allowance ratios to produce final grades; writes to D3 (individual student grades),
+          D4 (team grade), and D5 (grade history snapshot).
+
+        **Preconditions (_requires_):**
+        - All committee evaluations for this group's deliverables MUST be in GRADED status in D3.
+        - Verified story point records MUST exist in D2 for all sprints.
+        - Deliverable weights MUST be configured in D1.
+        - If `force` is false and a final grade already exists in D4, returns 409.
+          Set `force: true` to recalculate and overwrite.
+
+        **Postconditions (_effects_):**
+        - Individual student grades upserted in D3.
+        - Team grade persisted / updated in D4.
+        - New grade snapshot appended to D5 (append-only audit).
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculateGradeRequest"
+      responses:
+        "200":
+          description: Grade calculation completed and persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeCalculationResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict – a final grade already exists for this group. Use force=true to recalculate.
+        "422":
+          description: Unprocessable – required inputs (committee grades, story points, deliverable weights) are incomplete.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 8.8 Show Individual & Team Grade
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/final-grade:
+    get:
+      tags: [grades]
+      summary: Get stored final grade for a group
+      operationId: getGroupFinalGrade
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR, ADMIN]
+
+        Returns the stored team grade from D4 and individual student grades from D3.
+        This endpoint returns persisted data only — it does NOT trigger recalculation.
+        To recalculate, use POST /groups/{groupId}/calculate.
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Stored final grade for the group and its members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupFinalGrade"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: No final grade calculated yet for this group.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /students/{studentId}/final-grade:
+    get:
+      tags: [grades]
+      summary: Get stored final grade for an individual student
+      operationId: getStudentFinalGrade
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADVISOR, ADMIN, STUDENT]
+
+        Returns the individual final grade for a student from D3.
+        STUDENT role is automatically scoped to their own studentId from JWT.
+        Returns stored data only — does NOT trigger recalculation.
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Individual final grade for the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentFinalGrade"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: No final grade calculated yet for this student.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─────────────────────────────────────────────
+  # 8.7 Grade History (append-only audit — D5)
+  # ─────────────────────────────────────────────
+  /groups/{groupId}/grade-history:
+    get:
+      tags: [grade-history]
+      summary: Get grade history snapshots for a group
+      operationId: getGradeHistory
+      security:
+        - BearerAuth: []
+      description: |
+        **Requires Role:** [COORDINATOR, ADMIN]
+
+        Returns the append-only grade history from D5 for the group.
+        Each entry is an immutable snapshot created by POST /groups/{groupId}/calculate.
+        Records include grade components, final grade, groupId, and triggeredBy.
+
+        D5 is append-only — no update or delete operations are permitted.
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of grade history snapshots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedGradeHistory"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+
+    # ── Story Points ─────────────────────────────
+    StudentStoryPointRecord:
+      type: object
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        sprintId:
+          type: string
+          format: uuid
+        completedPoints:
+          type: integer
+          description: Story points completed by this student in the sprint
+          example: 13
+        targetPoints:
+          type: integer
+          description: Target story points for the sprint (from D2 sprint config)
+          example: 20
+        source:
+          type: string
+          enum: [JIRA_GITHUB, COORDINATOR_OVERRIDE, MANUAL]
+          description: Source of the story point record (priority order — OVERRIDE > JIRA_GITHUB > MANUAL)
+        updatedAt:
+          type: string
+          format: date-time
+      required: [studentId, sprintId, completedPoints, targetPoints, source]
+
+    StoryPointSummary:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        sprintId:
+          type: string
+          format: uuid
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentStoryPointRecord"
+      required: [groupId, sprintId, records]
+
+    OverrideStoryPointsRequest:
+      type: object
+      properties:
+        completedPoints:
+          type: integer
+          minimum: 0
+          description: Override value for completed story points
+          example: 18
+      required: [completedPoints]
+
+    # ── Committee Grade ───────────────────────────
+    CommitteeGradeResult:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        deliverableId:
+          type: string
+          format: uuid
+        submissionId:
+          type: string
+          format: uuid
+          description: ID of the submission record in D3
+        committeeGradeList:
+          type: array
+          description: Individual grades submitted by each committee member
+          items:
+            $ref: "#/components/schemas/CommitteeMemberGrade"
+        averageGrade:
+          type: number
+          format: float
+          description: Averaged numeric grade across all committee member grades
+          example: 3.6
+        status:
+          type: string
+          enum: [PENDING, GRADED]
+          description: GRADED once all expected committee members have submitted
+      required: [groupId, deliverableId, submissionId, committeeGradeList, averageGrade, status]
+
+    CommitteeMemberGrade:
+      type: object
+      properties:
+        memberId:
+          type: string
+          format: uuid
+        grade:
+          type: string
+          enum: [A, B, C, D, F]
+      required: [memberId, grade]
+
+    # ── Calculation ───────────────────────────────
+    CalculateGradeRequest:
+      type: object
+      properties:
+        force:
+          type: boolean
+          description: |
+            If true, recalculates and overwrites an existing final grade in D4.
+            If false (default) and a final grade already exists, returns 409.
+          default: false
+      required: [force]
+
+    GradeCalculationResult:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        teamGrade:
+          type: number
+          format: float
+          description: Final weighted team grade [0.0 – 100.0]
+          example: 78.4
+        teamScalar:
+          type: number
+          format: float
+          description: Computed team scalar [0.0 – 1.0] from sprint evaluations
+          example: 0.87
+        scaledDeliverableGrades:
+          type: array
+          description: Per-deliverable grade after applying weights and scalar
+          items:
+            $ref: "#/components/schemas/ScaledDeliverableGrade"
+        individualGrades:
+          type: array
+          description: Per-student final grade after applying individual allowance ratio
+          items:
+            $ref: "#/components/schemas/StudentFinalGrade"
+        triggeredBy:
+          type: string
+          format: uuid
+          description: userId of the Coordinator who triggered the calculation
+        calculatedAt:
+          type: string
+          format: date-time
+      required: [groupId, teamGrade, teamScalar, scaledDeliverableGrades, individualGrades, triggeredBy, calculatedAt]
+
+    ScaledDeliverableGrade:
+      type: object
+      properties:
+        deliverableId:
+          type: string
+          format: uuid
+        rawGrade:
+          type: number
+          format: float
+          description: Averaged committee grade before weight application
+          example: 3.6
+        categoryWeight:
+          type: number
+          format: float
+          description: categoryWeight from D1
+          example: 0.4
+        subWeight:
+          type: number
+          format: float
+          description: subWeight from D1
+          example: 0.25
+        scaledGrade:
+          type: number
+          format: float
+          description: rawGrade × teamScalar × categoryWeight × subWeight
+          example: 0.31
+      required: [deliverableId, rawGrade, categoryWeight, subWeight, scaledGrade]
+
+    # ── Final Grades ──────────────────────────────
+    GroupFinalGrade:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        teamGrade:
+          type: number
+          format: float
+          description: Stored final team grade from D4 [0.0 – 100.0]
+          example: 78.4
+        individualGrades:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentFinalGrade"
+        calculatedAt:
+          type: string
+          format: date-time
+      required: [groupId, teamGrade, individualGrades, calculatedAt]
+
+    StudentFinalGrade:
+      type: object
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        individualAllowanceRatio:
+          type: number
+          format: float
+          description: completedPts / targetPts ratio for this student [0.0 – 1.0]
+          example: 0.9
+        finalGrade:
+          type: number
+          format: float
+          description: Individual final grade after applying allowance ratio to team grade
+          example: 70.56
+        calculatedAt:
+          type: string
+          format: date-time
+      required: [studentId, groupId, individualAllowanceRatio, finalGrade, calculatedAt]
+
+    # ── Grade History ─────────────────────────────
+    GradeHistoryEntry:
+      type: object
+      description: Immutable grade snapshot appended to D5 on each POST /calculate.
+      properties:
+        gradeChangeId:
+          type: string
+          format: uuid
+          description: Unique ID for this history entry
+        groupId:
+          type: string
+          format: uuid
+        teamGrade:
+          type: number
+          format: float
+          example: 78.4
+        gradeComponents:
+          type: object
+          description: Snapshot of all weighted grade components at time of calculation
+          additionalProperties: true
+        triggeredBy:
+          type: string
+          format: uuid
+          description: userId of the Coordinator who triggered the calculation
+        changedAt:
+          type: string
+          format: date-time
+          description: Timestamp when this snapshot was appended (append-only)
+      required: [gradeChangeId, groupId, teamGrade, gradeComponents, triggeredBy, changedAt]
+
+    PaginatedGradeHistory:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GradeHistoryEntry"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
+
+    # ── Shared ────────────────────────────────────
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+
+  responses:
+    BadRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Forbidden:
+      description: Authenticated but insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    NotFound:
+      description: Group, student, sprint, deliverable, or grade record not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT from login; send as Authorization Bearer
+
+security:
+  - BearerAuth: []

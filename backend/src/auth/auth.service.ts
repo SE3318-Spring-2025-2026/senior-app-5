@@ -76,4 +76,41 @@ export class AuthService {
     this.logger.log(`User logged in successfully: ${email}`);
     return { accessToken };
   }
+
+  async requestPasswordReset(email: string) {
+    if (!email?.trim()) {
+      throw new BadRequestException('Email is required');
+    }
+
+    const token = await this.usersService.createPasswordResetToken(email);
+    if (token) {
+      this.logger.log(`Password reset token generated for email: ${email}`);
+      this.logger.debug(`Password reset token for ${email}: ${token}`);
+    }
+
+    return {
+      message:
+        'If an account exists for that email, a password reset link has been sent.',
+    };
+  }
+
+  async confirmPasswordReset(token: string, newPassword: string) {
+    if (!token?.trim() || !newPassword?.trim()) {
+      throw new BadRequestException('Token and new password are required');
+    }
+
+    const user = await this.usersService.findByPasswordResetToken(token);
+    if (!user) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersService.updatePasswordHash(
+      (user._id || user.id).toString(),
+      passwordHash,
+    );
+
+    this.logger.log(`Password reset completed for email: ${user.email}`);
+    return { message: 'Password has been reset successfully.' };
+  }
 }

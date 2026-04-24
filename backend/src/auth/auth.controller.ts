@@ -16,6 +16,8 @@ import { RegisterDto } from '../users/data/dto/register.dto';
 import { LoginDto } from '../users/data/dto/login.dto';
 import { CreateProfessorDto } from './dto/create-professor.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
+import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
+import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { Role } from './enums/role.enum';
@@ -26,6 +28,7 @@ import {
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiAcceptedResponse,
 } from '@nestjs/swagger';
 
 interface JwtUser {
@@ -61,6 +64,22 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @ApiOperation({ summary: 'Request a password reset link' })
+  @ApiAcceptedResponse({ description: 'Password reset request accepted' })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('password-reset/request')
+  requestPasswordReset(@Body() dto: PasswordResetRequestDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  @ApiOperation({ summary: 'Confirm password reset using token' })
+  @ApiOkResponse({ description: 'Password reset successfully completed' })
+  @HttpCode(HttpStatus.OK)
+  @Post('password-reset/confirm')
+  confirmPasswordReset(@Body() dto: PasswordResetConfirmDto) {
+    return this.authService.confirmPasswordReset(dto.token, dto.newPassword);
   }
 
   @ApiBearerAuth('access-token')

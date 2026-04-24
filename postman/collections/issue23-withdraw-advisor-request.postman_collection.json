@@ -1,0 +1,355 @@
+{
+  "info": {
+    "name": "Issue 23 - Withdraw Advisor Request",
+    "description": "Issue 23 flow for Team Leader withdrawal of a pending advisor request via PATCH /requests/:requestId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "1) Login Team Leader",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{teamLeaderEmail}}\",\n  \"password\": \"{{teamLeaderPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a('string');",
+                  "pm.environment.set('teamLeaderToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2) Login Coordinator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{coordinatorEmail}}\",\n  \"password\": \"{{coordinatorPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a('string');",
+                  "pm.environment.set('coordinatorToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3) Ensure Active Advisor Selection Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phase\": \"ADVISOR_SELECTION\",\n  \"startDatetime\": \"2025-01-01T00:00:00.000Z\",\n  \"endDatetime\": \"2030-12-31T23:59:59.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/schedules"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created or 200 OK', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4) List Advisors and Capture advisorId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/advisors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+                  "pm.environment.set('advisorId', body.data[0].advisorId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5) Create Pending Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestedAdvisorId\": \"{{advisorId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created or 200 OK', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.requestId).to.be.a('string');",
+                  "pm.environment.set('requestIdPending', body.requestId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Withdraw Scenarios",
+      "item": [
+        {
+          "name": "✓ PATCH Withdraw - Happy Path",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"WITHDRAWN\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.requestId).to.be.a('string');",
+                  "pm.expect(body.status).to.equal('WITHDRAWN');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ PATCH Withdraw - Missing JWT (401)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"WITHDRAWN\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function () {",
+                  "  pm.expect(pm.response.code).to.equal(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ PATCH Withdraw - Invalid Request ID (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"WITHDRAWN\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/not-a-uuid"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ PATCH Withdraw - Not Found (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"WITHDRAWN\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/00000000-0000-4000-8000-000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ PATCH Withdraw - Not Pending (409)",
+          "description": "Run after the happy-path request has already been withdrawn once.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"WITHDRAWN\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409 Conflict', function () {",
+                  "  pm.expect(pm.response.code).to.equal(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

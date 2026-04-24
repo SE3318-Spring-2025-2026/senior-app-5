@@ -1,0 +1,106 @@
+/* frontend/src/components/EntitySearchSelect.module.css */
+.wrapper {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.label {
+  color: #000000;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+  color: #111827;
+  background: #f9fafb;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4338ca;
+  background: #ffffff;
+}
+
+.clearButton {
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  background: #f3f4f6;
+}
+
+.dropdown {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 6px 0 0;
+  padding: 6px;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.option {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+}
+
+.option:hover {
+  background: #eef2ff;
+}
+
+.optionPrimary {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.optionSecondary {
+  color: #6b7280;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.status {
+  padding: 10px 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.errorStatus {
+  color: #b91c1c;
+}
+
+.hint {
+  color: #6b7280;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

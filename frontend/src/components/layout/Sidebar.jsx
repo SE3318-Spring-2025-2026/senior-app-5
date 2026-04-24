@@ -47,6 +47,18 @@ export const Sidebar = () => {
             >
               🏢 <span style={styles.linkText}>All Groups</span>
             </NavLink>
+            <NavLink
+              to="/coordinator-management"
+              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+            >
+              🗂️ <span style={styles.linkText}>Coordinator Suite</span>
+            </NavLink>
+            <NavLink
+              to="/phases/schedule"
+              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+            >
+              🗓️ <span style={styles.linkText}>Phase Scheduling</span>
+            </NavLink>
           </>
         )}
       </nav>

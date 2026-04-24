@@ -102,15 +102,13 @@ export class UsersService {
       .findByIdAndUpdate(
         userId,
         {
-          passwordHash,
-          passwordResetTokenHash: undefined,
-          passwordResetTokenExpiresAt: undefined,
+          $set: { passwordHash },
+          $unset: { passwordResetTokenHash: "", passwordResetTokenExpiresAt: "" }
         },
         { new: true },
       )
       .exec();
   }
-
   private hashPasswordResetToken(token: string) {
     return crypto.createHash('sha256').update(token).digest('hex');
   }

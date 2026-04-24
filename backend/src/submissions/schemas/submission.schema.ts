@@ -16,6 +16,9 @@ export class Submission extends Document {
   @Prop({ required: true })
   type!: string;
 
+  @Prop({ required: true })
+  phaseId!: string;
+
   //Array to hold metadata of documents
   @Prop([{
     originalName: { type: String, required: true },

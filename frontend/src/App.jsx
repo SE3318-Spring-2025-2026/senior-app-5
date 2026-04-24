@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
 import GroupLifecyclePage from './pages/GroupLifecyclePage';
+import CoordinatorManagementPage from './pages/CoordinatorManagementPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -17,8 +18,12 @@ import AdminLayout from './components/AdminLayout';
 import GroupsPage from './pages/admin/GroupsPage';
 import MembersPage from './pages/admin/MembersPage';
 import InvitesPage from './pages/admin/InvitesPage';
-import AdvisorsPage from './pages/admin/AdvisorsPage';
+import AdvisorsPage from './pages/admin/AdvisorsPage';  
+import ProfessorsPage from './pages/admin/ProfessorPage';
 import SanitizationPage from './pages/admin/SanitizationPage';
+
+import DocumentsPage from './pages/DocumentsPage';
+import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import './App.css';
 
@@ -50,6 +55,8 @@ function App() {
             <Route path="/groups" element={<GroupLifecyclePage />} />
             <Route path="/all-groups" element={<GroupLifecyclePage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
+            <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
+            <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route
               path="/phases/schedule"
               element={
@@ -58,7 +65,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-           
 
             <Route path="/admin" element={
               <ProtectedRoute requiredRole="Coordinator">
@@ -70,7 +76,9 @@ function App() {
               <Route path="members" element={<MembersPage />} />
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
+              <Route path="professors" element={<ProfessorsPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
+
               <Route path="activity" element={<ActivityPage />} />
             </Route>
           </Route>

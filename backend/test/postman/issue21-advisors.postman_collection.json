@@ -1,0 +1,230 @@
+{
+  "info": {
+    "name": "Issue 21 - Advisors Endpoint Validation",
+    "description": "Covers Issue 21 manual verification flow: auth, role checks, validation, and response contract.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001/api/v1" },
+    { "key": "teamLeaderEmail", "value": "teamleader@example.com" },
+    { "key": "teamLeaderPassword", "value": "SecurePass123" },
+    { "key": "coordinatorEmail", "value": "coordinator@example.com" },
+    { "key": "coordinatorPassword", "value": "SecurePass123" },
+    { "key": "studentEmail", "value": "student@example.com" },
+    { "key": "studentPassword", "value": "SecurePass123" },
+    { "key": "teamLeaderToken", "value": "" },
+    { "key": "coordinatorToken", "value": "" },
+    { "key": "studentToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1) Login Team Leader",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{teamLeaderEmail}}\",\n  \"password\": \"{{teamLeaderPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.expect(json.accessToken).to.be.a('string');",
+              "pm.collectionVariables.set('teamLeaderToken', json.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2) Login Coordinator",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{coordinatorEmail}}\",\n  \"password\": \"{{coordinatorPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.expect(json.accessToken).to.be.a('string');",
+              "pm.collectionVariables.set('coordinatorToken', json.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3) Login Student",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.expect(json.accessToken).to.be.a('string');",
+              "pm.collectionVariables.set('studentToken', json.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4) Advisors as Team Leader (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{teamLeaderToken}}" },
+          { "key": "x-correlation-id", "value": "issue21-teamleader-001" }
+        ],
+        "url": "{{baseUrl}}/advisors?page=1&limit=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const body = pm.response.json();",
+              "pm.expect(body).to.have.property('data');",
+              "pm.expect(body).to.have.property('total');",
+              "pm.expect(body).to.have.property('page');",
+              "pm.expect(body).to.have.property('limit');",
+              "pm.expect(body.page).to.eql(1);",
+              "pm.expect(body.limit).to.eql(20);",
+              "pm.expect(body.data).to.be.an('array');",
+              "if (body.data.length > 0) {",
+              "  pm.expect(body.data[0]).to.have.property('advisorId');",
+              "  pm.expect(body.data[0]).to.have.property('name');",
+              "  pm.expect(body.data[0]).to.have.property('email');",
+              "  pm.expect(body.data[0]).to.have.property('role');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5) Advisors as Coordinator (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue21-coordinator-001" }
+        ],
+        "url": "{{baseUrl}}/advisors?page=1&limit=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6) Advisors as Student (403)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+        ],
+        "url": "{{baseUrl}}/advisors?page=1&limit=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(403);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7) Advisors without token (401)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/advisors?page=1&limit=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(401);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8) Advisors invalid pagination (400)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{teamLeaderToken}}" }
+        ],
+        "url": "{{baseUrl}}/advisors?page=0&limit=101"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(400);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

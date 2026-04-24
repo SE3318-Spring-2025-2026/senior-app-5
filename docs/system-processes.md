@@ -30,6 +30,8 @@ A system process is a series of steps performed by users, committees, or the sys
 | Set story point requirements | Frontend, Backend | Sprint ID, Minimum Story Points |
 | Configure sprint weights | Frontend, Backend, Database | Sprint ID, Deliverable ID, Sprint Weight |
 | Map deliverable percentages | Frontend, Backend | Deliverable ID, Deliverable Percentage, Total Percentage |
+| Record Sprint Evaluation | Frontend, Backend | Group ID, SprintID |
+| Record Deliverable Evaluation | Frontend, Backend | Deliverable ID, Deliverable Grade, GroupID |
 
 ---
 
@@ -92,6 +94,10 @@ A system process is a series of steps performed by users, committees, or the sys
 | Upload proposal document | Frontend, Backend | Submission ID, File Name, File Type |
 | Verify submission completeness | Frontend, Backend, Database | Submission ID, Required Field List, Completeness Status |
 | Validate SoW Submission | Backend, Database | Group ID, SoW Submission Status, Revised Proposal Status |
+
+Current backend contract notes:
+- `POST /api/v1/submissions` validates `phaseId` against the stored phase schedule and rejects requests outside `submissionStart` and `submissionEnd` using server time.
+- `POST /api/v1/submissions/:submissionId/documents` uploads proposal files to an existing submission record.
 
 ---
 

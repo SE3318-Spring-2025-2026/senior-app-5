@@ -14,6 +14,9 @@ export class Phase {
 
   @Prop({ type: Date })
   submissionEnd?: Date;
+
+  @Prop({ type: [String], default: [] })
+  requiredFields!: string[];
 }
 
 export const PhaseSchema = SchemaFactory.createForClass(Phase);

@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { GroupsService } from './groups.service';
 import { Group, GroupStatus } from './group.entity';
+import { Submission } from '../submissions/schemas/submission.schema';
 
 describe('GroupsService', () => {
   let service: GroupsService;
   let mockGroupModel: any;
+  let mockSubmissionModel: any;
 
   beforeEach(async () => {
     const mockGroup = {
@@ -22,6 +24,9 @@ describe('GroupsService', () => {
     };
 
     mockGroupModel = jest.fn().mockImplementation(() => mockGroup);
+    mockSubmissionModel = {
+      find: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -31,6 +36,14 @@ describe('GroupsService', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           useValue: mockGroupModel,
         },
+        {
+          provide: getModelToken(Submission.name),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          useValue: mockSubmissionModel,
+        },
+        {
+          provide: getModelToken('User'),
+          useValue: jest.fn(),
       ],
     }).compile();
 

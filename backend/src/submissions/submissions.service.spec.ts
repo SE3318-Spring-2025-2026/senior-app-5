@@ -10,7 +10,6 @@ import { Group, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User } from '../users/data/user.schema';
 import { SubmissionsService } from './submissions.service';
-import { PhasesService } from '../phases/phases.service';
 import { Submission } from './schemas/submission.schema';
 
 describe('SubmissionsService', () => {

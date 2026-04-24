@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
+import EntitySearchSelect from '../../components/EntitySearchSelect'
 import styles from '../GroupLifecyclePage.module.css'
 import { useAdminGroup } from '../../context/AdminGroupContext'
 
@@ -66,15 +67,17 @@ function GroupsPage() {
               required
             />
           </label>
-          <label>
-            Leader User ID
-            <input
-              value={leaderUserId}
-              onChange={(e) => setLeaderUserId(e.target.value)}
-              placeholder="UUID like user-1234"
-              required
-            />
-          </label>
+          <EntitySearchSelect
+            label="Leader"
+            endpoint={apiConfig.endpoints.userSearch}
+            searchField="email"
+            returnField="_id"
+            displayField="email"
+            value={leaderUserId}
+            onChange={setLeaderUserId}
+            placeholder="Search a user by email"
+            required
+          />
           <button type="submit" disabled={groupStatus.loading}>
             {groupStatus.loading ? 'Creating…' : 'Create Group'}
           </button>

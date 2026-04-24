@@ -1,0 +1,685 @@
+{
+  "info": {
+    "name": "Issue 22 - Advisor Decision Flow",
+    "description": "Issue 22 advisor decision flow. Create one pending request in Setup, then run the approve path and the validation/auth checks. Re-run Setup on a clean database before testing a reject path because the API allows only one pending request per group.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "1) Login Professor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{professorEmail}}\",\n  \"password\": \"{{professorPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a('string');",
+                  "pm.environment.set('professorToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2) Login Team Leader",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{teamLeaderEmail}}\",\n  \"password\": \"{{teamLeaderPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a('string');",
+                  "pm.environment.set('teamLeaderToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3) Login Coordinator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{coordinatorEmail}}\",\n  \"password\": \"{{coordinatorPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a('string');",
+                  "pm.environment.set('coordinatorToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4) Ensure Active Advisor Selection Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phase\": \"ADVISOR_SELECTION\",\n  \"startDatetime\": \"2025-01-01T00:00:00.000Z\",\n  \"endDatetime\": \"2030-12-31T23:59:59.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/schedules"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created or 200 OK', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5) List Advisors and Capture advisorId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/advisors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Advisors list has at least one advisor', function () {",
+                  "  pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "const advisorId = body.data[0].advisorId;",
+                  "pm.expect(advisorId).to.be.a('string').and.not.empty;",
+                  "pm.environment.set('advisorId', advisorId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6) Create Pending Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestedAdvisorId\": \"{{advisorId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created or 200 OK', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.requestId).to.be.a('string');",
+                  "pm.environment.set('requestIdPending', body.requestId);",
+                  "pm.environment.set('requestIdApproved', body.requestId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Happy Paths - Core Functionality",
+      "item": [
+        {
+          "name": "✓ PATCH Decide - APPROVE (Happy Path)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{professorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✓ Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('requestIdApproved', body.requestId);",
+                  "pm.test('✓ Response matches AdvisorRequest schema', function () {",
+                  "  pm.expect(body._id).to.exist;",
+                  "  pm.expect(body.requestId).to.be.a('string');",
+                  "  pm.expect(body.groupId).to.be.a('string');",
+                  "  pm.expect(body.submittedBy).to.be.a('string');",
+                  "  pm.expect(body.requestedAdvisorId).to.be.a('string');",
+                  "  pm.expect(body.status).to.equal('APPROVED');",
+                  "  pm.expect(body.createdAt).to.exist;",
+                  "  pm.expect(body.updatedAt).to.exist;",
+                  "});",
+                  "pm.test('✓ Status updated to APPROVED', function () {",
+                  "  pm.expect(body.status).to.equal('APPROVED');",
+                  "});",
+                  "pm.test('✓ Response contains request ID', function () {",
+                  "  pm.expect(body._id).to.exist;",
+                  "});",
+                  "pm.test('✓ Response contains group ID', function () {",
+                  "  pm.expect(body.groupId).to.exist;",
+                  "});",
+                  "pm.test('✓ Response contains advisor ID', function () {",
+                  "  pm.expect(body.requestedAdvisorId).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reject Scenario (Run After Cleanup)",
+      "description": "Run this after clearing advisor requests from the database and rerunning Setup. The backend only allows one pending request per group, so this scenario uses a fresh pending request.",
+      "item": [
+        {
+          "name": "✓ PATCH Decide - REJECT",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{professorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"REJECT\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✓ Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('✓ Status updated to REJECTED', function () {",
+                  "  pm.expect(body.status).to.equal('REJECTED');",
+                  "});",
+                  "pm.test('✓ Response matches AdvisorRequest schema', function () {",
+                  "  pm.expect(body._id).to.exist;",
+                  "  pm.expect(body.requestId).to.be.a('string');",
+                  "  pm.expect(body.groupId).to.be.a('string');",
+                  "  pm.expect(body.submittedBy).to.be.a('string');",
+                  "  pm.expect(body.requestedAdvisorId).to.be.a('string');",
+                  "  pm.expect(body.status).to.equal('REJECTED');",
+                  "  pm.expect(body.createdAt).to.exist;",
+                  "  pm.expect(body.updatedAt).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Authorization - Role-Based Access Control",
+      "item": [
+        {
+          "name": "✗ No JWT Token - Should Return 401",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 401 Unauthorized', function () {",
+                  "  pm.expect(pm.response.code).to.equal(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ Team Leader Role - Should Return 403 (Insufficient Permissions)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teamLeaderToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 403 Forbidden', function () {",
+                  "  pm.expect(pm.response.code).to.equal(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ Coordinator Role - Should Return 403 (Insufficient Permissions)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 403 Forbidden', function () {",
+                  "  pm.expect(pm.response.code).to.equal(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Input Validation - Request Body & Path Parameters",
+      "item": [
+        {
+          "name": "✗ Invalid Decision Value - Should Return 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{professorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"INVALID_VALUE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 400 Bad Request (Invalid Decision Enum)', function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ Invalid UUID Format - Should Return 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{professorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/not-a-valid-uuid/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 400 Bad Request (Invalid UUID)', function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ Missing Decision Field - Should Return 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{professorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 400 Bad Request (Missing Decision)', function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "State & Precondition Validation",
+      "item": [
+        {
+          "name": "✗ Request Not Found - Should Return 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{professorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/f47ac10b-58cc-4372-a567-0e02b2c3d479/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 404 Not Found', function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ Request Already Decided - Should Return 409 (Not PENDING)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{professorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdApproved}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('✗ Status is 409 Conflict (Request Not PENDING)', function () {",
+                  "  pm.expect(pm.response.code).to.equal(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "professorEmail",
+      "value": "professor@example.com",
+      "type": "string"
+    },
+    {
+      "key": "professorPassword",
+      "value": "SecurePass123",
+      "type": "string"
+    },
+    {
+      "key": "teamLeaderEmail",
+      "value": "teamleader@example.com",
+      "type": "string"
+    },
+    {
+      "key": "teamLeaderPassword",
+      "value": "SecurePass123",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorEmail",
+      "value": "coordinator@example.com",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorPassword",
+      "value": "SecurePass123",
+      "type": "string"
+    },
+    {
+      "key": "advisorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "professorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teamLeaderToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "requestIdPending",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "requestIdApproved",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,390 @@
+{
+  "info": {
+    "name": "Issue 36 - List Committee Groups",
+    "description": "Manual verification flow for Issue 36 (GET /committees/{committeeId}/groups). Tests: happy path, empty committee, pagination, 401/403/404 error cases. Run steps in order; tokens and IDs are captured automatically into environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1) Login Coordinator",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{coordinatorEmail}}\",\n  \"password\": \"{{coordinatorPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.accessToken).to.be.a('string');",
+              "pm.environment.set('coordinatorToken', body.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2) Login Advisor (for 403 test)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{advisorEmail}}\",\n  \"password\": \"{{advisorPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.accessToken).to.be.a('string');",
+              "pm.environment.set('advisorToken', body.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3) Login Team Leader (for 403 test)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{teamLeaderEmail}}\",\n  \"password\": \"{{teamLeaderPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200 or 201', function () {",
+              "  pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.accessToken).to.be.a('string');",
+              "pm.environment.set('teamLeaderToken', body.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4) Create Committee and Capture committeeId",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-create-committee-001" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Issue 36 Test Committee\"\n}"
+        },
+        "url": "{{baseUrl}}/committees"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.id).to.be.a('string');",
+              "pm.expect(body.name).to.eql('Issue 36 Test Committee');",
+              "pm.environment.set('committeeId', body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5) Happy Path - List Groups (empty, 200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-list-groups-empty-001" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/committees/{{committeeId}}/groups?page=1&limit=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["committees", "{{committeeId}}", "groups"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('CommitteeGroupPage shape is valid', function () {",
+              "  pm.expect(body.data).to.be.an('array');",
+              "  pm.expect(body.total).to.be.a('number');",
+              "  pm.expect(body.page).to.eql(1);",
+              "  pm.expect(body.limit).to.eql(20);",
+              "});",
+              "pm.test('Empty committee has data:[] and total:0', function () {",
+              "  pm.expect(body.data).to.eql([]);",
+              "  pm.expect(body.total).to.eql(0);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6) Happy Path - List Groups with defaults (no query params, 200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-list-groups-defaults-001" }
+        ],
+        "url": "{{baseUrl}}/committees/{{committeeId}}/groups"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Defaults applied: page=1, limit=20', function () {",
+              "  pm.expect(body.page).to.eql(1);",
+              "  pm.expect(body.limit).to.eql(20);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7) Pagination - page=1 limit=1 (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-list-groups-page1-001" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/committees/{{committeeId}}/groups?page=1&limit=1",
+          "host": ["{{baseUrl}}"],
+          "path": ["committees", "{{committeeId}}", "groups"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "1" }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Pagination params reflected in response', function () {",
+              "  pm.expect(body.page).to.eql(1);",
+              "  pm.expect(body.limit).to.eql(1);",
+              "  pm.expect(body.data.length).to.be.at.most(1);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8) Response items have no committeeId (contract check)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-no-committee-id-001" }
+        ],
+        "url": "{{baseUrl}}/committees/{{committeeId}}/groups"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Items do not contain committeeId', function () {",
+              "  body.data.forEach(function (item) {",
+              "    pm.expect(item).to.not.have.property('committeeId');",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9) Error - No JWT → 401",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-correlation-id", "value": "issue36-no-jwt-001" }
+        ],
+        "url": "{{baseUrl}}/committees/{{committeeId}}/groups"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', function () {",
+              "  pm.response.to.have.status(401);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10) Error - Advisor role → 403",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{advisorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-advisor-forbidden-001" }
+        ],
+        "url": "{{baseUrl}}/committees/{{committeeId}}/groups"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', function () {",
+              "  pm.response.to.have.status(403);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11) Error - Team Leader role → 403",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{teamLeaderToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-teamleader-forbidden-001" }
+        ],
+        "url": "{{baseUrl}}/committees/{{committeeId}}/groups"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', function () {",
+              "  pm.response.to.have.status(403);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12) Error - Committee not found → 404",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-not-found-001" }
+        ],
+        "url": "{{baseUrl}}/committees/00000000-0000-0000-0000-000000000000/groups"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 404', function () {",
+              "  pm.response.to.have.status(404);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('Error body has statusCode and message', function () {",
+              "  pm.expect(body.statusCode).to.eql(404);",
+              "  pm.expect(body.message).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13) Error - Invalid UUID path param → 400",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" },
+          { "key": "x-correlation-id", "value": "issue36-bad-uuid-001" }
+        ],
+        "url": "{{baseUrl}}/committees/not-a-uuid/groups"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

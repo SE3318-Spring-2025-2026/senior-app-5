@@ -1,21 +1,69 @@
 import 'multer';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, isValidObjectId } from 'mongoose';
+import { Model } from 'mongoose';
+import { Role } from '../auth/enums/role.enum';
+import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
+import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument } from './schemas/submission.schema';
 import { User, UserDocument } from '../users/data/user.schema';
+
+type SubmissionActor = {
+  userId?: string;
+  role?: string;
+};
 
 @Injectable()
 export class SubmissionsService {
   constructor(
     @InjectModel(Submission.name)
     private submissionModel: Model<SubmissionDocument>,
+    @InjectModel(Group.name)
+    private groupModel: Model<GroupDocument>,
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
     private readonly phasesService: PhasesService,
   ) {}
+
+  async assertAuthorizedGroupMember(
+    actor: SubmissionActor,
+    groupId: string,
+  ): Promise<void> {
+    if (actor.role === Role.Admin || actor.role === Role.Coordinator) {
+      return;
+    }
+
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found.`);
+    }
+
+    if (group.status !== GroupStatus.ACTIVE) {
+      throw new ForbiddenException('Group is not active for submission operations.');
+    }
+
+    if (!actor.userId) {
+      throw new ForbiddenException('Authenticated user context is missing.');
+    }
+
+    const user = await this.userModel.findById(actor.userId).exec();
+    if (!user) {
+      throw new ForbiddenException('Authenticated user not found.');
+    }
+
+    if (user.teamId !== groupId) {
+      throw new ForbiddenException(
+        'You are not authorized to submit for this group.',
+      );
+    }
+  }
 
   async findById(submissionId: string): Promise<SubmissionDocument> {
     const submission = await this.submissionModel.findById(submissionId).exec();

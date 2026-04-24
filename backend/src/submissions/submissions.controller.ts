@@ -38,7 +38,14 @@ export class SubmissionsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new submission' })
-  async create(@Body() createSubmissionDto: CreateSubmissionDto) {
+  async create(
+    @Req() req: Request & { user: any },
+    @Body() createSubmissionDto: CreateSubmissionDto,
+  ) {
+    await this.submissionsService.assertAuthorizedGroupMember(
+      req.user,
+      createSubmissionDto.groupId,
+    );
     return this.submissionsService.createSubmission(createSubmissionDto);
   }
 

@@ -26,6 +26,10 @@ export const apiConfig = {
     phaseSchedule: (phaseId) => `/phases/${phaseId}/schedule`,
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
+    submissions: {
+      mine: '/submissions/me',
+      uploadDocument: (submissionId) => `/submissions/${submissionId}/documents`,
+    },
     schedules: '/schedules',
     schedulesActive: '/schedules/active',
     committees: '/committees',

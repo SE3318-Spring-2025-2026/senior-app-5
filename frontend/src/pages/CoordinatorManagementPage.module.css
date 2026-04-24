@@ -1,0 +1,248 @@
+.container {
+  display: grid;
+  gap: 20px;
+}
+
+.header {
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: linear-gradient(145deg, #0f172a, #172554);
+}
+
+.header h1 {
+  margin: 6px 0 0;
+  font-size: 24px;
+}
+
+.badge {
+  margin: 0;
+  color: #93c5fd;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.card {
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 16px;
+  background: #111827;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.cardHeader p {
+  margin: 8px 0 0;
+  color: #94a3b8;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  color: #e2e8f0;
+}
+
+.form input {
+  border: 1px solid #475569;
+  border-radius: 10px;
+  padding: 10px;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+.form button,
+.filterRow button,
+.itemActions button,
+.listItem button,
+.selectRow button,
+.inlineActions button,
+.linkButton {
+  border: 1px solid #475569;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #1d4ed8;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.form button:disabled,
+.filterRow button:disabled,
+.itemActions button:disabled,
+.listItem button:disabled,
+.selectRow button:disabled,
+.inlineActions button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.inlineActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.statusBlock {
+  margin-top: 12px;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.success {
+  background: #0b2f2b;
+  border: 1px solid #14532d;
+  color: #a7f3d0;
+}
+
+.error {
+  background: #3f1717;
+  border: 1px solid #7f1d1d;
+  color: #fecaca;
+}
+
+.infoPanel {
+  margin-top: 12px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 10px;
+  background: #020617;
+}
+
+.infoPanel pre {
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.empty {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.filterRow label {
+  display: grid;
+  gap: 6px;
+}
+
+.filterRow input {
+  border: 1px solid #475569;
+  border-radius: 10px;
+  padding: 10px;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+.meta {
+  margin: 12px 0 0;
+  color: #93c5fd;
+}
+
+.list {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.listItem {
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 12px;
+  background: #0b1220;
+  display: grid;
+  gap: 10px;
+}
+
+.listItem pre {
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.itemActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.linkButton {
+  width: fit-content;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.selectRow {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.selectRow label {
+  display: grid;
+  gap: 6px;
+  min-width: 280px;
+}
+
+.selectRow input {
+  border: 1px solid #475569;
+  border-radius: 10px;
+  padding: 10px;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.tab,
+.activeTab {
+  border: 1px solid #475569;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #0b1220;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.activeTab {
+  background: #1e40af;
+  color: #eff6ff;
+}
+
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterRow {
+    grid-template-columns: 1fr;
+  }
+}

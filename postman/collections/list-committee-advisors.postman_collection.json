@@ -1,0 +1,278 @@
+{
+  "info": {
+    "name": "Issue 33 – List Committee Advisors (Process 5.3)",
+    "description": "Covers GET /committees/{committeeId}/advisors endpoint.\n\nSet the collection variables before running:\n  - baseUrl  (e.g. http://localhost:3000/api/v1)\n  - jwt      (a valid Bearer token for a COORDINATOR user)\n  - advisorJwt (a valid Bearer token for an ADVISOR user)\n  - teamLeaderJwt (a valid Bearer token for a TEAM_LEADER user)\n  - committeeId (UUID of an existing committee with advisors assigned)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",        "value": "http://localhost:3000/api/v1", "type": "string" },
+    { "key": "jwt",            "value": "<coordinator-jwt>",            "type": "string" },
+    { "key": "advisorJwt",     "value": "<advisor-jwt>",                "type": "string" },
+    { "key": "teamLeaderJwt",  "value": "<team-leader-jwt>",           "type": "string" },
+    { "key": "committeeId",    "value": "<existing-committee-uuid>",    "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "GET /committees/:committeeId/advisors",
+      "description": "List committee advisors – paginated. Returns advisorUserId and assignedAt per item.",
+      "item": [
+        {
+          "name": "200 – Advisors listed (happy path)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}/advisors?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}", "advisors"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "x-correlation-id", "value": "test-list-advisors-001" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Response matches CommitteeAdvisorPage schema', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('data').that.is.an('array');",
+                  "  pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  pm.expect(body).to.have.property('page').that.is.a('number');",
+                  "  pm.expect(body).to.have.property('limit').that.is.a('number');",
+                  "});",
+                  "",
+                  "pm.test('Each item has advisorUserId and assignedAt', () => {",
+                  "  const body = pm.response.json();",
+                  "  body.data.forEach((item) => {",
+                  "    pm.expect(item).to.have.property('advisorUserId');",
+                  "    pm.expect(item).to.have.property('assignedAt');",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test('committeeId is NOT in individual items', () => {",
+                  "  const body = pm.response.json();",
+                  "  body.data.forEach((item) => {",
+                  "    pm.expect(item).to.not.have.property('committeeId');",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test('assignmentSource is NOT in individual items (excluded by design)', () => {",
+                  "  const body = pm.response.json();",
+                  "  body.data.forEach((item) => {",
+                  "    pm.expect(item).to.not.have.property('assignmentSource');",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test('Response time is under 300ms (p95 target)', () => {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(300);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 – Empty list (no advisors)",
+          "description": "Use a committeeId that has no advisors assigned.",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}/advisors?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}", "advisors"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Empty list returns data: [], total: 0', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array').that.is.empty;",
+                  "  pm.expect(body.total).to.equal(0);",
+                  "  pm.expect(body.page).to.equal(1);",
+                  "  pm.expect(body.limit).to.equal(20);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 – Default pagination (no query params)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}/advisors",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}", "advisors"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Defaults: page=1, limit=20', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.page).to.equal(1);",
+                  "  pm.expect(body.limit).to.equal(20);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 – No JWT",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}/advisors",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}", "advisors"]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 – ADVISOR role (insufficient permissions)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}/advisors",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}", "advisors"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{advisorJwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 – TEAM_LEADER role (insufficient permissions)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}/advisors",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}", "advisors"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{teamLeaderJwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 – Invalid UUID (committeeId)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/not-a-uuid/advisors",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "not-a-uuid", "advisors"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 – Committee not found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/00000000-0000-0000-0000-000000000000/advisors",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "00000000-0000-0000-0000-000000000000", "advisors"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

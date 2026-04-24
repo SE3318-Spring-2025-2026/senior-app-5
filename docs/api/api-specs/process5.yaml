@@ -754,9 +754,10 @@ components:
       name: committeeId
       in: path
       required: true
-      description: Committee primary key (e.g. MongoDB ObjectId as string)
+      description: Committee id as UUID string
       schema:
         type: string
+        format: uuid
     UserId:
       name: userId
       in: path

@@ -1,0 +1,307 @@
+{
+  "info": {
+    "name": "Committee Read Endpoints – Process 5.5",
+    "description": "Covers GET /groups/{groupId}/committee and GET /committees/{committeeId}.\n\nSet the collection variables before running:\n  - baseUrl  (e.g. http://localhost:3000/api/v1)\n  - jwt      (a valid Bearer token)\n  - groupId  (UUID of an existing group that has a committee assigned)\n  - committeeId (UUID of an existing committee)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",     "value": "http://localhost:3000/api/v1", "type": "string" },
+    { "key": "jwt",         "value": "<paste-your-jwt-here>",        "type": "string" },
+    { "key": "groupId",     "value": "<existing-group-uuid>",        "type": "string" },
+    { "key": "committeeId", "value": "<existing-committee-uuid>",    "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "GET /groups/:groupId/committee",
+      "description": "Reverse lookup – returns the committee assigned to the given group.",
+      "item": [
+        {
+          "name": "200 – Committee found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/groups/{{groupId}}/committee",
+              "host": ["{{baseUrl}}"],
+              "path": ["groups", "{{groupId}}", "committee"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "x-correlation-id", "value": "test-corr-001" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has id', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('name');",
+                  "  pm.expect(body).to.have.property('jury').that.is.an('array');",
+                  "  pm.expect(body).to.have.property('advisors').that.is.an('array');",
+                  "  pm.expect(body).to.have.property('groups').that.is.an('array');",
+                  "  pm.collectionVariables.set('committeeId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 – No JWT",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/groups/{{groupId}}/committee",
+              "host": ["{{baseUrl}}"],
+              "path": ["groups", "{{groupId}}", "committee"]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 – Invalid UUID (groupId)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/groups/not-a-uuid/committee",
+              "host": ["{{baseUrl}}"],
+              "path": ["groups", "not-a-uuid", "committee"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 – Group not found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/groups/00000000-0000-0000-0000-000000000000/committee",
+              "host": ["{{baseUrl}}"],
+              "path": ["groups", "00000000-0000-0000-0000-000000000000", "committee"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 – Group exists but no committee assigned",
+          "description": "Use a groupId that belongs to a group with no committee assignment.",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/groups/{{unassignedGroupId}}/committee",
+              "host": ["{{baseUrl}}"],
+              "path": ["groups", "{{unassignedGroupId}}", "committee"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GET /committees/:committeeId",
+      "description": "Direct lookup – returns a committee by its own UUID.",
+      "item": [
+        {
+          "name": "200 – Committee found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "x-correlation-id", "value": "test-corr-002" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response matches Committee schema', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('name');",
+                  "  pm.expect(body).to.have.property('createdAt');",
+                  "  pm.expect(body).to.have.property('jury').that.is.an('array');",
+                  "  pm.expect(body).to.have.property('advisors').that.is.an('array');",
+                  "  pm.expect(body).to.have.property('groups').that.is.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 – No JWT",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/{{committeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "{{committeeId}}"]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 – Invalid UUID (committeeId)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/not-a-uuid",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "not-a-uuid"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 – Committee not found",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/committees/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees", "00000000-0000-0000-0000-000000000000"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Helpers",
+      "description": "Convenience requests for seeding test data.",
+      "item": [
+        {
+          "name": "POST /committees – Create committee (seed)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/committees",
+              "host": ["{{baseUrl}}"],
+              "path": ["committees"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Committee\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('committeeId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

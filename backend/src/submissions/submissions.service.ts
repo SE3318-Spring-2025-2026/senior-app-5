@@ -1,16 +1,19 @@
 import 'multer';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, isValidObjectId } from 'mongoose';
 import { PhasesService } from '../phases/phases.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument } from './schemas/submission.schema';
+import { User, UserDocument } from '../users/data/user.schema';
 
 @Injectable()
 export class SubmissionsService {
   constructor(
     @InjectModel(Submission.name)
     private submissionModel: Model<SubmissionDocument>,
+    @InjectModel(User.name)
+    private userModel: Model<UserDocument>,
     private readonly phasesService: PhasesService,
   ) {}
 
@@ -24,34 +27,84 @@ export class SubmissionsService {
 
   async createSubmission(createSubmissionDto: CreateSubmissionDto) {
     const phase = await this.phasesService.findByPhaseId(createSubmissionDto.phaseId);
+
     if (!phase.submissionStart || !phase.submissionEnd) {
       throw new BadRequestException('Submission window is not configured for this phase');
     }
+
     const now = new Date();
     if (now < phase.submissionStart || now > phase.submissionEnd) {
       throw new BadRequestException('Submission is outside the allowed submission window for this phase');
     }
+
     const submission = new this.submissionModel({
       ...createSubmissionDto,
       submittedAt: now,
     });
+
     return submission.save();
   }
 
-  async uploadDocument(submissionId: string, file: Express.Multer.File) {
-    const submission = await this.findById(submissionId);
+  async findMySubmissions(userId: string) {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user?.teamId) return [];
 
-    
+    return this.submissionModel
+      .find({ groupId: user.teamId })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async uploadDocumentForUser(userId: string, submissionId: string, file: Express.Multer.File) {
+    if (!isValidObjectId(submissionId)) {
+      throw new NotFoundException('Submission not found.');
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user?.teamId) {
+      throw new NotFoundException('Submission not found.');
+    }
+
+    const submission = await this.submissionModel.findOne({
+      _id: submissionId,
+      groupId: user.teamId,
+    });
+
+    if (!submission) {
+      throw new NotFoundException('Submission not found.');
+    }
+
     const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-
     const newDocument = {
       originalName: decodedFileName,
       mimeType: file.mimetype,
       uploadedAt: new Date(),
     };
+
     submission.documents = submission.documents || [];
     submission.documents.push(newDocument);
     await submission.save();
+
+    return {
+      message: 'Document uploaded and linked successfully',
+      document: newDocument,
+    };
+  }
+
+  async uploadDocument(submissionId: string, file: Express.Multer.File) {
+    const submission = await this.findById(submissionId);
+
+    const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const newDocument = {
+      originalName: decodedFileName,
+      mimeType: file.mimetype,
+      uploadedAt: new Date(),
+    };
+
+    submission.documents = submission.documents || [];
+    submission.documents.push(newDocument);
+    await submission.save();
+
     return {
       message: 'Document uploaded and linked successfully',
       document: newDocument,
@@ -61,11 +114,14 @@ export class SubmissionsService {
   async getCompleteness(submissionId: string) {
     const submission = await this.findById(submissionId);
     const phase = await this.phasesService.findByPhaseId(submission.phaseId);
+
     if (!phase) {
       throw new NotFoundException(`Phase with ID ${submission.phaseId} not found.`);
     }
+
     const missingFields: string[] = [];
     const requiredFields = phase.requiredFields || [];
+
     for (const field of requiredFields) {
       if (field === 'documents') {
         if (!submission.documents || submission.documents.length === 0) {
@@ -73,16 +129,15 @@ export class SubmissionsService {
         }
       } else {
         const isFieldInSchema = this.submissionModel.schema.path(field);
-        if (!isFieldInSchema) {
-          console.warn(`Warning: Field '${field}' does not exist in the Submission schema. Skipping check.`);
-          continue;
-        }
+        if (!isFieldInSchema) continue;
+
         const value = submission.get(field);
         if (value === undefined || value === null || value === '') {
           missingFields.push(field);
         }
       }
     }
+
     const isComplete = missingFields.length === 0;
     return {
       submissionId,

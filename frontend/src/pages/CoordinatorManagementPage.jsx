@@ -18,8 +18,8 @@ import {
   updateCommittee,
 } from '../utils/committeeService'
 
-
-import CreateCoordinatorForm from '../components/CreateCoordinatorForm'
+import { useAuth } from '../context/AuthContext'
+import { CreateCoordinatorForm } from '../components/CreateCoordinatorForm'
 
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
@@ -62,6 +62,27 @@ function SectionCard({ title, subtitle, children }) {
 }
 
 function CoordinatorManagementPage() {
+  const { user } = useAuth()
+
+  // 🛡️ GARANTİLİ RÜTBE BULUCU (Context veya Token üzerinden)
+  const activeRole = useMemo(() => {
+    if (user?.role) return String(user.role).toUpperCase();
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(window.atob(base64));
+      
+      return payload.role ? String(payload.role).toUpperCase() : null;
+    } catch (error) {
+      console.error("Token okunamadı:", error);
+      return null;
+    }
+  }, [user]);
+
   const [scheduleForm, setScheduleForm] = useState({
     phase: '',
     startAt: '',
@@ -345,11 +366,12 @@ function CoordinatorManagementPage() {
 
       <div className={styles.grid}>
         
-        
-        <SectionCard title="Create Coordinator" subtitle="Admin only: Register new coordinator accounts to the system.">
-          <CreateCoordinatorForm />
-        </SectionCard>
-        
+        {/* YENİ NESİL ÇELİK KAPI - Rütbe ne olursa olsun kesin bulur */}
+        {activeRole === 'ADMIN' && (
+          <SectionCard title="Admin Suite" subtitle="Register new coordinator accounts.">
+            <CreateCoordinatorForm />
+          </SectionCard>
+        )}
 
         <SectionCard title="Schedule Management" subtitle="Create schedule and inspect active window.">
           <form className={styles.form} onSubmit={onCreateSchedule}>

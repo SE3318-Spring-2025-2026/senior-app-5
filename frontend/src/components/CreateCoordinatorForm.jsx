@@ -1,127 +1,76 @@
-import React, { useState } from 'react';
-import toast from 'react-hot-toast';
-import apiClient from '../utils/apiClient'; 
-import styles from './CreateCoordinatorForm.module.css';
+import React from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import toast from 'react-hot-toast'
+import styles from '../pages/CoordinatorManagementPage.module.css'
 
-const CreateCoordinatorForm = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-  });
-  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+const schema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters.'),
+  email: z.string().email('Please enter a valid email address.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
+})
 
-  
-  const validateForm = () => {
-    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-      toast.error('All fields are required.');
-      return false;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error('Please enter a valid email address.');
-      return false;
-    }
+export function CreateCoordinatorForm() {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(schema),
+  })
 
-    if (formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters long.');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
-    setLoading(true);
+  const onSubmit = async (data) => {
     try {
-      
-      await apiClient.post('/auth/admin/coordinators', {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      });
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:3001/api/v1/auth/admin/coordinators', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data),
+      })
 
-      toast.success('Coordinator account created successfully!');
-      
-      
-      setFormData({ name: '', email: '', password: '' });
-      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to create coordinator account.')
+      }
+
+      toast.success('Coordinator account created successfully! 🚀')
+      reset()
     } catch (error) {
-      console.error('Coordinator creation error:', error);
-      const errorMsg = error.response?.data?.message || 'Failed to create coordinator account. Email might already exist.';
-      toast.error(errorMsg);
-    } finally {
-      setLoading(false);
+      toast.error(`Error: ${error.message}`)
     }
-  };
+  }
 
   return (
-    <div className={styles.formContainer}>
-      <h2 className={styles.title}>🛡️ Create Coordinator</h2>
-      <form onSubmit={handleSubmit}>
-        
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="name">Full Name</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            className={styles.input}
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="e.g. John Doe"
-            disabled={loading}
-          />
-        </div>
+    <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
+      <label>
+        Name
+        <input type="text" placeholder="e.g. John Doe" {...register('name')} />
+        {errors.name && <span style={{ color: '#ff4d4f', fontSize: '0.85rem', marginTop: '4px' }}>{errors.name.message}</span>}
+      </label>
 
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="email">Email Address</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            className={styles.input}
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="coordinator@university.edu"
-            disabled={loading}
-          />
-        </div>
+      <label>
+        Email Address
+        <input type="email" placeholder="e.g. john@example.com" {...register('email')} />
+        {errors.email && <span style={{ color: '#ff4d4f', fontSize: '0.85rem', marginTop: '4px' }}>{errors.email.message}</span>}
+      </label>
 
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="password">Temporary Password</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            className={styles.input}
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Min. 8 characters"
-            disabled={loading}
-          />
-        </div>
+      <label>
+        Password
+        <input type="password" placeholder="******" {...register('password')} />
+        {errors.password && <span style={{ color: '#ff4d4f', fontSize: '0.85rem', marginTop: '4px' }}>{errors.password.message}</span>}
+      </label>
 
-        <button 
-          type="submit" 
-          className={styles.submitBtn} 
-          disabled={loading}
-        >
-          {loading ? 'Creating Account...' : 'Create Coordinator'}
+      <div className={styles.inlineActions}>
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Processing...' : 'Register Coordinator'}
         </button>
-      </form>
-    </div>
-  );
-};
-
-export default CreateCoordinatorForm;
+      </div>
+    </form>
+  )
+}

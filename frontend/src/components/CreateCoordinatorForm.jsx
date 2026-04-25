@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import styles from '../pages/CoordinatorManagementPage.module.css'
 
 
+import apiClient from '../utils/apiClient' 
+
 const schema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters.'),
   email: z.string().email('Please enter a valid email address.'),
@@ -24,25 +26,15 @@ export function CreateCoordinatorForm() {
 
   const onSubmit = async (data) => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:3001/api/v1/auth/admin/coordinators', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to create coordinator account.')
-      }
+      
+      await apiClient.post('/auth/admin/coordinators', data)
 
       toast.success('Coordinator account created successfully! 🚀')
       reset()
     } catch (error) {
-      toast.error(`Error: ${error.message}`)
+      
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to create coordinator account.'
+      toast.error(`Error: ${errorMsg}`)
     }
   }
 

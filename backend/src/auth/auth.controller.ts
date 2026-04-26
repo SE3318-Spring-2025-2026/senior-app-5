@@ -7,6 +7,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Param,
+  ForbiddenException
 } from '@nestjs/common';
 
 import { AuthGuard } from '@nestjs/passport';
@@ -92,7 +94,6 @@ export class AuthController {
     return this.authService.register(body.email, body.password, body.role);
   }
 
-  
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Register a new coordinator (Admin only)' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized or invalid token' })
@@ -100,7 +101,6 @@ export class AuthController {
   @Roles(Role.Admin) 
   @Post('admin/coordinators')
   async registerCoordinator(@Body() body: RegisterDto) {
-    
     return this.authService.register(body.email, body.password, Role.Coordinator);
   }
   
@@ -115,5 +115,24 @@ export class AuthController {
       email: req.user.email,
       role: req.user.role,
     };
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Link GitHub account using OAuth code' })
+  @ApiOkResponse({ description: 'GitHub account linked successfully' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
+  @UseGuards(AuthGuard('jwt'))
+  @Post('users/:userId/integrations/github')
+  async linkGithubIntegration(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+    @Body('code') code: string,
+  ) {
+    // SECURITY: Prevent changing someone else's account from your own (403)
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException('You do not have permission to modify this account');
+    }
+
+    return this.authService.linkGithubAccount(userId, code);
   }
 }

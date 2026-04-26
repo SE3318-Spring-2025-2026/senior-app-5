@@ -46,10 +46,9 @@ export class SubmissionsService {
   }
 
   async findAll(groupId?: string) {
-    if (!groupId) return [];
-    return this.submissionModel.find({ groupId }).sort({ createdAt: -1 }).exec();
+    const query = groupId ? { groupId } : {};
+    return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }
-
   async findOne(id: string): Promise<SubmissionDocument> {
     return this.findById(id);
   }

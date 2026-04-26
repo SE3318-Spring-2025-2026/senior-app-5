@@ -56,16 +56,23 @@ describe('SubmissionsService', () => {
   });
 
   describe('findAll (Data Leak Prevention)', () => {
-    it('should return empty array when no groupId is provided without querying the database', async () => {
-      const result = await service.findAll();
-      expect(mockSubmissionModel.find).not.toHaveBeenCalled();
-      expect(result).toEqual([]);
+    it('should return all submissions when no groupId is provided (Admin/Coordinator behavior)', async () => {
+      const mockSubmissions = [{ title: 'Doc 1' }];
+      mockSubmissionModel.exec.mockResolvedValueOnce(mockSubmissions);
+      
+      const result = await service.findAll(undefined);
+      
+      expect(mockSubmissionModel.find).toHaveBeenCalledWith({});
+      expect(mockSubmissionModel.sort).toHaveBeenCalledWith({ createdAt: -1 });
+      expect(result).toEqual(mockSubmissions);
     });
 
     it('should filter submissions by groupId', async () => {
       const groupId = 'group-123';
       mockSubmissionModel.exec.mockResolvedValueOnce([]);
+      
       await service.findAll(groupId);
+      
       expect(mockSubmissionModel.find).toHaveBeenCalledWith({ groupId });
       expect(mockSubmissionModel.sort).toHaveBeenCalledWith({ createdAt: -1 });
     });
@@ -201,11 +208,17 @@ describe('SubmissionsService', () => {
     it('should throw ForbiddenException when user is not in target group', async () => {
       mockGroupModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ groupId: 'group-1', status: GroupStatus.ACTIVE }) });
       await expect(service.assertAuthorizedGroupMember({ userId: 'student-id', role: Role.Student, groupId: 'group-2' }, 'group-1')).rejects.toThrow(ForbiddenException);
+      
+      // Explicitly assert that no DB lookup is happening
+      expect(mockUserModel.findById).not.toHaveBeenCalled();
     });
 
     it('should allow active group member', async () => {
       mockGroupModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ groupId: 'group-1', status: GroupStatus.ACTIVE }) });
       await expect(service.assertAuthorizedGroupMember({ userId: 'student-id', role: Role.Student, groupId: 'group-1' }, 'group-1')).resolves.toBeUndefined();
+      
+      // Explicitly assert that no DB lookup is happening
+      expect(mockUserModel.findById).not.toHaveBeenCalled();
     });
   });
 });

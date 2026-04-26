@@ -1,20 +1,9 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../utils/apiClient';
 import apiConfig from '../../config/api';
+import { SectionCard } from '../../components/ui';
 import styles from '../GroupLifecyclePage.module.css';
 import activityStyles from './ActivityPage.module.css';
-
-function SectionCard({ title, description, children }) {
-  return (
-    <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </div>
-  );
-}
 
 function ActivityPage() {
   const [logs, setLogs] = useState([]);

@@ -2,30 +2,9 @@ import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import EntitySearchSelect from '../../components/EntitySearchSelect'
+import { SectionCard, StatusBlock } from '../../components/ui'
 import styles from '../GroupLifecyclePage.module.css'
 import { useAdminGroup } from '../../context/AdminGroupContext'
-
-function SectionCard({ title, description, children }) {
-  return (
-    <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </div>
-  )
-}
-
-function StatusBlock({ title, message, type }) {
-  if (!message) return null
-  return (
-    <div className={`${styles.statusBlock} ${type === 'error' ? styles.error : styles.success}`}>
-      <strong>{title}</strong>
-      <span>{message}</span>
-    </div>
-  )
-}
 
 function GroupsPage() {
   const { setCurrentGroupId } = useAdminGroup()

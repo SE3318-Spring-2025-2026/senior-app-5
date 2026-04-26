@@ -1,0 +1,50 @@
+/* Shared UI component styles */
+
+.sectionCard {
+  background: #1e293b;
+  border-radius: 24px;
+  border: 1px solid #334155;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.3);
+  padding: 24px;
+}
+
+.sectionHeader h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.sectionHeader p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.sectionBody {
+  margin-top: 18px;
+}
+
+.statusBlock {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.statusBlock strong {
+  font-weight: 600;
+}
+
+.success {
+  border: 1px solid #1e40af;
+  background: #1e3a8a;
+  color: #dbeafe;
+}
+
+.error {
+  border: 1px solid #dc2626;
+  background: #7f1d1d;
+  color: #fca5a5;
+}

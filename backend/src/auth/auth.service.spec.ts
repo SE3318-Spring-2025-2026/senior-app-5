@@ -1,5 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -13,6 +14,7 @@ describe('AuthService', () => {
     createPasswordResetToken: jest.fn(),
     findByPasswordResetToken: jest.fn(),
     updatePasswordHash: jest.fn(),
+    linkGithubAccount: jest.fn(),
   } as any;
 
   const mockJwtService = {
@@ -76,6 +78,44 @@ describe('AuthService', () => {
     );
     expect(result).toEqual({
       message: 'Password has been reset successfully.',
+    });
+  });
+
+  describe('linkGithubAccount (Issue #175 QA)', () => {
+    const mockUserId = '111111111111111111111111';
+
+    beforeEach(() => {
+      global.fetch = jest.fn() as any;
+    });
+
+    it('should throw BadRequestException if code is empty', async () => {
+      await expect(service.linkGithubAccount(mockUserId, '')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if GitHub returns an error', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        json: async () => ({ error: 'bad_verification_code' }),
+      });
+
+      await expect(service.linkGithubAccount(mockUserId, 'invalid_code')).rejects.toThrow(BadRequestException);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should successfully link account when valid code is provided', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        json: async () => ({ access_token: 'valid_mock_token' }),
+      });
+
+      (global.fetch as any).mockResolvedValueOnce({
+        json: async () => ({ id: 12345678 }),
+      });
+
+      mockUsersService.linkGithubAccount.mockResolvedValue(true);
+
+      const result = await service.linkGithubAccount(mockUserId, 'valid_code');
+
+      expect(result.isGithubConnected).toBe(true);
+      expect(mockUsersService.linkGithubAccount).toHaveBeenCalledWith(mockUserId, '12345678');
     });
   });
 });

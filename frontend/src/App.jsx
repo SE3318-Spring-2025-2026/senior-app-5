@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
-import GroupLifecyclePage from './pages/GroupLifecyclePage';
+import StudentGroupManagementPage from './pages/StudentGroupManagementPage'
 import CoordinatorManagementPage from './pages/CoordinatorManagementPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
@@ -52,14 +52,12 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/groups" element={<GroupLifecyclePage />} />
-            <Route path="/all-groups" element={<GroupLifecyclePage />} />
+                       <Route path="/groups" element={<StudentGroupManagementPage />} />
+            <Route path="/all-groups" element={<StudentGroupManagementPage />} />
             <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
-            <Route path="/documents" element={<StudentSubmissionPage />} />
-           
+            <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
-            <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route
               path="/phases/schedule"
               element={

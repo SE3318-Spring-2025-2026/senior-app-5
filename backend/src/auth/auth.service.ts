@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   Logger,
+  NotFoundException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -112,5 +113,64 @@ export class AuthService {
 
     this.logger.log(`Password reset completed for email: ${user.email}`);
     return { message: 'Password has been reset successfully.' };
+  }
+
+  async linkGithubAccount(userId: string, code: string) {
+    if (!code?.trim()) {
+      throw new BadRequestException('GitHub authorization code is required');
+    }
+
+    try {
+      this.logger.debug(`Exchanging GitHub code for user: ${userId}`);
+
+      // STEP 1: Swap with GitHub
+      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code: code,
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+
+      if (tokenData.error) {
+        this.logger.error(`GitHub Token Error: ${tokenData.error_description}`);
+        throw new BadRequestException('Invalid or expired GitHub authorization code');
+      }
+
+      // STEP 2: Retrieve GitHub ID using the token
+      const userResponse = await fetch('https://api.github.com/user', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      const githubUser = await userResponse.json();
+
+      if (!githubUser || !githubUser.id) {
+        throw new BadRequestException('Failed to retrieve GitHub user data');
+      }
+
+      // STEP 3: Call the function you already wrote in UsersService!
+      await this.usersService.linkGithubAccount(userId, githubUser.id.toString());
+      this.logger.log(`Successfully linked GitHub account for user: ${userId}`);
+      
+      return { message: 'GitHub account linked successfully', isGithubConnected: true };
+
+    }  catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to link GitHub account: ${errorMessage}`);
+      
+      if (error instanceof BadRequestException || error instanceof NotFoundException) throw error;
+      throw new BadRequestException('An error occurred while linking GitHub account');
+    }
   }
 }

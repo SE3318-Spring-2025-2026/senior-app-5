@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -10,11 +10,17 @@ import { UpdatePhaseScheduleDto } from './dto/update-phase-schedule.dto';
 @ApiTags('Phases')
 @Controller('phases')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.Coordinator)
 export class PhasesController {
   constructor(private readonly phasesService: PhasesService) {}
 
+  @Get(':phaseId')
+  @Roles(Role.Student, Role.Professor, Role.Coordinator, Role.Admin)
+  async getPhase(@Param('phaseId') phaseId: string) {
+    return this.phasesService.getPhaseById(phaseId);
+  }
+
   @Put(':phaseId/schedule')
+  @Roles(Role.Coordinator)
   async updateSchedule(
     @Param('phaseId') phaseId: string,
     @Body() dto: UpdatePhaseScheduleDto,

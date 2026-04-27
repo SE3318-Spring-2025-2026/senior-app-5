@@ -16,6 +16,8 @@ export const apiConfig = {
     },
     groups: '/groups',
     groupMembers: (groupId) => `/groups/${groupId}/members`,
+    phaseById: (phaseId) => `/phases/${phaseId}`,
+    submissionDocuments: (submissionId) => `/submissions/${submissionId}/documents`,
     groupCommittee: (groupId) => `/groups/${groupId}/committee`,
     groupStatus: (groupId) => `/groups/${groupId}/status`,
     advisors: '/advisors',

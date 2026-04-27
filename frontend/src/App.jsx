@@ -52,11 +52,12 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/groups" element={<StudentGroupManagementPage />} />
+                       <Route path="/groups" element={<StudentGroupManagementPage />} />
             <Route path="/all-groups" element={<StudentGroupManagementPage />} />
+            <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
+            <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
-            <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route
               path="/phases/schedule"
               element={

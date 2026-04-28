@@ -40,7 +40,8 @@ export class AdvisorsController {
   }
 
   @Get()
-  @Roles(Role.Coordinator, Role.TeamLeader)
+  
+  @Roles(Role.Coordinator, Role.TeamLeader, Role.Admin)
   async listAdvisors(
     @Req() req: RequestWithUser,
     @Query() query: ListAdvisorsQueryDto,
@@ -66,7 +67,8 @@ export class AdvisorsController {
   }
 
   @Delete(':advisorId/groups/:groupId')
-  @Roles(Role.Coordinator, Role.Professor)
+  
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
   async releaseTeam(
     @Req() req: RequestWithUser,
     @Param('advisorId') advisorId: string,

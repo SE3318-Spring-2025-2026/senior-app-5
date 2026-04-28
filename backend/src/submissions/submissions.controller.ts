@@ -31,6 +31,7 @@ export class SubmissionsController {
   }
 
   @Post()
+  @Roles(Role.Student, Role.TeamLeader) 
   @ApiOperation({ summary: 'Create a new submission' })
   async create(@Req() req: Request & { user: any }, @Body() createSubmissionDto: CreateSubmissionDto) {
     await this.submissionsService.assertAuthorizedGroupMember(req.user, createSubmissionDto.groupId);
@@ -38,6 +39,7 @@ export class SubmissionsController {
   }
 
   @Get(':submissionId/completeness')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
   @ApiOperation({ summary: 'Check if a submission meets all phase requirements' })
   async getCompleteness(@Req() req: Request & { user: any }, @Param('submissionId') submissionId: string) {
     if (!submissionId.match(/^[0-9a-fA-F]{24}$/)) {
@@ -56,6 +58,7 @@ export class SubmissionsController {
   }
 
   @Get()
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
   @ApiOperation({ summary: 'Get all submissions. Filter enforced for students.' })
   @ApiQuery({ name: 'groupId', required: false, type: String })
   async findAll(@Req() req: Request & { user: any }, @Query('groupId') groupId?: string) {
@@ -72,6 +75,7 @@ export class SubmissionsController {
   }
 
   @Get(':id')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
   @ApiOperation({ summary: 'Get submission details by ID' })
   async findOne(@Req() req: Request & { user: any }, @Param('id') id: string) {
     const submission = await this.submissionsService.findOne(id);

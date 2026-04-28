@@ -42,11 +42,11 @@ function PhaseSchedulingPage() {
       return;
     }
 
-    if (endDate < startDate) {
+    if (endDate <= startDate) {
       setStatus({
         loading: false,
         message: '',
-        error: 'Submission end date must be after the submission start date.',
+        error: 'Submission end date must be strictly after the submission start date.',
       });
       return;
     }
@@ -113,6 +113,7 @@ function PhaseSchedulingPage() {
             <input
               type="datetime-local"
               value={submissionEnd}
+              min={submissionStart}
               onChange={(e) => setSubmissionEnd(e.target.value)}
               required
             />

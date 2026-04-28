@@ -98,6 +98,7 @@ export class SubmissionsController {
   }
 
   @Post()
+  @Roles(Role.Student, Role.TeamLeader) 
   @ApiOperation({ summary: 'Create a new submission' })
   async create(
     @Req() req: Request & { user: any },
@@ -212,6 +213,7 @@ export class SubmissionsController {
   }
 
   @Get(':id')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
   @ApiOperation({ summary: 'Get submission details by ID' })
   async findOne(@Req() req: Request & { user: any }, @Param('id') id: string) {
     this.validateObjectIdFormat(id);

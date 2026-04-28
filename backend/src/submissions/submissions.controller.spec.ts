@@ -6,6 +6,7 @@ import {
   SubmissionsController,
 } from './submissions.controller';
 import { SubmissionsService } from './submissions.service';
+import { Role } from '../auth/enums/role.enum'; 
 
 describe('SubmissionsController', () => {
   let controller: SubmissionsController;
@@ -42,6 +43,7 @@ describe('SubmissionsController', () => {
     expect(controller).toBeDefined();
   });
 
+  
   describe('getMySubmissions (Security Check)', () => {
     it('should throw ForbiddenException if student has no groupId (403)', async () => {
       const req = { user: { role: 'Student', groupId: null } } as any;

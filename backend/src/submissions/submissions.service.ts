@@ -50,6 +50,61 @@ export class SubmissionsService {
     return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }
 
+  async uploadDocumentForUser(userId: string, submissionId: string, file: Express.Multer.File) {
+    if (!isValidObjectId(submissionId)) {
+      throw new NotFoundException('Submission not found.');
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user?.teamId) {
+      throw new NotFoundException('Submission not found.');
+    }
+
+    const submission = await this.submissionModel.findOne({
+      _id: submissionId,
+      groupId: user.teamId,
+    });
+
+    if (!submission) {
+      throw new NotFoundException('Submission not found.');
+    }
+
+    // 2. SECURITY: Fetch the associated phase and validate submission window
+    const phase = await this.phasesService.getPhaseById(submission.phaseId);
+    
+    // Check if phase has submission window configured
+    if (!phase.submissionStart || !phase.submissionEnd) {
+      throw new BadRequestException('Phase submission window is not configured.');
+    }
+
+    // Check if current time is within the submission window
+    const now = new Date();
+    if (now < phase.submissionStart) {
+      throw new BadRequestException('Submission window has not started yet. Upload is not permitted.');
+    }
+    if (now >= phase.submissionEnd) {
+      throw new BadRequestException('Submission window has closed. Upload is not permitted.');
+    }
+
+    // 3. Prepare file information (metadata) with latin1 decoding fix from main
+    const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const newDocument = {
+      originalName: decodedFileName,
+      mimeType: file.mimetype,
+      uploadedAt: new Date(),
+    };
+
+    // 4. Add the file to the record and update the database
+    submission.documents = submission.documents || [];
+    submission.documents.push(newDocument);
+    await submission.save();
+
+    return {
+      message: 'Document uploaded and linked successfully',
+      document: newDocument,
+    };
+  }
+
   async findOne(id: string): Promise<SubmissionDocument> {
     return this.findById(id);
   }

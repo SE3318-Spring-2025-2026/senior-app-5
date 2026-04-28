@@ -8,8 +8,8 @@
   text-align: left;
   margin-bottom: 24px;
   padding: 20px 24px;
-  background: linear-gradient(135deg, #f7f7ff 0%, #eef3ff 100%);
-  border: 1px solid #dde2f0;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid #334155;
   border-radius: 20px;
 }
 
@@ -18,8 +18,8 @@
   align-items: center;
   padding: 6px 14px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #4338ca;
+  background: #1e40af;
+  color: #dbeafe;
   font-size: 14px;
   margin-bottom: 12px;
   font-weight: 700;
@@ -28,7 +28,37 @@
 .lead {
   max-width: 760px;
   margin-top: 12px;
-  color: #4b5563;
+  color: #cbd5e1;
+}
+
+.tabMenu {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #334155;
+}
+
+.tabButton {
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tabButton:hover {
+  color: #f8fafc;
+  background: rgba(30, 64, 175, 0.1);
+}
+
+.activeTab {
+  color: #0284c7;
+  border-bottom-color: #0284c7;
+  background: rgba(2, 132, 199, 0.1);
 }
 
 .grid {
@@ -36,6 +66,7 @@
   gap: 20px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
 
 .sectionCard {
   background: white;
@@ -48,6 +79,8 @@
 .sectionHeader h2 {
   margin: 0 0 6px;
   font-size: 20px;
+  color: #000000; 
+  font-weight: 700; 
 }
 
 .sectionHeader p {
@@ -68,22 +101,29 @@
   display: grid;
   gap: 8px;
   text-align: left;
-  color: #262626;
+  color: #f8fafc;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .form input,
 .form button {
   width: 100%;
+  box-sizing: border-box;
 }
 
 .form input {
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #475569;
   font-size: 15px;
-  color: #111827;
-  background: #f9fafb;
+  color: #f8fafc;
+  background: #334155;
+}
+
+.form input:focus {
+  outline: none;
+  border-color: #0284c7;
 }
 
 .form button {
@@ -92,7 +132,7 @@
   border-radius: 12px;
   font-weight: 700;
   color: white;
-  background: #4338ca;
+  background: #1e40af;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -103,13 +143,54 @@
 }
 
 .form button:hover:not(:disabled) {
-  background: #3730a3;
+  background: #0284c7;
 }
 
 .controlRow {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.inlineControls {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.inlineControls label {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  color: #f8fafc;
+}
+
+.inlineControls input {
+  width: 90px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #475569;
+  background: #334155;
+  color: #f8fafc;
+}
+
+.inlineControls input:focus {
+  outline: none;
+  border-color: #0284c7;
+}
+
+.inlineControls button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 12px;
+  background: #1e40af;
+  color: #fff;
+  cursor: pointer;
+}
+
+.inlineControls button:hover:not(:disabled) {
+  background: #0284c7;
 }
 
 .statusBlock {
@@ -122,23 +203,23 @@
 }
 
 .success {
-  border: 1px solid #dbeafe;
-  background: #eff6ff;
-  color: #1e3a8a;
+  border: 1px solid #1e40af;
+  background: #1e3a8a;
+  color: #dbeafe;
 }
 
 .error {
-  border: 1px solid #fca5a5;
-  background: #fef2f2;
-  color: #b91c1c;
+  border: 1px solid #dc2626;
+  background: #7f1d1d;
+  color: #fca5a5;
 }
 
 .resultBox {
   margin-top: 16px;
   padding: 16px;
   border-radius: 16px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: #334155;
+  border: 1px solid #475569;
   text-align: left;
 }
 
@@ -146,16 +227,16 @@
   margin: 12px 0 0;
   font-size: 13px;
   overflow-x: auto;
-  background: #ffffff;
+  background: #1e293b;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #475569;
+  color: #f8fafc;
 }
 
 .resultList {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  padding-left: 18px;
   display: grid;
   gap: 10px;
 }
@@ -163,21 +244,22 @@
 .resultList li {
   padding: 14px 16px;
   border-radius: 14px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
+  border: 1px solid #475569;
+  background: #1e293b;
   display: grid;
   gap: 4px;
+  color: #f8fafc;
 }
 
 .resultList small {
-  color: #6b7280;
+  color: #cbd5e1;
 }
 
 .emptyState {
-  color: #6b7280;
+  color: #cbd5e1;
 }
 
-.actionLog {
+.list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -186,15 +268,152 @@
   text-align: left;
 }
 
-.actionLog li {
+.listItem,
+.requestRow {
   padding: 12px 14px;
   border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: #334155;
+  border: 1px solid #475569;
+}
+
+.radioRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  color: #f8fafc;
+}
+
+.requestRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.requestMeta {
+  margin: 6px 0 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.requestActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.requestActions button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #1e40af;
+  color: #fff;
+}
+
+.requestActions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.requestActions button:hover:not(:disabled) {
+  background: #0284c7;
+}
+
+.badgeStatus {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pending {
+  background: #f59e0b;
+  color: #92400e;
+}
+
+.nonPending {
+  background: #6b7280;
+  color: #f9fafb;
+}
+
+.note {
+  margin-top: 12px;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 30;
+}
+
+.modal {
+  width: min(460px, 100%);
+  background: #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #334155;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.5);
+}
+
+.modal h3 {
+  margin: 0 0 10px;
+  color: #f8fafc;
+}
+
+.modal p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modalActions button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.modalActions button:first-child {
+  background: #475569;
+  color: #f8fafc;
+}
+
+.modalActions button:last-child {
+  background: #1e40af;
+  color: #fff;
+}
+
+.modalActions button:last-child:hover {
+  background: #0284c7;
+}
+
+.singleCardContainer {
+  max-width: 700px;
+  margin: 0 auto;
 }
 
 @media (max-width: 980px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .requestRow {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

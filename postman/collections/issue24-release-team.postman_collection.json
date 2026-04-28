@@ -1,0 +1,418 @@
+{
+  "info": {
+    "name": "Issue 24 - Release Team from Advisor",
+    "description": "Issue 24 flow for releasing an advisor-group assignment via DELETE /advisors/:advisorId/groups/:groupId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "1) Login Coordinator",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{coordinatorEmail}}\",\n  \"password\": \"{{coordinatorPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "pm.environment.unset('advisorId');",
+                  "pm.environment.unset('requestIdPending');",
+                  "pm.environment.unset('groupIdAssigned');",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('coordinatorToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2) Login Team Leader",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{teamLeaderEmail}}\",\n  \"password\": \"{{teamLeaderPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('teamLeaderToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3) Login Professor",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{professorEmail}}\",\n  \"password\": \"{{professorPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.environment.set('professorToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4) Ensure Active Advisor Selection Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phase\": \"ADVISOR_SELECTION\",\n  \"startDatetime\": \"2025-01-01T00:00:00.000Z\",\n  \"endDatetime\": \"2030-12-31T23:59:59.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/schedules"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created or 200 OK', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5) List Advisors and Capture advisorId",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{teamLeaderToken}}" }
+            ],
+            "url": "{{baseUrl}}/advisors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+                  "pm.expect(body.data[0].advisorId).to.match(/^[a-f\\d]{24}$/i);",
+                  "pm.environment.set('advisorId', body.data[0].advisorId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6) Create Pending Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{teamLeaderToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestedAdvisorId\": \"{{advisorId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created or 200 OK', function () {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.requestId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);",
+                  "pm.expect(body.groupId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);",
+                  "pm.environment.set('requestIdPending', body.requestId);",
+                  "pm.environment.set('groupIdAssigned', body.groupId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7) Decide APPROVE to create assignment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{professorToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}"
+            },
+            "url": "{{baseUrl}}/requests/{{requestIdPending}}/decision"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect(pm.environment.get('requestIdPending')).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);",
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Release Scenarios",
+      "item": [
+        {
+          "name": "✓ DELETE Release - Coordinator Happy Path (200)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" }
+            ],
+            "url": "{{baseUrl}}/advisors/{{advisorId}}/groups/{{groupIdAssigned}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect(pm.environment.get('advisorId')).to.match(/^[a-f\\d]{24}$/i);",
+                  "pm.expect(pm.environment.get('groupIdAssigned')).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.groupId).to.be.a('string');",
+                  "pm.expect(body.status).to.equal('UNASSIGNED');",
+                  "pm.expect(body.advisorId).to.equal(null);",
+                  "pm.expect(body.canSubmitRequest).to.equal(true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✓ DELETE Release - Idempotent Already UNASSIGNED (200)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" }
+            ],
+            "url": "{{baseUrl}}/advisors/{{advisorId}}/groups/{{groupIdAssigned}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect(pm.environment.get('advisorId')).to.match(/^[a-f\\d]{24}$/i);",
+                  "pm.expect(pm.environment.get('groupIdAssigned')).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ DELETE Release - Missing JWT (401)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/advisors/{{advisorId}}/groups/{{groupIdAssigned}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function () {",
+                  "  pm.expect(pm.response.code).to.equal(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ DELETE Release - Invalid advisorId (400)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" }
+            ],
+            "url": "{{baseUrl}}/advisors/not-a-mongoid/groups/{{groupIdAssigned}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect(pm.environment.get('groupIdAssigned')).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ DELETE Release - Wrong Role Team Leader (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{teamLeaderToken}}" }
+            ],
+            "url": "{{baseUrl}}/advisors/{{advisorId}}/groups/{{groupIdAssigned}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 Forbidden', function () {",
+                  "  pm.expect(pm.response.code).to.equal(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ DELETE Release - Advisor Ownership Mismatch (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{professorToken}}" }
+            ],
+            "url": "{{baseUrl}}/advisors/{{otherAdvisorId}}/groups/{{groupIdAssigned}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 Forbidden', function () {",
+                  "  pm.expect(pm.response.code).to.equal(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "✗ DELETE Release - Association Not Found (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{coordinatorToken}}" }
+            ],
+            "url": "{{baseUrl}}/advisors/{{advisorId}}/groups/00000000-0000-4000-8000-000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

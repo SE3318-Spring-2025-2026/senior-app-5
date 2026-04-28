@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   ConflictException,
   UnauthorizedException,
   BadRequestException,
   Logger,
+  NotFoundException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -36,16 +36,16 @@ export class AuthService {
 
       this.logger.debug(`Creating user with email: ${email} and role: ${role}`);
 
-      const user = (await this.usersService.createUser({
+      const user = await this.usersService.createUser({
         email,
         passwordHash,
-        role,
-      })) as any;
+          role,
+      });
 
       this.logger.log(`User registered successfully: ${email} as ${role}`);
 
       return {
-        id: user._id || user.id,
+        id: user._id.toString(),
         email: user.email,
         role: user.role,
       };
@@ -56,7 +56,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = (await this.usersService.findByEmail(email)) as any;
+    const user = await this.usersService.findByEmail(email);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -69,12 +69,108 @@ export class AuthService {
     }
 
     const accessToken = await this.jwt.signAsync({
-      sub: (user._id || user.id).toString(),
+      sub: user._id.toString(),
       email: user.email,
       role: user.role,
     });
 
     this.logger.log(`User logged in successfully: ${email}`);
     return { accessToken };
+  }
+
+  async requestPasswordReset(email: string) {
+    if (!email?.trim()) {
+      throw new BadRequestException('Email is required');
+    }
+
+    const token = await this.usersService.createPasswordResetToken(email);
+    if (token) {
+      this.logger.log(`Password reset token generated for email: ${email}`);
+      this.logger.debug(`Password reset token for ${email}: ${token}`);
+    }
+
+    return {
+      message:
+        'If an account exists for that email, a password reset link has been sent.',
+    };
+  }
+
+  async confirmPasswordReset(token: string, newPassword: string) {
+    if (!token?.trim() || !newPassword?.trim()) {
+      throw new BadRequestException('Token and new password are required');
+    }
+
+    const user = await this.usersService.findByPasswordResetToken(token);
+    if (!user) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersService.updatePasswordHash(
+      (user._id || user.id).toString(),
+      passwordHash,
+    );
+
+    this.logger.log(`Password reset completed for email: ${user.email}`);
+    return { message: 'Password has been reset successfully.' };
+  }
+
+  async linkGithubAccount(userId: string, code: string) {
+    if (!code?.trim()) {
+      throw new BadRequestException('GitHub authorization code is required');
+    }
+
+    try {
+      this.logger.debug(`Exchanging GitHub code for user: ${userId}`);
+
+      // STEP 1: Swap with GitHub
+      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code: code,
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+
+      if (tokenData.error) {
+        this.logger.error(`GitHub Token Error: ${tokenData.error_description}`);
+        throw new BadRequestException('Invalid or expired GitHub authorization code');
+      }
+
+      // STEP 2: Retrieve GitHub ID using the token
+      const userResponse = await fetch('https://api.github.com/user', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      const githubUser = await userResponse.json();
+
+      if (!githubUser || !githubUser.id) {
+        throw new BadRequestException('Failed to retrieve GitHub user data');
+      }
+
+      // STEP 3: Call the function you already wrote in UsersService!
+      await this.usersService.linkGithubAccount(userId, githubUser.id.toString());
+      this.logger.log(`Successfully linked GitHub account for user: ${userId}`);
+      
+      return { message: 'GitHub account linked successfully', isGithubConnected: true };
+
+    }  catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to link GitHub account: ${errorMessage}`);
+      
+      if (error instanceof BadRequestException || error instanceof NotFoundException) throw error;
+      throw new BadRequestException('An error occurred while linking GitHub account');
+    }
   }
 }

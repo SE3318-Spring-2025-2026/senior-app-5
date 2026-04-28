@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
-import { GroupStatus } from './group.entity';
+import { GroupAssignmentStatus, GroupStatus } from './group.entity';
+import { CommitteesService } from '../committees/committees.service';
 
 describe('GroupsController', () => {
   let controller: GroupsController;
@@ -14,12 +15,20 @@ describe('GroupsController', () => {
       addMemberToGroup: jest.fn(),
     };
 
+    const mockCommitteesService = {
+      getCommitteeByGroupId: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GroupsController],
       providers: [
         {
           provide: GroupsService,
           useValue: mockService,
+        },
+        {
+          provide: CommitteesService,
+          useValue: mockCommitteesService,
         },
       ],
     }).compile();
@@ -43,6 +52,8 @@ describe('GroupsController', () => {
       groupName: 'Test Group',
       leaderUserId: '123e4567-e89b-12d3-a456-426614174000',
       status: GroupStatus.ACTIVE,
+      assignmentStatus: GroupAssignmentStatus.UNASSIGNED,
+      assignedAdvisorId: null,
     };
 
     jest.spyOn(service, 'createGroup').mockResolvedValue(expectedResult);

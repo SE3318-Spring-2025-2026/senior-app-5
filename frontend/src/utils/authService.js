@@ -33,6 +33,24 @@ export const authService = {
     }
   },
 
+  async registerProfessor(name, email, role) {
+    try {
+      const response = await apiClient.post(apiConfig.endpoints.adminProfessors, {
+        name,
+        email,
+        role,
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Professor creation failed';
+      throw new Error(errorMessage);
+    }
+  },
+
   /**
    * Login user
    * @param {string} email - User email

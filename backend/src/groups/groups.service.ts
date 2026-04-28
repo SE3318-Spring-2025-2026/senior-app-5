@@ -27,29 +27,42 @@ export class GroupsService {
     return this.groupModel.findOne({ groupId }).exec();
   }
 
-  async addMember(groupId: string, memberUserId: string) {
-    const group = await this.findGroupById(groupId);
-    if (!group) {
-      throw new NotFoundException(`Group not found for groupId: ${groupId}`);
+  async addMemberToGroup(groupId: string, memberUserId: string): Promise<Group> {
+    const user = await this.userModel.findById(memberUserId).exec();
+    if (!user) {
+      throw new NotFoundException(`User with ID ${memberUserId} not found.`);
     }
 
-    const updatedUser = await this.userModel
-      .findByIdAndUpdate(
-        memberUserId,
-        { teamId: groupId },
-        { new: true, select: '-passwordHash' },
+    const updatedGroup = await this.groupModel
+      .findOneAndUpdate(
+        { groupId },
+        [
+          {
+            $set: {
+              members: {
+                $setUnion: [{ $ifNull: ['$members', []] }, [memberUserId]],
+              },
+            },
+          },
+          {
+            $set: {
+              memberCount: { $size: '$members' },
+            },
+          },
+        ],
+        { new: true },
       )
       .exec();
 
-    if (!updatedUser) {
-      throw new NotFoundException(`User not found for id: ${memberUserId}`);
+    if (!updatedGroup) {
+      throw new NotFoundException(`Group with ID ${groupId} not found.`);
     }
 
-    return {
-      groupId,
-      memberUserId,
-      user: updatedUser,
-    };
+    await this.userModel
+      .findByIdAndUpdate(memberUserId, { teamId: groupId }, { new: true })
+      .exec();
+
+    return updatedGroup;
   }
 
   async validateStatementOfWork(groupId: string) {

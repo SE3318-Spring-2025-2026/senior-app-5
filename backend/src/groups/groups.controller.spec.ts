@@ -12,6 +12,7 @@ describe('GroupsController', () => {
   beforeEach(async () => {
     const mockService = {
       createGroup: jest.fn(),
+      addMemberToGroup: jest.fn(),
     };
 
     const mockCommitteesService = {
@@ -61,6 +62,24 @@ describe('GroupsController', () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(service.createGroup).toHaveBeenCalledWith(createGroupDto);
+    expect(result).toEqual(expectedResult);
+  });
+
+  it('should add member to a group', async () => {
+    const groupId = 'group-123';
+    const dto = { memberUserId: 'user-456' };
+    const expectedResult = {
+      groupId,
+      members: ['user-456'],
+      memberCount: 1,
+    };
+
+    jest.spyOn(service, 'addMemberToGroup').mockResolvedValue(expectedResult as any);
+
+    const result = await controller.addMember(groupId, dto);
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(service.addMemberToGroup).toHaveBeenCalledWith(groupId, dto.memberUserId);
     expect(result).toEqual(expectedResult);
   });
 });

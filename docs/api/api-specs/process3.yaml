@@ -215,7 +215,14 @@ components:
           type: string
         leaderUserId:
           type: string
-          description: MongoDB ObjectId of the group leader
+          format: uuid
+        members:
+          type: array
+          items:
+            type: string
+        memberCount:
+          type: integer
+          example: 1
         status:
           type: string
           example: "Active"

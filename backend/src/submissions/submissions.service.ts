@@ -120,6 +120,7 @@ export class SubmissionsService {
       message: 'Document uploaded and linked successfully',
       document: newDocument,
     };
+  }
   async findOne(id: string): Promise<SubmissionDocument> {
     return this.findById(id);
   }

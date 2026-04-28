@@ -25,6 +25,22 @@ export class GroupsService {
     return this.groupModel.findOne({ groupId }).exec();
   }
 
+  async addMemberToGroup(groupId: string, memberUserId: string): Promise<Group> {
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found.`);
+    }
+
+    group.members = group.members || [];
+    if (!group.members.includes(memberUserId)) {
+      group.members.push(memberUserId);
+      group.memberCount = group.members.length;
+      await group.save();
+    }
+
+    return group;
+  }
+
   async validateStatementOfWork(groupId: string) {
     const submissions = await this.submissionModel.find({ 
       groupId: groupId,

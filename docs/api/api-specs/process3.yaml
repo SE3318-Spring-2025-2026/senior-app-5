@@ -69,6 +69,12 @@ paths:
       responses:
         '200':
           description: "Member added; triggers invite process."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '404':
+          description: "Group not found."
 
   # Process 3.3: Deliver group invites
   /invites/deliver:
@@ -151,6 +157,13 @@ components:
         leaderUserId:
           type: string
           format: uuid
+        members:
+          type: array
+          items:
+            type: string
+        memberCount:
+          type: integer
+          example: 1
         status:
           type: string
           example: "Active"

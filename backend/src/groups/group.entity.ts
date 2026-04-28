@@ -20,6 +20,12 @@ export class Group {
   @Prop({ required: true })
   leaderUserId!: string;
 
+  @Prop({ type: [String], default: [] })
+  members!: string[];
+
+  @Prop({ type: Number, default: 0 })
+  memberCount!: number;
+
   @Prop({
     type: String,
     enum: GroupStatus,

@@ -13,6 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -24,16 +25,7 @@ import {
 import { Request as ExpressRequest } from 'express';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
-import {
-  ApiBody,
-  ApiCreatedResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
 import { AddGroupMemberDto } from './dto/add-group-member.dto';
-import { AddMemberDto } from './dto/add-member.dto';
 import { CommitteesService } from '../committees/committees.service';
 import { CommitteeResponseDto } from '../committees/dto/committee-response.dto';
 import { CommitteeDocument } from '../committees/schemas/committee.schema';
@@ -48,7 +40,7 @@ interface RequestWithUser extends ExpressRequest {
 
 @ApiTags('Groups')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard) 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('groups')
 export class GroupsController {
   constructor(
@@ -59,24 +51,25 @@ export class GroupsController {
   @ApiOperation({ summary: 'Create a new group' })
   @ApiCreatedResponse({ description: 'Group created successfully' })
   @Post()
-  @Roles(Role.Admin, Role.Coordinator) 
+  @Roles(Role.Admin, Role.Coordinator)
   @HttpCode(HttpStatus.CREATED)
   async createGroup(@Body() createGroupDto: CreateGroupDto) {
     return this.groupsService.createGroup(createGroupDto);
   }
 
-@ApiOperation({ summary: 'Add a member to an existing group' })
-@ApiBody({ type: AddGroupMemberDto })
-@ApiOkResponse({ description: 'Member added to group successfully' })
-@ApiNotFoundResponse({ description: 'Group or user not found' })
-@Post(':groupId/members')
-async addMember(
-  @Param('groupId') groupId: string,
-  @Body() body: AddGroupMemberDto,
-) {
-  return this.groupsService.addMemberToGroup(groupId, body.memberUserId);
-}
-
+  @ApiOperation({ summary: 'Add a member to an existing group' })
+  @ApiBody({ type: AddGroupMemberDto })
+  @ApiCreatedResponse({ description: 'Member added to group successfully' })
+  @ApiNotFoundResponse({ description: 'Group or user not found' })
+  @Post(':groupId/members')
+  @Roles(Role.Admin, Role.Coordinator)
+  @HttpCode(HttpStatus.CREATED)
+  async addMember(
+    @Param('groupId') groupId: string,
+    @Body() body: AddGroupMemberDto,
+  ) {
+    return this.groupsService.addMemberToGroup(groupId, body.memberUserId);
+  }
 
   @Get(':groupId/validate-statement-of-work')
   @ApiOperation({ summary: 'Check SoW status for a group' })

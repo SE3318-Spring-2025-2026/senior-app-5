@@ -28,19 +28,41 @@ export class GroupsService {
   }
 
   async addMemberToGroup(groupId: string, memberUserId: string): Promise<Group> {
-    const group = await this.groupModel.findOne({ groupId }).exec();
-    if (!group) {
+    const user = await this.userModel.findById(memberUserId).exec();
+    if (!user) {
+      throw new NotFoundException(`User with ID ${memberUserId} not found.`);
+    }
+
+    const updatedGroup = await this.groupModel
+      .findOneAndUpdate(
+        { groupId },
+        [
+          {
+            $set: {
+              members: {
+                $setUnion: [{ $ifNull: ['$members', []] }, [memberUserId]],
+              },
+            },
+          },
+          {
+            $set: {
+              memberCount: { $size: '$members' },
+            },
+          },
+        ],
+        { new: true },
+      )
+      .exec();
+
+    if (!updatedGroup) {
       throw new NotFoundException(`Group with ID ${groupId} not found.`);
     }
 
-    group.members = group.members || [];
-    if (!group.members.includes(memberUserId)) {
-      group.members.push(memberUserId);
-      group.memberCount = group.members.length;
-      await group.save();
-    }
+    await this.userModel
+      .findByIdAndUpdate(memberUserId, { teamId: groupId }, { new: true })
+      .exec();
 
-    return group;
+    return updatedGroup;
   }
 
   async validateStatementOfWork(groupId: string) {

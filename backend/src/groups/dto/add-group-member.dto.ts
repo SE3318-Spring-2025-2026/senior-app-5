@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsString } from 'class-validator';
 
 export class AddGroupMemberDto {
   @ApiProperty({
-    example: 'user-123',
-    description: 'User ID of the member to add to the group',
+    example: '507f1f77bcf86cd799439011',
+    description: 'MongoDB ObjectId of the user to add to the group',
   })
   @IsNotEmpty()
   @IsString()
+  @IsMongoId()
   memberUserId!: string;
 }

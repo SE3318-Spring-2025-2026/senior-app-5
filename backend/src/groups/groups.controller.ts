@@ -27,7 +27,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Add a member to an existing group' })
   @ApiBody({ type: AddGroupMemberDto })
   @ApiOkResponse({ description: 'Member added to group successfully' })
-  @ApiNotFoundResponse({ description: 'Group not found' })
+  @ApiNotFoundResponse({ description: 'Group or user not found' })
   @Post(':groupId/members')
   async addMember(
     @Param('groupId') groupId: string,

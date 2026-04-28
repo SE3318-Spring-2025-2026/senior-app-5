@@ -14,10 +14,9 @@ export class InvitesController {
   constructor(private readonly invitesService: InvitesService) {}
 
   @Post('deliver')
-  @Roles(Role.Coordinator)
+  @Roles(Role.Coordinator, Role.Admin) 
   @ApiOperation({ summary: 'Deliver invites to groups' })
   async deliverInvites() {
-    
     return this.invitesService.deliverInvites();
   }
 }

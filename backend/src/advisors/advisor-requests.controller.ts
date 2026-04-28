@@ -95,7 +95,8 @@ export class AdvisorRequestsController {
   }
 
   @Patch(':requestId/decision')
-  @Roles(Role.Professor)
+  // 🛡️ GÜVENLİK DÜZELTMESİ: Coordinator ve Admin eklendi.
+  @Roles(Role.Professor, Role.Coordinator, Role.Admin)
   async decideRequest(
     @Req() req: RequestWithUser,
     @Param('requestId', new ParseUUIDPipe({ version: '4' })) requestId: string,

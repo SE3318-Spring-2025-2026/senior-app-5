@@ -51,6 +51,7 @@ describe('AdvisorRequestsController', () => {
     );
   });
 
+  
   it('should delegate submit request to service for team leaders', async () => {
     const expected = {
       requestId: 'request-1',
@@ -142,5 +143,23 @@ describe('AdvisorRequestsController', () => {
       teamLeaderId: 'team-leader-1',
     });
     expect(result).toEqual(expected);
+  });
+
+  
+  describe('RBAC Matrix Validation', () => {
+    it('should restrict submitRequest to TeamLeader', () => {
+      const roles = Reflect.getMetadata('roles', controller.submitRequest);
+      expect(roles).toEqual([Role.TeamLeader]);
+    });
+
+    it('should restrict decideRequest to Professor, Coordinator, and Admin', () => {
+      const roles = Reflect.getMetadata('roles', controller.decideRequest);
+      expect(roles).toEqual([Role.Professor, Role.Coordinator, Role.Admin]);
+    });
+
+    it('should restrict withdrawRequest to TeamLeader', () => {
+      const roles = Reflect.getMetadata('roles', controller.withdrawRequest);
+      expect(roles).toEqual([Role.TeamLeader]);
+    });
   });
 });

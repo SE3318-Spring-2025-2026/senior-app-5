@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SubmissionsController } from './submissions.controller';
 import { SubmissionsService } from './submissions.service';
+import { Role } from '../auth/enums/role.enum'; 
 
 describe('SubmissionsController', () => {
   let controller: SubmissionsController;
@@ -37,6 +38,7 @@ describe('SubmissionsController', () => {
     expect(controller).toBeDefined();
   });
 
+  
   describe('getMySubmissions (Security Check)', () => {
     it('should throw ForbiddenException if student has no groupId (403)', async () => {
       const req = { user: { role: 'Student', groupId: null } } as any;
@@ -152,6 +154,34 @@ describe('SubmissionsController', () => {
       const mockSubmission = { _id: '64f1a2b3c4d5e6f7a8b9c0d1', groupId: 'different-group' };
       mockSubmissionsService.findOne.mockResolvedValue(mockSubmission);
       await expect(controller.findOne(req as any, mockSubmission._id)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  
+  describe('RBAC Matrix Validation', () => {
+    it('should restrict getMySubmissions to Student', () => {
+      const roles = Reflect.getMetadata('roles', controller.getMySubmissions);
+      expect(roles).toEqual([Role.Student]);
+    });
+
+    it('should restrict create to Student and TeamLeader', () => {
+      const roles = Reflect.getMetadata('roles', controller.create);
+      expect(roles).toEqual([Role.Student, Role.TeamLeader]);
+    });
+
+    it('should allow all authenticated roles to getCompleteness', () => {
+      const roles = Reflect.getMetadata('roles', controller.getCompleteness);
+      expect(roles).toEqual(expect.arrayContaining([Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin]));
+    });
+
+    it('should allow all authenticated roles to findAll', () => {
+      const roles = Reflect.getMetadata('roles', controller.findAll);
+      expect(roles).toEqual(expect.arrayContaining([Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin]));
+    });
+
+    it('should allow all authenticated roles to findOne', () => {
+      const roles = Reflect.getMetadata('roles', controller.findOne);
+      expect(roles).toEqual(expect.arrayContaining([Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin]));
     });
   });
 });

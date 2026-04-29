@@ -2,6 +2,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Logger,
   Param,
   ParseUUIDPipe,
   Query,
@@ -38,7 +39,47 @@ interface RequestWithUser extends Request {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class GradesController {
+  private readonly logger = new Logger(GradesController.name);
+
   constructor(private readonly gradesService: GradesService) {}
+
+  private getCorrelationId(req: Request): string | undefined {
+    const correlationId = req.headers['x-correlation-id'];
+    return typeof correlationId === 'string' ? correlationId : undefined;
+  }
+
+  private getJwtStudentId(req: RequestWithUser): string | undefined {
+    return req.user.userId ?? req.user.sub ?? req.user._id;
+  }
+
+  private assertStudentOwnership(
+    requestedStudentId: string,
+    req: RequestWithUser,
+  ): void {
+    const jwtStudentId = this.getJwtStudentId(req);
+
+    if (req.user.role !== Role.Student) {
+      return;
+    }
+
+    if (String(jwtStudentId) === requestedStudentId) {
+      return;
+    }
+
+    const correlationId = this.getCorrelationId(req);
+
+    this.logger.warn(
+      JSON.stringify({
+        event: 'unauthorized_grade_access_attempt',
+        requestedStudentId,
+        jwtStudentId: jwtStudentId ?? null,
+        callerRole: req.user.role,
+        correlationId: correlationId ?? null,
+      }),
+    );
+
+    throw new ForbiddenException("Cannot access another student's grade.");
+  }
 
   @ApiOperation({
     operationId: 'getGroupFinalGrade',
@@ -76,11 +117,7 @@ export class GradesController {
     @Param('studentId', ParseUUIDPipe) studentId: string,
     @Req() req: RequestWithUser,
   ): Promise<StudentFinalGradeDto> {
-    const jwtStudentId = req.user.userId ?? req.user.sub ?? req.user._id;
-
-    if (req.user.role === Role.Student && String(jwtStudentId) !== studentId) {
-      throw new ForbiddenException("Cannot access another student's grade.");
-    }
+    this.assertStudentOwnership(studentId, req);
 
     return this.gradesService.getStudentFinalGrade(studentId);
   }

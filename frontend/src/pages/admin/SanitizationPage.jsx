@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
+import { SectionCard, StatusBlock } from '../../components/ui'
 import styles from '../GroupLifecyclePage.module.css'
 
 const formatLocalDateTime = (isoString) => {
@@ -8,28 +9,6 @@ const formatLocalDateTime = (isoString) => {
   const tzOffset = date.getTimezoneOffset() * 60000
   const localIso = new Date(date - tzOffset).toISOString().slice(0, 16)
   return localIso
-}
-
-function SectionCard({ title, description, children }) {
-  return (
-    <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </div>
-  )
-}
-
-function StatusBlock({ title, message, type }) {
-  if (!message) return null
-  return (
-    <div className={`${styles.statusBlock} ${type === 'error' ? styles.error : styles.success}`}>
-      <strong>{title}</strong>
-      <span>{message}</span>
-    </div>
-  )
 }
 
 function SanitizationPage() {

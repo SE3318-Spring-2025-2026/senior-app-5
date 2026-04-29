@@ -1,76 +1,73 @@
 import 'multer';
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  Param,
-  Post,
-  Query,
-  Req,
-  UploadedFile,
-  UseInterceptors,
-  UseGuards,
-} from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Request } from 'express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionsService } from './submissions.service';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; 
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { GroupMemberGuard } from '../auth/guards/group-member.guard';
-import { Request } from 'express'; 
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('Submissions')
-@ApiBearerAuth() 
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('submissions')
 export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
+  @Get('me')
+  @Roles(Role.Student)
+  @ApiOperation({ summary: 'Get submissions for current student user' })
+  async getMySubmissions(@Req() req: Request & { user: any }) {
+    const userGroupId = req.user.groupId;
+
+    if (!userGroupId) {
+      throw new ForbiddenException('You do not belong to any group (teamId).');
+    }
+
+    return this.submissionsService.findAll(userGroupId);
+  }
+
   @Post()
+  @Roles(Role.Student, Role.TeamLeader) 
   @ApiOperation({ summary: 'Create a new submission' })
-  async create(@Body() createSubmissionDto: CreateSubmissionDto) {
+  async create(@Req() req: Request & { user: any }, @Body() createSubmissionDto: CreateSubmissionDto) {
+    await this.submissionsService.assertAuthorizedGroupMember(req.user, createSubmissionDto.groupId);
     return this.submissionsService.createSubmission(createSubmissionDto);
   }
 
- @Get(':submissionId/completeness')
- @ApiOperation({ summary: 'Check if a submission meets all phase requirements' })
- @ApiResponse({ status: 200, description: 'Completeness status returned successfully.' })
-  @ApiResponse({ status: 404, description: 'Submission or Phase not found.' })
-  async getCompleteness(
-    @Req() req: Request & { user: any },
-    @Param('submissionId') submissionId: string,
-  ) {
+  @Get(':submissionId/completeness')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
+  @ApiOperation({ summary: 'Check if a submission meets all phase requirements' })
+  async getCompleteness(@Req() req: Request & { user: any }, @Param('submissionId') submissionId: string) {
     if (!submissionId.match(/^[0-9a-fA-F]{24}$/)) {
-    throw new BadRequestException('Invalid submission ID format');
+      throw new BadRequestException('Invalid ID format');
     }
-    const userRole = req.user.role;
-    if (userRole === 'Student') {
+
+    const userRole = req.user?.role;
+    if (userRole === Role.Student) {
       const submission = await this.submissionsService.findOne(submissionId);
-    if (
-      submission.groupId !== req.user.teamId &&
-      submission.groupId !== req.user.groupId
-      ) {
-      throw new ForbiddenException('You do not have permission to view this submission.');
+      if (String(submission.groupId) !== String(req.user.groupId)) {
+        throw new ForbiddenException('This document does not belong to your group.');
       }
+    }
+    
+    return this.submissionsService.getCompleteness(submissionId);
   }
-  return this.submissionsService.getCompleteness(submissionId);
-  }
+
   @Get()
-  @ApiOperation({ summary: 'Get all submissions. Filter by groupId for students.' })
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
+  @ApiOperation({ summary: 'Get all submissions. Filter enforced for students.' })
   @ApiQuery({ name: 'groupId', required: false, type: String })
   async findAll(@Req() req: Request & { user: any }, @Query('groupId') groupId?: string) {
     const userRole = req.user.role;
-    const userGroupId = req.user.teamId || req.user.groupId;
+    const userGroupId = req.user.groupId;
 
-    if (userRole === 'Student') {
-      if (!groupId) {
-        throw new BadRequestException('Students must provide their groupId to view submissions.');
-      }
-      if (groupId !== userGroupId) {
-        throw new ForbiddenException('You do not have permission to view other groups\' submissions.');
+    if (userRole === Role.Student) {
+      if (!groupId || String(groupId) !== String(userGroupId)) {
+        throw new ForbiddenException('You can only access data from your own group.');
       }
     }
 
@@ -78,44 +75,16 @@ export class SubmissionsController {
   }
 
   @Get(':id')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
   @ApiOperation({ summary: 'Get submission details by ID' })
-  async findOne(@Req() req: Request & { user: any }, @Param('id') id: string) { 
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      throw new BadRequestException('Invalid submission ID format');
-    }
-
+  async findOne(@Req() req: Request & { user: any }, @Param('id') id: string) {
     const submission = await this.submissionsService.findOne(id);
     const userRole = req.user.role;
 
-    if (userRole === 'Student' && submission.groupId !== req.user.teamId && submission.groupId !== req.user.groupId) {
-      throw new ForbiddenException('You do not have permission to view this submission.');
+    if (userRole === Role.Student && String(submission.groupId) !== String(req.user.groupId)) {
+      throw new ForbiddenException('You do not have permission to access this document.');
     }
 
     return submission;
-  }
-
-  @Post(':submissionId/documents')
-  @UseGuards(GroupMemberGuard)
-  @ApiOperation({ summary: 'Upload documents to a specific submission' })
-  @UseInterceptors(FileInterceptor('file', {
-    fileFilter: (req, file, callback) => {
-      if (!file.originalname.match(/\.(pdf|doc|docx|png|jpg|jpeg)$/)) {
-        return callback(
-          new BadRequestException('Only PDF, Word, and Image files are allowed!'),
-          false,
-        );
-      }
-      callback(null, true);
-    },
-    limits: { fileSize: 5 * 1024 * 1024 },
-  }))
-  async uploadFile(
-    @Param('submissionId') submissionId: string,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    if (!file) {
-      throw new BadRequestException('File is required or invalid file type.');
-    }
-    return this.submissionsService.uploadDocument(submissionId, file);
   }
 }

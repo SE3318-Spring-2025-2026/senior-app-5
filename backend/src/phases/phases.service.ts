@@ -22,13 +22,22 @@ export class PhasesService {
     return phase;
   }
 
+  async getPhaseById(phaseId: string) {
+    const phase = await this.phaseModel.findOne({ phaseId }).exec();
+    if (!phase) {
+      throw new NotFoundException('Phase not found');
+    }
+
+    return phase;
+  }
+
   async updateSchedule(phaseId: string, dto: UpdatePhaseScheduleDto) {
     const submissionStart = new Date(dto.submissionStart);
     const submissionEnd = new Date(dto.submissionEnd);
 
-    if (submissionEnd < submissionStart) {
+    if (submissionEnd <= submissionStart) {
       throw new BadRequestException(
-        'submissionEnd must be equal to or after submissionStart',
+        'submissionEnd must be strictly after submissionStart',
       );
     }
 

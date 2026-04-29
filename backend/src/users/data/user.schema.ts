@@ -21,6 +21,12 @@ export class User {
 
   @Prop()
   githubAccountId?: string;
+
+  @Prop()
+  passwordResetTokenHash?: string;
+
+  @Prop()
+  passwordResetTokenExpiresAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -10,7 +10,6 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -50,7 +49,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Create a new group' })
   @ApiCreatedResponse({ description: 'Group created successfully' })
   @Post()
-  @Roles(Role.Admin, Role.Coordinator) 
+  @Roles(Role.Admin, Role.Coordinator) // SECURITY: Explicitly restricted
   @HttpCode(HttpStatus.CREATED)
   async createGroup(@Body() createGroupDto: CreateGroupDto) {
     return this.groupsService.createGroup(createGroupDto);
@@ -59,7 +58,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Add a member to a group (by groupId UUID)' })
   @ApiCreatedResponse({ description: 'Member added to group successfully' })
   @Post(':groupId/members')
-  @Roles(Role.Admin, Role.Coordinator) 
+  @Roles(Role.Admin, Role.Coordinator) // SECURITY: Explicitly restricted
   @HttpCode(HttpStatus.CREATED)
   async addMember(
     @Param('groupId') groupId: string,
@@ -70,32 +69,29 @@ export class GroupsController {
 
   @Get(':groupId/validate-statement-of-work')
   @ApiOperation({ summary: 'Check SoW status for a group' })
+  // SECURITY: Explicitly open to all authenticated roles to avoid RolesGuard ambiguity
+  @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
   async validateSow(@Param('groupId') groupId: string) {
     return this.groupsService.validateStatementOfWork(groupId);
   }
 
-  @ApiBearerAuth('access-token')
   @ApiOperation({
     operationId: 'getCommitteeByGroupId',
     summary: 'Get the committee assigned to a group (any authenticated user)',
   })
   @ApiOkResponse({ description: 'Committee found', type: CommitteeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({
-    description: 'Authenticated but forbidden by policy',
-  })
-  @ApiNotFoundResponse({
-    description: 'Group not found or no committee assigned',
-  })
-  @UseGuards(AuthGuard('jwt'))
+  @ApiForbiddenResponse({ description: 'Authenticated but forbidden by policy' })
+  @ApiNotFoundResponse({ description: 'Group not found or no committee assigned' })
+  // SECURITY: Removed redundant UseGuards(AuthGuard('jwt')) and added explicit role policy
+  @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
   @Get(':groupId/committee')
   @HttpCode(HttpStatus.OK)
   async getCommitteeByGroupId(
     @Param('groupId', new ParseUUIDPipe()) groupId: string,
     @Request() req: RequestWithUser,
   ): Promise<CommitteeResponseDto> {
-    const correlationId =
-      (req.headers['x-correlation-id'] as string) ?? undefined;
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
     const committee = await this.committeesService.getCommitteeByGroupId(
       groupId,
       correlationId,

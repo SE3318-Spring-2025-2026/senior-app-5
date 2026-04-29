@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Role } from '../auth/enums/role.enum';
+import * as crypto from 'crypto';
 import { User, UserDocument } from './data/user.schema';
+import { Role } from '../auth/enums/role.enum';
 
 const USER_SEARCHABLE_FIELDS = ['email', 'role', '_id'] as const;
 export type UserSearchField = (typeof USER_SEARCHABLE_FIELDS)[number];
@@ -57,6 +58,60 @@ export class UsersService {
       passwordHash: params.passwordHash,
       role: params.role || Role.Student,
     });
+  }
+
+  async createPasswordResetToken(email: string) {
+    const normalizedEmail = email?.toLowerCase().trim();
+    if (!normalizedEmail) return null;
+
+    const user = await this.findByEmail(normalizedEmail);
+    if (!user) return null;
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashPasswordResetToken(token);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+
+    await this.userModel
+      .findByIdAndUpdate(
+        user._id,
+        {
+          passwordResetTokenHash: tokenHash,
+          passwordResetTokenExpiresAt: expiresAt,
+        },
+        { new: true },
+      )
+      .exec();
+
+    return token;
+  }
+
+  findByPasswordResetToken(token: string) {
+    if (!token?.trim()) return null;
+
+    const tokenHash = this.hashPasswordResetToken(token);
+    return this.userModel
+      .findOne({
+        passwordResetTokenHash: tokenHash,
+        passwordResetTokenExpiresAt: { $gt: new Date() },
+      })
+      .exec();
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string) {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $set: { passwordHash },
+          $unset: { passwordResetTokenHash: "", passwordResetTokenExpiresAt: "" }
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  private hashPasswordResetToken(token: string) {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 
   async updateUserTeam(

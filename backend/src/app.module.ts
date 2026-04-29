@@ -14,6 +14,7 @@ import { AdvisorsModule } from './advisors/advisors.module';
 import { PhasesModule } from './phases/phases.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CommitteesModule } from './committees/committees.module';
+import { GradesModule } from './grades/grades.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { CommitteesModule } from './committees/committees.module';
     SubmissionsModule,
     CommitteesModule,
     InvitesModule,
+    GradesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

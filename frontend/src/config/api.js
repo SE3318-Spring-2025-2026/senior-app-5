@@ -29,6 +29,8 @@ export const apiConfig = {
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
     submissions: {
+      list: '/submissions',
+      byGroup: (groupId) => `/submissions?groupId=${groupId}`,
       mine: '/submissions/me',
       uploadDocument: (submissionId) => `/submissions/${submissionId}/documents`,
     },

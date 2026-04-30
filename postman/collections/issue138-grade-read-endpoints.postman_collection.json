@@ -1,0 +1,620 @@
+{
+  "info": {
+    "name": "Issue 138 - Grade Read Endpoints",
+    "description": "Manual verification flow for Issue 138 (GET /groups/{groupId}/final-grade, GET /students/{studentId}/final-grade, GET /groups/{groupId}/grade-history). Run the setup requests first so the coordinator and student JWTs are captured automatically. The seeded group uses a fixed groupId, and the student ID is captured from /auth/me after login.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorEmail",
+      "value": "coordinator@example.com",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorPassword",
+      "value": "SecurePass123",
+      "type": "string"
+    },
+    {
+      "key": "studentEmail",
+      "value": "student@example.com",
+      "type": "string"
+    },
+    {
+      "key": "studentPassword",
+      "value": "SecurePass123",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentOwnId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "validGroupId",
+      "value": "11111111-1111-4111-8111-111111111111",
+      "type": "string"
+    },
+    {
+      "key": "otherStudentId",
+      "value": "00000000-0000-0000-0000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "missingGroupId",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "missingStudentId",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1) Authentication",
+      "item": [
+        {
+          "name": "Login Coordinator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{coordinatorEmail}}\",\n  \"password\": \"{{coordinatorPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Coordinator token is returned', function () {",
+                  "  pm.expect(body.accessToken).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.environment.set('coordinatorToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Student token is returned', function () {",
+                  "  pm.expect(body.accessToken).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.environment.set('studentToken', body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Capture Student Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              },
+              {
+                "key": "x-correlation-id",
+                "value": "issue138-me-001"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Student profile is returned', function () {",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('email', '{{studentEmail}}');",
+                  "  pm.expect(body).to.have.property('role', 'Student');",
+                  "});",
+                  "pm.environment.set('studentOwnId', body.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2) Group Final Grade",
+      "item": [
+        {
+          "name": "200 - Group final grade",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              },
+              {
+                "key": "x-correlation-id",
+                "value": "issue138-group-grade-200"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/{{validGroupId}}/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Group final grade contract is returned', function () {",
+                  "  pm.expect(body).to.have.property('groupId', pm.variables.get('validGroupId'));",
+                  "  pm.expect(body).to.have.property('teamGrade').that.is.a('number');",
+                  "  pm.expect(body).to.have.property('individualGrades').that.is.an('array');",
+                  "  pm.expect(body).to.have.property('calculatedAt');",
+                  "});",
+                  "pm.test('Individual grades items have the expected shape', function () {",
+                  "  body.individualGrades.forEach(function (grade) {",
+                  "    pm.expect(grade).to.have.property('studentId');",
+                  "    pm.expect(grade).to.have.property('groupId', pm.variables.get('validGroupId'));",
+                  "    pm.expect(grade).to.have.property('individualAllowanceRatio');",
+                  "    pm.expect(grade).to.have.property('finalGrade');",
+                  "    pm.expect(grade).to.have.property('calculatedAt');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 - Missing JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-correlation-id",
+                "value": "issue138-group-grade-401"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/{{validGroupId}}/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - Invalid groupId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/not-a-uuid/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - Missing group grade record",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/{{missingGroupId}}/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Not-found payload is returned', function () {",
+                  "  pm.expect(body).to.have.property('statusCode', 404);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3) Student Final Grade",
+      "item": [
+        {
+          "name": "200 - Own student final grade",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              },
+              {
+                "key": "x-correlation-id",
+                "value": "issue138-student-grade-200"
+              }
+            ],
+            "url": "{{baseUrl}}/students/{{studentOwnId}}/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Student final grade contract is returned', function () {",
+                  "  pm.expect(body).to.have.property('studentId', pm.variables.get('studentOwnId'));",
+                  "  pm.expect(body).to.have.property('groupId');",
+                  "  pm.expect(body).to.have.property('individualAllowanceRatio').that.is.a('number');",
+                  "  pm.expect(body).to.have.property('finalGrade').that.is.a('number');",
+                  "  pm.expect(body).to.have.property('calculatedAt');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 - Student reads another student's grade",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              },
+              {
+                "key": "x-correlation-id",
+                "value": "issue138-student-grade-403"
+              }
+            ],
+            "url": "{{baseUrl}}/students/{{otherStudentId}}/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Forbidden payload is returned', function () {",
+                  "  pm.expect(body).to.have.property('statusCode', 403);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 - Invalid studentId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/students/not-a-uuid/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - Missing student grade record",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/students/{{missingStudentId}}/final-grade"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Not-found payload is returned', function () {",
+                  "  pm.expect(body).to.have.property('statusCode', 404);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4) Grade History",
+      "item": [
+        {
+          "name": "200 - Grade history with default pagination",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              },
+              {
+                "key": "x-correlation-id",
+                "value": "issue138-history-200-defaults"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/{{validGroupId}}/grade-history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Paginated grade history contract is returned', function () {",
+                  "  pm.expect(body).to.have.property('data').that.is.an('array');",
+                  "  pm.expect(body).to.have.property('total').that.is.a('number');",
+                  "  pm.expect(body).to.have.property('page', 1);",
+                  "  pm.expect(body).to.have.property('limit', 20);",
+                  "});",
+                  "pm.test('History entries have the expected shape', function () {",
+                  "  body.data.forEach(function (entry) {",
+                  "    pm.expect(entry).to.have.property('gradeChangeId');",
+                  "    pm.expect(entry).to.have.property('groupId', pm.variables.get('validGroupId'));",
+                  "    pm.expect(entry).to.have.property('teamGrade');",
+                  "    pm.expect(entry).to.have.property('gradeComponents');",
+                  "    pm.expect(entry).to.have.property('triggeredBy');",
+                  "    pm.expect(entry).to.have.property('changedAt');",
+                  "  });",
+                  "});",
+                  "pm.test('History is sorted newest first when multiple entries exist', function () {",
+                  "  if (body.data.length > 1) {",
+                  "    const first = new Date(body.data[0].changedAt).getTime();",
+                  "    const second = new Date(body.data[1].changedAt).getTime();",
+                  "    pm.expect(first).to.be.at.least(second);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 - Missing JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-correlation-id",
+                "value": "issue138-history-401"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/{{validGroupId}}/grade-history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - Invalid groupId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/not-a-uuid/grade-history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - limit over max",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/{{validGroupId}}/grade-history?page=1&limit=500"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - Missing grade history record",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/groups/{{missingGroupId}}/grade-history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Not-found payload is returned', function () {",
+                  "  pm.expect(body).to.have.property('statusCode', 404);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

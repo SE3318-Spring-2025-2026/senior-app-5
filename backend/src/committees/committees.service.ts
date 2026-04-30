@@ -34,6 +34,9 @@ import {
 } from '../advisors/schemas/schedule.schema';
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
+import { AddCommitteeAdvisorDto } from './dto/add-committee-advisor.dto';
+import { CommitteeAdvisorResponseDto } from './dto/committee-advisor-response.dto';
+import { User, UserDocument } from '../users/data/user.schema';
 
 @Injectable()
 export class CommitteesService {
@@ -46,6 +49,8 @@ export class CommitteesService {
     private readonly groupModel: Model<GroupDocument>,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   async listCommittees(
@@ -508,6 +513,99 @@ export class CommitteesService {
       });
       throw new InternalServerErrorException(
         'Failed to assign group to committee due to an unexpected error.',
+      );
+    }
+  }
+
+  async addCommitteeAdvisor(
+    committeeId: string,
+    dto: AddCommitteeAdvisorDto,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<CommitteeAdvisorResponseDto> {
+    try {
+      // Validate committee exists
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
+      if (!committee) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      // Validate advisor user exists and has ADVISOR role
+      const advisorUser = await this.userModel
+        .findOne({ id: dto.advisorUserId })
+        .exec();
+      if (!advisorUser || advisorUser.role !== 'ADVISOR') {
+        throw new NotFoundException(
+          `User with ID '${dto.advisorUserId}' not found.`,
+        );
+      }
+
+      // Check for duplicate assignment
+      type AdvisorEntry = {
+        advisorId?: string;
+        userId?: string;
+        advisorUserId?: string;
+        [key: string]: unknown;
+      };
+      const advisors = (committee.advisors as AdvisorEntry[]) ?? [];
+      const alreadyAssigned = advisors.some(
+        (a) =>
+          a.advisorId === dto.advisorUserId ||
+          a.userId === dto.advisorUserId ||
+          a.advisorUserId === dto.advisorUserId,
+      );
+
+      if (alreadyAssigned) {
+        throw new ConflictException(
+          `Advisor '${dto.advisorUserId}' is already assigned to committee '${committeeId}'.`,
+        );
+      }
+
+      // Set timestamp if not provided
+      const assignedAt = dto.assignedAt ?? new Date().toISOString();
+
+      // Create advisor entry
+      const newAdvisor = {
+        advisorUserId: dto.advisorUserId,
+        assignedAt,
+        assignedByUserId: coordinatorId,
+      };
+
+      // Update committee with atomic $ne operator to prevent race conditions
+      await this.committeeModel
+        .updateOne(
+          { id: committeeId },
+          { $push: { advisors: newAdvisor } },
+        )
+        .exec();
+
+      this.logger.log({
+        event: 'committee_advisor_linked',
+        committeeId,
+        advisorUserId: dto.advisorUserId,
+        coordinatorId,
+        correlationId,
+      });
+
+      return newAdvisor;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      this.logger.error({
+        event: 'committee_add_advisor_failed',
+        committeeId,
+        advisorUserId: dto.advisorUserId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to add advisor to committee due to an unexpected error.',
       );
     }
   }

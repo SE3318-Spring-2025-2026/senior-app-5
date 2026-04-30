@@ -43,6 +43,8 @@ import { ListCommitteesQueryDto } from './dto/list-committees-query.dto';
 import { CommitteePageDto } from './dto/committee-page.dto';
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
+import { AddCommitteeAdvisorDto } from './dto/add-committee-advisor.dto';
+import { CommitteeAdvisorResponseDto } from './dto/committee-advisor-response.dto';
 
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
@@ -296,6 +298,50 @@ export class CommitteesController {
     const correlationId =
       (req.headers['x-correlation-id'] as string) ?? undefined;
     return this.committeesService.assignGroupToCommittee(
+      committeeId,
+      dto,
+      coordinatorId,
+      correlationId,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'addCommitteeAdvisor',
+    summary: 'Link an advisor to a committee (COORDINATOR only)',
+  })
+  @ApiCreatedResponse({
+    description: 'Advisor linked successfully',
+    type: CommitteeAdvisorResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
+  @ApiNotFoundResponse({
+    description: 'Committee or advisor not found',
+  })
+  @ApiConflictResponse({
+    description: 'Advisor is already linked to this committee',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Post(':committeeId/advisors')
+  @HttpCode(HttpStatus.CREATED)
+  async addCommitteeAdvisor(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Body() dto: AddCommitteeAdvisorDto,
+    @Request() req: RequestWithUser,
+  ): Promise<CommitteeAdvisorResponseDto> {
+    const coordinatorId =
+      req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+
+    return this.committeesService.addCommitteeAdvisor(
       committeeId,
       dto,
       coordinatorId,

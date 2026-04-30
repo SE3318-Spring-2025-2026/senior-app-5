@@ -3,14 +3,15 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
-  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { Role } from '../auth/enums/role.enum';
 import {
   Group,
   GroupAssignmentStatus,
@@ -25,7 +26,6 @@ import {
   SprintEvaluation,
   SprintEvaluationDocument,
   SprintEvaluationStatus,
-  SprintEvaluationType,
 } from './schemas/sprint-evaluation.schema';
 import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
@@ -63,8 +63,12 @@ export class SprintEvaluationsService {
     }
 
     await this.ensureSprintWindowIsOpen(correlationId);
-    await this.ensureAdvisorOwnsGroup(dto.groupId, advisorUserId, correlationId);
-    const rubric = await this.resolveRubricFixture(dto, correlationId);
+    await this.ensureAdvisorOwnsGroup(
+      dto.groupId,
+      advisorUserId,
+      correlationId,
+    );
+    const rubric = this.resolveRubricFixture(dto, correlationId);
     this.ensureQuestionMatch(dto, rubric);
     await this.ensureEvaluationDoesNotExist(dto, correlationId);
 
@@ -108,7 +112,7 @@ export class SprintEvaluationsService {
         );
       }
 
-      if (caller.role === 'Professor') {
+      if (caller.role === Role.Professor) {
         await this.ensureAdvisorOwnsGroup(
           evaluation.groupId,
           caller.userId ?? '',
@@ -118,7 +122,10 @@ export class SprintEvaluationsService {
 
       return this.toResponseDto(evaluation);
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
 
@@ -134,7 +141,9 @@ export class SprintEvaluationsService {
     }
   }
 
-  private async ensureSprintWindowIsOpen(correlationId?: string): Promise<void> {
+  private async ensureSprintWindowIsOpen(
+    correlationId?: string,
+  ): Promise<void> {
     const now = new Date();
     const activeWindow = await this.scheduleModel
       .findOne({
@@ -216,10 +225,10 @@ export class SprintEvaluationsService {
     }
   }
 
-  private async resolveRubricFixture(
+  private resolveRubricFixture(
     dto: CreateSprintEvaluationDto,
     correlationId?: string,
-  ): Promise<SprintRubricFixture> {
+  ): SprintRubricFixture {
     const rubric = resolveSprintRubricFixture({
       groupId: dto.groupId,
       sprintId: dto.sprintId,
@@ -234,11 +243,10 @@ export class SprintEvaluationsService {
         evaluationType: dto.evaluationType,
         correlationId,
       });
-      throw new NotFoundException(
+      throw new BadRequestException(
         'No active rubric fixture is available for this group, sprint, and evaluation type.',
       );
     }
-
     return rubric;
   }
 
@@ -259,7 +267,7 @@ export class SprintEvaluationsService {
         (questionId) => !rubricQuestionIds.has(questionId),
       )
     ) {
-      throw new UnprocessableEntityException(
+      throw new BadRequestException(
         'Response questionIds must match the active rubric questions.',
       );
     }
@@ -281,11 +289,13 @@ export class SprintEvaluationsService {
       averageScore: evaluation.averageScore,
       status: evaluation.status ?? SprintEvaluationStatus.DRAFT,
       createdAt:
-        (evaluation as unknown as { createdAt?: Date }).createdAt?.toISOString() ??
-        new Date().toISOString(),
+        (
+          evaluation as unknown as { createdAt?: Date }
+        ).createdAt?.toISOString() ?? new Date().toISOString(),
       updatedAt:
-        (evaluation as unknown as { updatedAt?: Date }).updatedAt?.toISOString() ??
-        new Date().toISOString(),
+        (
+          evaluation as unknown as { updatedAt?: Date }
+        ).updatedAt?.toISOString() ?? new Date().toISOString(),
     };
   }
 
@@ -294,7 +304,10 @@ export class SprintEvaluationsService {
     rubric: SprintRubricFixture,
   ): number {
     const weightByQuestionId = new Map(
-      rubric.questions.map((question) => [question.questionId, question.criteriaWeight]),
+      rubric.questions.map((question) => [
+        question.questionId,
+        question.criteriaWeight,
+      ]),
     );
 
     const weightedScore = responses.reduce((sum, response) => {

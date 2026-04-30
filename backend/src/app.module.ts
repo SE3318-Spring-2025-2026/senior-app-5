@@ -1,4 +1,5 @@
 import { InvitesModule } from './invites/invites.module';
+import { StoryPointsModule } from './story-points/story-points.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -32,6 +33,7 @@ import { SprintEvaluationsModule } from './sprint-evaluations/sprint-evaluations
     SubmissionsModule,
     CommitteesModule,
     InvitesModule,
+    StoryPointsModule,
     GradesModule,
     SprintEvaluationsModule,
   ],

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../utils/apiClient';
+import apiConfig from '../config/api';
 import styles from './DocumentsPage.module.css';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,7 +20,7 @@ const DocumentsPage = () => {
           return;
         }
 
-        let endpoint = '/submissions';
+        let endpoint = apiConfig.endpoints.submissions.list;
         const userGroupId = localUser.teamId || localUser.groupId;
 
         if (localUser.role === 'Student') {
@@ -30,7 +31,7 @@ const DocumentsPage = () => {
             });
             return;
           }
-          endpoint += `?groupId=${userGroupId}`;
+          endpoint = apiConfig.endpoints.submissions.byGroup(userGroupId);
         } else if (localUser.role !== 'Coordinator') {
           setStatus({ loading: false, error: 'Unrecognized user role. Access denied.' });
           return;

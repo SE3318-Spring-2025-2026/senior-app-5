@@ -23,26 +23,9 @@ export class SubmissionsService {
     if (actor.role === Role.Admin || actor.role === Role.Coordinator) return;
 
     const group = await this.groupModel.findOne({ groupId }).exec();
-    if (!group) {
-      throw new NotFoundException(`Group with ID ${groupId} not found.`);
-    }
-
-    if (group.status !== GroupStatus.ACTIVE) {
-      throw new ForbiddenException('Group is not active for submission operations.');
-    }
-
-    if (!actor.userId) {
-      throw new ForbiddenException('Authenticated user context is missing.');
-    }
-
-    const user = await this.userModel.findById(actor.userId).exec();
-    if (!user) {
-      throw new ForbiddenException('Authenticated user not found.');
-    }
-
-    if (user.teamId !== groupId) {
-      throw new ForbiddenException('You are not authorized to submit for this group.');
-    }
+    if (!group) throw new NotFoundException(`Group with ID ${groupId} not found.`);
+    if (group.status !== GroupStatus.ACTIVE) throw new ForbiddenException('Group is not active for submission operations.');
+    if (String(actor.groupId) !== String(groupId)) throw new ForbiddenException('You are not authorized to perform operations for this group.');
   }
 
   async findById(submissionId: string): Promise<SubmissionDocument> {
@@ -128,7 +111,7 @@ export class SubmissionsService {
   async uploadDocument(submissionId: string, file: Express.Multer.File) {
     const submission = await this.findById(submissionId);
 
-    // SECURITY: Validate Window (Missing from main, added from current PR)
+    // SECURITY: Validate Window
     const phase = await this.phasesService.getPhaseById(submission.phaseId);
     if (!phase.submissionStart || !phase.submissionEnd) {
       throw new BadRequestException('Phase submission window is not configured.');

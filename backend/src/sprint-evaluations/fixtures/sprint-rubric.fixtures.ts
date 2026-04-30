@@ -19,41 +19,41 @@ export interface SprintRubricFixture {
 
 export const SPRINT_RUBRIC_FIXTURES: SprintRubricFixture[] = [
   {
-    groupId: '11111111-1111-1111-1111-111111111111',
-    sprintId: '22222222-2222-2222-2222-222222222222',
+    groupId: '66666666-6666-4666-8666-666666666661',
+    sprintId: '22222222-2222-4222-8222-222222222222',
     evaluationType: SprintEvaluationType.SCRUM,
-    deliverableId: '33333333-3333-3333-3333-333333333333',
-    rubricId: '44444444-4444-4444-4444-444444444441',
+    deliverableId: '33333333-3333-4333-8333-333333333333',
+    rubricId: '44444444-4444-4444-8444-444444444441',
     name: 'Sprint 1 SCRUM Rubric',
     isActive: true,
     questions: [
       {
-        questionId: '55555555-5555-5555-5555-555555555551',
+        questionId: '55555555-5555-4555-8555-555555555551',
         criteriaName: 'Team planning quality',
         criteriaWeight: 0.4,
       },
       {
-        questionId: '55555555-5555-5555-5555-555555555552',
+        questionId: '55555555-5555-4555-8555-555555555552',
         criteriaName: 'Sprint execution quality',
         criteriaWeight: 0.6,
       },
     ],
   },
   {
-    sprintId: '22222222-2222-2222-2222-222222222222',
+    sprintId: '22222222-2222-4222-8222-222222222222',
     evaluationType: SprintEvaluationType.CODE_REVIEW,
-    deliverableId: '33333333-3333-3333-3333-333333333333',
-    rubricId: '44444444-4444-4444-4444-444444444442',
+    deliverableId: '33333333-3333-4333-8333-333333333333',
+    rubricId: '44444444-4444-4444-8444-444444444442',
     name: 'Sprint 1 CODE_REVIEW Rubric',
     isActive: true,
     questions: [
       {
-        questionId: '55555555-5555-5555-5555-555555555561',
+        questionId: '55555555-5555-4555-8555-555555555561',
         criteriaName: 'Code readability',
         criteriaWeight: 0.5,
       },
       {
-        questionId: '55555555-5555-5555-5555-555555555562',
+        questionId: '55555555-5555-4555-8555-555555555562',
         criteriaName: 'Test coverage',
         criteriaWeight: 0.5,
       },

@@ -30,8 +30,8 @@ describe('SprintEvaluationsController', () => {
 
   it('passes the request body, caller, and correlation id to recordSprintEvaluation', async () => {
     const body = {
-      groupId: '11111111-1111-1111-1111-111111111111',
-      sprintId: '22222222-2222-2222-2222-222222222222',
+      groupId: '66666666-6666-4666-8666-666666666661',
+      sprintId: '22222222-2222-4222-8222-222222222222',
       evaluationType: SprintEvaluationType.SCRUM,
       responses: [],
     } as CreateSprintEvaluationDto;
@@ -74,13 +74,13 @@ describe('SprintEvaluationsController', () => {
     } as never;
 
     const result = await controller.getSprintEvaluation(
-      '11111111-1111-1111-1111-111111111111',
+      '66666666-6666-4666-8666-666666666661',
       req,
     );
 
     expect(result).toEqual(response);
     expect(mockService.getSprintEvaluation).toHaveBeenCalledWith(
-      '11111111-1111-1111-1111-111111111111',
+      '66666666-6666-4666-8666-666666666661',
       { userId: 'coordinator-1', role: 'Coordinator' },
       'req-456',
     );

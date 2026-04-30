@@ -54,16 +54,16 @@ describe('SprintEvaluationsService', () => {
 
   describe('recordSprintEvaluation', () => {
     const dto = {
-      groupId: '11111111-1111-1111-1111-111111111111',
-      sprintId: '22222222-2222-2222-2222-222222222222',
+      groupId: '66666666-6666-4666-8666-666666666661',
+      sprintId: '22222222-2222-4222-8222-222222222222',
       evaluationType: SprintEvaluationType.SCRUM,
       responses: [
         {
-          questionId: '55555555-5555-5555-5555-555555555551',
+          questionId: '55555555-5555-4555-8555-555555555551',
           softGrade: 'A' as const,
         },
         {
-          questionId: '55555555-5555-5555-5555-555555555552',
+          questionId: '55555555-5555-4555-8555-555555555552',
           softGrade: 'B' as const,
         },
       ],
@@ -116,7 +116,7 @@ describe('SprintEvaluationsService', () => {
         groupId: dto.groupId,
         sprintId: dto.sprintId,
         evaluationType: dto.evaluationType,
-        rubricId: '44444444-4444-4444-4444-444444444441',
+        rubricId: '44444444-4444-4444-8444-444444444441',
         responses: dto.responses,
         averageScore: 88,
         status: SprintEvaluationStatus.SUBMITTED,
@@ -131,7 +131,7 @@ describe('SprintEvaluationsService', () => {
         groupId: dto.groupId,
         sprintId: dto.sprintId,
         evaluationType: dto.evaluationType,
-        rubricId: '44444444-4444-4444-4444-444444444441',
+        rubricId: '44444444-4444-4444-8444-444444444441',
         responses: dto.responses,
         averageScore: 88,
         status: SprintEvaluationStatus.SUBMITTED,
@@ -143,7 +143,7 @@ describe('SprintEvaluationsService', () => {
         groupId: dto.groupId,
         sprintId: dto.sprintId,
         evaluationType: dto.evaluationType,
-        rubricId: '44444444-4444-4444-4444-444444444441',
+        rubricId: '44444444-4444-4444-8444-444444444441',
         responses: dto.responses,
         averageScore: 88,
         status: SprintEvaluationStatus.SUBMITTED,
@@ -205,7 +205,7 @@ describe('SprintEvaluationsService', () => {
         ...dto,
         responses: [
           {
-            questionId: '55555555-5555-5555-5555-555555555551',
+            questionId: '55555555-5555-4555-8555-555555555551',
             softGrade: 'A' as const,
           },
         ],
@@ -238,13 +238,13 @@ describe('SprintEvaluationsService', () => {
     it('returns a sprint evaluation for a coordinator caller', async () => {
       const evaluationDocument = {
         evaluationId: 'evaluation-1',
-        groupId: '11111111-1111-1111-1111-111111111111',
-        sprintId: '22222222-2222-2222-2222-222222222222',
+        groupId: '66666666-6666-4666-8666-666666666661',
+        sprintId: '22222222-2222-4222-8222-222222222222',
         evaluationType: SprintEvaluationType.SCRUM,
-        rubricId: '44444444-4444-4444-4444-444444444441',
+        rubricId: '44444444-4444-4444-8444-444444444441',
         responses: [
           {
-            questionId: '55555555-5555-5555-5555-555555555551',
+            questionId: '55555555-5555-4555-8555-555555555551',
             softGrade: 'A',
           },
         ],
@@ -272,7 +272,7 @@ describe('SprintEvaluationsService', () => {
       mockSprintEvaluationModel.findOne.mockReturnValue({
         exec: jest.fn().mockResolvedValue({
           evaluationId: 'evaluation-1',
-          groupId: '11111111-1111-1111-1111-111111111111',
+          groupId: '66666666-6666-4666-8666-666666666661',
         }),
       });
       mockGroupModel.findOne.mockImplementation(
@@ -283,7 +283,7 @@ describe('SprintEvaluationsService', () => {
 
           return {
             exec: jest.fn().mockResolvedValue({
-              groupId: '11111111-1111-1111-1111-111111111111',
+              groupId: '66666666-6666-4666-8666-666666666661',
             }),
           };
         },

@@ -39,6 +39,94 @@ cd backend
 npm run start:dev
 ```
 
+## Fixed Dependency Versions
+
+Use the exact versions below when adding or updating dependencies. These are pinned in the repository's `package.json` files and should stay aligned with the lockfiles.
+
+### Backend
+
+| Package | Fixed Version |
+| --- | --- |
+| @nestjs/axios | 4.0.1 |
+| @nestjs/common | 11.1.17 |
+| @nestjs/config | 4.0.4 |
+| @nestjs/core | 11.1.18 |
+| @nestjs/jwt | 11.0.2 |
+| @nestjs/mapped-types | 2.1.1 |
+| @nestjs/mongoose | 11.0.4 |
+| @nestjs/passport | 11.0.5 |
+| @nestjs/platform-express | 11.1.18 |
+| @nestjs/swagger | 11.3.2 |
+| axios | 1.15.0 |
+| bcrypt | 6.0.0 |
+| class-transformer | 0.5.1 |
+| class-validator | 0.15.1 |
+| cors | 2.8.6 |
+| docker | 1.0.0 |
+| helmet | 8.1.0 |
+| mongoose | 9.4.1 |
+| passport | 0.7.0 |
+| passport-jwt | 4.0.1 |
+| reflect-metadata | 0.2.2 |
+| rxjs | 7.8.2 |
+| swagger-ui-express | 5.0.1 |
+| @eslint/eslintrc | 3.3.5 |
+| @eslint/js | 9.39.4 |
+| @nestjs/cli | 11.0.18 |
+| @nestjs/schematics | 11.0.10 |
+| @nestjs/testing | 11.1.17 |
+| @types/bcrypt | 6.0.0 |
+| @types/express | 5.0.6 |
+| @types/jest | 30.0.0 |
+| @types/multer | 2.1.0 |
+| @types/node | 22.19.15 |
+| @types/passport-jwt | 4.0.1 |
+| @types/supertest | 6.0.3 |
+| eslint | 9.39.4 |
+| eslint-config-prettier | 10.1.8 |
+| eslint-plugin-prettier | 5.5.5 |
+| globals | 16.5.0 |
+| jest | 30.3.0 |
+| prettier | 3.8.1 |
+| source-map-support | 0.5.21 |
+| supertest | 7.2.2 |
+| ts-jest | 29.4.6 |
+| ts-loader | 9.5.4 |
+| ts-node | 10.9.2 |
+| tsconfig-paths | 4.2.0 |
+| typescript | 5.9.3 |
+| typescript-eslint | 8.58.0 |
+
+### Frontend
+
+| Package | Fixed Version |
+| --- | --- |
+| @hookform/resolvers | 5.2.2 |
+| @nestjs/axios | 4.0.1 |
+| @nestjs/mapped-types | 2.1.1 |
+| axios | 1.15.0 |
+| jwt-decode | 4.0.0 |
+| prop-types | 15.8.1 |
+| react | 19.2.4 |
+| react-dom | 19.2.4 |
+| react-hook-form | 7.72.1 |
+| react-hot-toast | 2.6.0 |
+| react-router-dom | 7.14.0 |
+| zod | 3.25.76 |
+| @eslint/js | 9.39.4 |
+| @testing-library/jest-dom | 6.9.1 |
+| @testing-library/react | 16.3.2 |
+| @types/react | 19.2.14 |
+| @types/react-dom | 19.2.3 |
+| @vitejs/plugin-react | 6.0.1 |
+| eslint | 9.39.4 |
+| eslint-plugin-react-hooks | 7.0.1 |
+| eslint-plugin-react-refresh | 0.5.2 |
+| globals | 17.4.0 |
+| jsdom | 29.0.2 |
+| vite | 8.0.7 |
+| vitest | 4.1.5 |
+
 ## Branch Strategy
 
 - Main development branch: `main`

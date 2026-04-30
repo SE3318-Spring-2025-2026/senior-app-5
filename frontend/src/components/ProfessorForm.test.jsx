@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import ProfessorForm from './ProfessorForm';
+import { ProfessorForm } from './ProfessorForm';
 import apiClient from '../utils/apiClient';
 
 vi.mock('../utils/apiClient');

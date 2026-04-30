@@ -24,9 +24,10 @@ import { User, UserDocument } from '../src/users/data/user.schema';
 
 const logger = new Logger('SeedTestUsers');
 
-const seedGroupId = '11111111-1111-1111-1111-111111111111';
-const firstHistoryChangeId = '22222222-2222-2222-2222-222222222222';
-const secondHistoryChangeId = '33333333-3333-3333-3333-333333333333';
+const seedGroupId = '11111111-1111-4111-8111-111111111111';
+const professorOwnedGroupId = '66666666-6666-4666-8666-666666666661';
+const firstHistoryChangeId = '22222222-2222-4222-8222-222222222222';
+const secondHistoryChangeId = '33333333-3333-4333-8333-333333333333';
 
 const seedUsers = [
   {
@@ -93,10 +94,11 @@ async function main(): Promise<void> {
       logger.log(`Seeded ${user.email} as ${user.role}`);
     }
 
-    const [teamLeader, coordinator, student] = await Promise.all([
+    const [teamLeader, coordinator, student, professor] = await Promise.all([
       userModel.findOne({ email: 'teamleader@example.com' }).exec(),
       userModel.findOne({ email: 'coordinator@example.com' }).exec(),
       userModel.findOne({ email: 'student@example.com' }).exec(),
+      userModel.findOne({ email: 'professor@example.com' }).exec(),
     ]);
 
     if (teamLeader?._id) {
@@ -117,6 +119,28 @@ async function main(): Promise<void> {
 
       logger.log(
         `Seeded active group for teamleader@example.com (${seedGroupId})`,
+      );
+    }
+
+    if (professor?._id) {
+      await groupModel.updateOne(
+        { groupId: professorOwnedGroupId },
+        {
+          $set: {
+            groupId: professorOwnedGroupId,
+            groupName: 'Seeded Sprint Evaluation Group',
+            leaderUserId:
+              teamLeader?._id?.toString() ?? professor._id.toString(),
+            status: GroupStatus.ACTIVE,
+            assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+            assignedAdvisorId: professor._id.toString(),
+          },
+        },
+        { upsert: true },
+      );
+
+      logger.log(
+        `Seeded active group for professor@example.com (${professorOwnedGroupId})`,
       );
     }
 
@@ -186,6 +210,9 @@ async function main(): Promise<void> {
     logger.log(`Seeded grade history for group ${seedGroupId}`);
     logger.log(
       `Use validGroupId=${seedGroupId} for the Issue 138 Postman collection.`,
+    );
+    logger.log(
+      `Use advisorOwnedGroupId=${professorOwnedGroupId} and unownedExistingGroupId=${seedGroupId} for the Issue 145 Postman collection.`,
     );
 
     logger.log('Test users seeded successfully.');

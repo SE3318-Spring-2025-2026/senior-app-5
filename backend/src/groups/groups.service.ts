@@ -23,10 +23,10 @@ import {
 import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
 
 const GRADE_NUMERIC: Record<EvaluationGrade, number> = {
-  [EvaluationGrade.A]: 4,
-  [EvaluationGrade.B]: 3,
-  [EvaluationGrade.C]: 2,
-  [EvaluationGrade.D]: 1,
+  [EvaluationGrade.A]: 100,
+  [EvaluationGrade.B]: 80,
+  [EvaluationGrade.C]: 60,
+  [EvaluationGrade.D]: 50,
   [EvaluationGrade.F]: 0,
 };
 

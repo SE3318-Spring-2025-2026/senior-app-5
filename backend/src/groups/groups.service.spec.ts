@@ -88,8 +88,8 @@ describe('GroupsService', () => {
 
       const result = await service.getCommitteeGrade(groupId, deliverableId);
 
-      // A=4, B=3, C=2 → avg = 3
-      expect(result.averageGrade).toBeCloseTo(3);
+      // A=100, B=80, C=60 → avg = 80
+      expect(result.averageGrade).toBeCloseTo(80);
       expect(result.committeeGradeList).toHaveLength(3);
       expect(result.groupId).toBe(groupId);
       expect(result.deliverableId).toBe(deliverableId);
@@ -103,8 +103,8 @@ describe('GroupsService', () => {
 
       const result = await service.getCommitteeGrade(groupId, deliverableId);
 
-      // 4+3+2+1+0 = 10 / 5 = 2
-      expect(result.averageGrade).toBeCloseTo(2);
+      // 100+80+60+50+0 = 290 / 5 = 58
+      expect(result.averageGrade).toBeCloseTo(58);
     });
 
     it('returns status=PENDING when not all jury members have submitted', async () => {

@@ -1,5 +1,9 @@
 {
+  "scripts": {
+    "prepare": "husky"
+  },
   "devDependencies": {
+    "husky": "9.1.7",
     "typescript": "5.9.3"
   }
 }

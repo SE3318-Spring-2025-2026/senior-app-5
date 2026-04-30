@@ -114,7 +114,7 @@ export class GradesController {
   @Roles(Role.Coordinator, Role.Professor, Role.Admin, Role.Student)
   @Get('students/:studentId/final-grade')
   async getStudentFinalGrade(
-    @Param('studentId', ParseUUIDPipe) studentId: string,
+    @Param('studentId') studentId: string,
     @Req() req: RequestWithUser,
   ): Promise<StudentFinalGradeDto> {
     this.assertStudentOwnership(studentId, req);

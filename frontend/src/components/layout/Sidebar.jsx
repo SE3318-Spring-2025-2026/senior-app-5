@@ -1,7 +1,7 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 export const Sidebar = () => {
-  
+  const location = useLocation();
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : { role: 'Student' };
   const role = user.role;
@@ -41,12 +41,6 @@ export const Sidebar = () => {
         {role === 'Coordinator' && (
           <>
             <div style={styles.sectionHeader}>COORDINATOR MENU</div>
-            <NavLink 
-              to="/all-groups" 
-              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
-            >
-              🏢 <span style={styles.linkText}>All Groups</span>
-            </NavLink>
             <NavLink
               to="/coordinator-management"
               style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
@@ -58,6 +52,15 @@ export const Sidebar = () => {
               style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
             >
               🗓️ <span style={styles.linkText}>Phase Scheduling</span>
+            </NavLink>
+            <NavLink
+              to="/admin"
+              style={{
+                ...styles.link,
+                ...(location.pathname.startsWith('/admin') ? styles.activeLink : {})
+              }}
+            >
+              🛠️ <span style={styles.linkText}>Admin Panel</span>
             </NavLink>
           </>
         )}

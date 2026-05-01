@@ -23,6 +23,8 @@ export class GroupMemberGuard implements CanActivate {
       submission.groupId,
     );
 
+    request.submission = submission;
+
     return true;
   }
 }

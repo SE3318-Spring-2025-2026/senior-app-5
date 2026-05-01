@@ -7,6 +7,11 @@ import {
   GroupFinalGrade,
   GradeHistoryEntry,
 } from './schemas/grade-records.schema';
+import { Deliverable } from './schemas/deliverable.schema';
+import { DeliverableEvaluation } from './schemas/deliverable-evaluation.schema';
+import { SprintEvaluation } from '../sprint-evaluations/schemas/sprint-evaluation.schema';
+import { SprintConfig } from '../story-points/schemas/sprint-config.schema';
+import { StoryPointRecord } from '../story-points/schemas/story-point-record.schema';
 import { StudentFinalGradeDto } from './dto/student-final-grade.dto';
 import { GroupFinalGradeDto } from './dto/group-final-grade.dto';
 import { ListGradeHistoryQueryDto } from './dto/list-grade-history-query.dto';
@@ -45,6 +50,26 @@ describe('GradesService', () => {
         {
           provide: getModelToken(GradeHistoryEntry.name),
           useValue: mockGradeHistoryModel,
+        },
+        {
+          provide: getModelToken(Deliverable.name),
+          useValue: {},
+        },
+        {
+          provide: getModelToken(DeliverableEvaluation.name),
+          useValue: {},
+        },
+        {
+          provide: getModelToken(SprintEvaluation.name),
+          useValue: {},
+        },
+        {
+          provide: getModelToken(SprintConfig.name),
+          useValue: {},
+        },
+        {
+          provide: getModelToken(StoryPointRecord.name),
+          useValue: {},
         },
       ],
     }).compile();

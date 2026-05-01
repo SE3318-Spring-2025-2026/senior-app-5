@@ -1,10 +1,49 @@
-import { useNavigate, useLocation, Outlet } from 'react-router-dom'
+import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom'
 import styles from './AdminLayout.module.css'
 import { AdminGroupProvider } from '../context/AdminGroupContext'
 
 function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Generate breadcrumb segments
+  const generateBreadcrumbs = () => {
+    const segments = location.pathname.split('/').filter(Boolean)
+    const breadcrumbs = [
+      { label: 'Home', path: '/dashboard', isActive: false }
+    ]
+
+    // Build cumulative paths
+    let cumulativePath = ''
+    segments.forEach((segment, index) => {
+      cumulativePath += `/${segment}`
+      const isLastSegment = index === segments.length - 1
+
+      // Map segment names to display labels
+      const segmentLabels = {
+        admin: 'Admin',
+        groups: 'Groups',
+        members: 'Members',
+        invites: 'Invites',
+        advisors: 'Advisors',
+        sanitization: 'Sanitization',
+        professors: 'Professors',
+        activity: 'Activity Logs',
+      }
+
+      const label = segmentLabels[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)
+      
+      breadcrumbs.push({
+        label,
+        path: segment === 'admin' ? '/admin/groups' : cumulativePath,
+        isActive: isLastSegment,
+      })
+    })
+
+    return breadcrumbs
+  }
+
+  const breadcrumbs = generateBreadcrumbs()
 
   const adminTabs = [
     { label: 'Groups', path: '/admin/groups' },
@@ -30,6 +69,26 @@ function AdminLayout() {
             </p>
           </div>
         </header>
+
+        {/* Breadcrumb Navigation */}
+        <nav className={styles.breadcrumbNavigation} aria-label="Breadcrumb">
+          <ul className={styles.breadcrumbList}>
+            {breadcrumbs.map((crumb, index) => (
+              <li key={crumb.path} className={styles.breadcrumbItem}>
+                {crumb.isActive ? (
+                  <span className={styles.breadcrumbCurrent}>{crumb.label}</span>
+                ) : (
+                  <>
+                    <Link to={crumb.path} className={styles.breadcrumbLink}>
+                      {crumb.label}
+                    </Link>
+                    <span className={styles.breadcrumbSeparator}>&gt;</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
 
         <nav className={styles.tabNavigation}>
           <ul className={styles.tabList}>

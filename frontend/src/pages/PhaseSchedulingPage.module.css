@@ -49,7 +49,8 @@
   font-weight: 600;
 }
 
-.form input {
+.form input,
+.form select {
   background: #020617;
   border: 1px solid #334155;
   border-radius: 8px;
@@ -57,13 +58,25 @@
   padding: 10px 12px;
 }
 
-.form input:focus {
+.form input:focus,
+.form select:focus {
   outline: none;
   border-color: #38bdf8;
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
 }
 
-.form button {
+.form input[aria-invalid='true'],
+.form select[aria-invalid='true'] {
+  border-color: #f87171;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.actions button {
   align-self: flex-start;
   border: none;
   border-radius: 8px;
@@ -74,9 +87,53 @@
   cursor: pointer;
 }
 
-.form button:disabled {
+.actions button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.secondaryButton {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+.fieldError {
+  color: #fca5a5;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.previewBox {
+  border: 1px solid #334155;
+  background: #020617;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.previewBox strong {
+  color: #e2e8f0;
+}
+
+.previewBox dl {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.previewBox div {
+  display: grid;
+  gap: 4px;
+}
+
+.previewBox dt {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.previewBox dd {
+  margin: 0;
+  color: #f8fafc;
 }
 
 .status {
@@ -94,6 +151,11 @@
 .error {
   background: #450a0a;
   color: #fca5a5;
+}
+
+.errorList {
+  margin: 0;
+  padding-left: 18px;
 }
 
 .resultBox {

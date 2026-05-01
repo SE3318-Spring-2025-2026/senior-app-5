@@ -13,6 +13,12 @@ import { UpdatePhaseScheduleDto } from './dto/update-phase-schedule.dto';
 export class PhasesController {
   constructor(private readonly phasesService: PhasesService) {}
 
+  @Get()
+  @Roles(Role.Coordinator)
+  async listPhases() {
+    return this.phasesService.listForScheduling();
+  }
+
   @Get(':phaseId')
   @Roles(Role.Student, Role.Professor, Role.Coordinator, Role.Admin)
   async getPhase(@Param('phaseId') phaseId: string) {

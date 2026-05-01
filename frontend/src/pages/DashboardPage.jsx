@@ -50,7 +50,7 @@ const DashboardPage = () => {
       <div className={styles.headerSection}>
         <h1 className={styles.title}>{user.role} DASHBOARD</h1>
         <p className={styles.welcomeText}>
-          Welcome back, <span className={styles.highlight}>{user.firstName} {user.lastName}</span>
+          Welcome back, <span className={styles.highlight}>{user.email || 'User'}</span>
         </p>
       </div>
 

@@ -46,6 +46,7 @@ export const apiConfig = {
     committeeGroups: (committeeId) => `/committees/${committeeId}/groups`,
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
     activityLogs: '/admin/activity',
+    dashboardMetrics: '/admin/dashboard-metrics',
     adminProfessors: '/auth/admin/professors',
   },  
 };

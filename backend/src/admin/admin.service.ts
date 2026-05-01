@@ -4,7 +4,13 @@ import { Model, Connection } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { Group, GroupDocument } from '../groups/group.entity';
 import { User, UserDocument } from '../users/data/user.schema';
-
+import { Role } from '../auth/enums/role.enum';
+import { GroupAssignmentStatus, GroupStatus } from '../groups/group.entity';
+import {
+  AdvisorRequest,
+  AdvisorRequestDocument,
+  AdvisorRequestStatus,
+} from '../advisors/schemas/advisor-request.schema';
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
@@ -13,6 +19,7 @@ export class AdminService {
     private readonly usersService: UsersService,
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(AdvisorRequest.name) private advisorRequestModel: Model<AdvisorRequestDocument>,
     @InjectConnection() private readonly connection: Connection, 
   ) {}
 
@@ -38,6 +45,53 @@ export class AdminService {
       advisorUserId: group.advisorUserId || null,
       status: group.status,
     }));
+  }
+
+  async getDashboardMetrics() {
+    const now = new Date();
+    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  
+    const [
+      totalStudents,
+      activeGroups,
+      pendingAdvisorRequests,
+      unassignedGroups,
+      activityCountLast24h,
+    ] = await Promise.all([
+      this.userModel.countDocuments({ role: Role.Student }),
+      this.groupModel.countDocuments({ status: GroupStatus.ACTIVE }),
+      this.advisorRequestModel.countDocuments({ status: AdvisorRequestStatus.PENDING }),
+      this.groupModel.countDocuments({
+        $or: [
+          { assignmentStatus: GroupAssignmentStatus.UNASSIGNED },
+          { advisorUserId: { $exists: false } },
+          { advisorUserId: null },
+          { advisorUserId: '' },
+        ],
+      }),
+      this.advisorRequestModel.countDocuments({ createdAt: { $gte: since24h } }),
+    ]);
+  
+    let platformHealth: 'healthy' | 'degraded' = 'healthy';
+    try {
+      if (!this.connection.db) {
+        platformHealth = 'degraded';
+      } else {
+        await this.connection.db.admin().ping();
+      }
+    } catch {
+      platformHealth = 'degraded';
+    }
+  
+    return {
+      totalStudents,
+      activeGroups,
+      pendingAdvisorRequests,
+      unassignedGroups,
+      activityCountLast24h,
+      platformHealth,
+      generatedAt: now.toISOString(),
+    };
   }
 
   

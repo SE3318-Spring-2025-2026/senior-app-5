@@ -9,9 +9,17 @@ import styles from './ProfessorForm.module.css';
 const ROLES = ['Professor'];
 
 const professorSchema = z.object({
-  name: z.string({ message: 'Name is required' }).min(2).max(100),
   email: z.string({ message: 'Email is required' }).email('Invalid email address'),
-  role: z.string({ message: 'Role is required' }).refine((val) => ROLES.includes(val), 'Invalid role selected'),
+  password: z
+    .string({ message: 'Password is required' })
+    .min(8, 'Password must be at least 8 characters long')
+    .max(128, 'Password must not exceed 128 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  role: z
+    .string({ message: 'Role is required' })
+    .refine((val) => ROLES.includes(val), 'Invalid role selected'),
 });
 
 export function ProfessorForm() {
@@ -26,7 +34,7 @@ export function ProfessorForm() {
   } = useForm({
     resolver: zodResolver(professorSchema),
     mode: 'onBlur',
-    defaultValues: { name: '', email: '', role: '' },
+    defaultValues: { email: '', password: '', role: '' },
   });
 
   const onSubmit = async (data) => {
@@ -34,9 +42,9 @@ export function ProfessorForm() {
     setApiError('');
 
     try {
-      await authService.registerProfessor(data.name, data.email, data.role);
+      await authService.registerProfessor(data.email, data.password, data.role);
       reset();
-      toast.success(`Professor ${data.name} created successfully.`);
+      toast.success('Professor created successfully.');
     } catch (error) {
       const message = error.message || 'Failed to create professor.';
       setApiError(message);
@@ -62,22 +70,52 @@ export function ProfessorForm() {
 
         <form onSubmit={handleSubmit(onSubmit)} className={styles.form} noValidate>
           <div className={styles.formGroup}>
-            <label htmlFor="name" className={styles.label}>Professor Name *</label>
-            <input id="name" type="text" className={`${styles.input} ${errors.name ? styles.inputError : ''}`} {...register('name')} disabled={isSubmitting} />
-            {errors.name && <span className={styles.errorText}>{errors.name.message}</span>}
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="email" className={styles.label}>Email *</label>
-            <input id="email" type="email" className={`${styles.input} ${errors.email ? styles.inputError : ''}`} {...register('email')} disabled={isSubmitting} />
+            <label htmlFor="email" className={styles.label}>
+              Email *
+            </label>
+            <input
+              id="email"
+              type="email"
+              className={`${styles.input} ${errors.email ? styles.inputError : ''}`}
+              {...register('email')}
+              disabled={isSubmitting}
+            />
             {errors.email && <span className={styles.errorText}>{errors.email.message}</span>}
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="role" className={styles.label}>Role *</label>
-            <select id="role" className={`${styles.select} ${errors.role ? styles.inputError : ''}`} {...register('role')} disabled={isSubmitting}>
+            <label htmlFor="password" className={styles.label}>
+              Password *
+            </label>
+            <input
+              id="password"
+              type="password"
+              className={`${styles.input} ${errors.password ? styles.inputError : ''}`}
+              {...register('password')}
+              disabled={isSubmitting}
+              autoComplete="new-password"
+            />
+            {errors.password && (
+              <span className={styles.errorText}>{errors.password.message}</span>
+            )}
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="role" className={styles.label}>
+              Role *
+            </label>
+            <select
+              id="role"
+              className={`${styles.select} ${errors.role ? styles.inputError : ''}`}
+              {...register('role')}
+              disabled={isSubmitting}
+            >
               <option value="">Select role</option>
-              {ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
+              {ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
             </select>
             {errors.role && <span className={styles.errorText}>{errors.role.message}</span>}
           </div>

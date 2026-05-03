@@ -44,6 +44,7 @@ describe('GroupsService', () => {
         {
           provide: getModelToken('User'),
           useValue: jest.fn(),
+        },
       ],
     }).compile();
 

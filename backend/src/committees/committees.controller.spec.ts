@@ -456,6 +456,7 @@ describe('CommitteesController', () => {
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
+  });
 
     it('ADVISOR role via RolesGuard → throws ForbiddenException (403)', () => {
       const reflector = new Reflector();
@@ -490,7 +491,6 @@ describe('CommitteesController', () => {
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
-  });
 
   // ─── GET /committees/:committeeId/groups ──────────────────────────────────
 
@@ -734,8 +734,7 @@ describe('CommitteesController', () => {
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
-
-    it('TEAM_LEADER role via RolesGuard → throws ForbiddenException (403)', () => {
+    it('TEAM_LEADER role via RolesGuard -> throws ForbiddenException (403)', () => {
       const reflector = new Reflector();
       const rolesGuard = new RolesGuard(reflector);
 
@@ -750,6 +749,8 @@ describe('CommitteesController', () => {
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
+    });
+  });
   // ─── DELETE /committees/:committeeId/jury-members/:userId ────────────────────
 
   describe('DELETE /committees/:committeeId/jury-members/:userId', () => {
@@ -774,13 +775,52 @@ describe('CommitteesController', () => {
         undefined,
       );
     });
-
-    it('committee not found → propagates NotFoundException (404)', async () => {
+    it('committee not found -> propagates NotFoundException (404)', async () => {
       jest
         .spyOn(service, 'removeJuryMember')
         .mockRejectedValue(
           new NotFoundException(
             `Committee with ID '${committeeId}' not found.`,
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.removeJuryMember(committeeId, userId, req),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('jury member not found -> propagates NotFoundException (404)', async () => {
+      jest
+        .spyOn(service, 'removeJuryMember')
+        .mockRejectedValue(
+          new NotFoundException(
+            `Jury member with user ID '${userId}' not found in committee '${committeeId}'.`,
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.removeJuryMember(committeeId, userId, req),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('repository failure -> propagates InternalServerErrorException (500)', async () => {
+      jest
+        .spyOn(service, 'removeJuryMember')
+        .mockRejectedValue(
+          new InternalServerErrorException(
+            'Failed to remove jury member due to an unexpected error.',
+          ),
+        );
+
+      const req = { user: coordinatorUser, headers: {} } as any;
+      await expect(
+        controller.removeJuryMember(committeeId, userId, req),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
+    });
+  });
+
   describe('POST /committees/:committeeId/groups', () => {
     const committeeId = mockCommittee.id;
     const payload = { groupId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' };
@@ -793,7 +833,11 @@ describe('CommitteesController', () => {
       });
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.assignGroupToCommittee(committeeId, payload, req);
+      const result = await controller.assignGroupToCommittee(
+        committeeId,
+        payload,
+        req,
+      );
 
       expect(result).toEqual({
         groupId: payload.groupId,
@@ -834,17 +878,6 @@ describe('CommitteesController', () => {
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
-        controller.removeJuryMember(committeeId, userId, req),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('jury member not found → propagates NotFoundException (404)', async () => {
-      jest
-        .spyOn(service, 'removeJuryMember')
-        .mockRejectedValue(
-          new NotFoundException(
-            `Jury member with user ID '${userId}' not found in committee '${committeeId}'.`,
-          ),
         controller.assignGroupToCommittee(committeeId, payload, req),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
@@ -858,17 +891,6 @@ describe('CommitteesController', () => {
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
-        controller.removeJuryMember(committeeId, userId, req),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('repository failure → propagates InternalServerErrorException (500)', async () => {
-      jest
-        .spyOn(service, 'removeJuryMember')
-        .mockRejectedValue(
-          new InternalServerErrorException(
-            'Failed to remove jury member due to an unexpected error.',
-          ),
         controller.assignGroupToCommittee(committeeId, payload, req),
       ).rejects.toMatchObject({ status: 423 });
     });
@@ -893,11 +915,11 @@ describe('CommitteesController', () => {
 
       const req = { user: coordinatorUser, headers: {} } as any;
       await expect(
-        controller.removeJuryMember(committeeId, userId, req),
-      ).rejects.toThrow(InternalServerErrorException);
+        controller.assignGroupToCommittee(committeeId, payload, req),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('non-COORDINATOR role via RolesGuard → throws ForbiddenException', () => {
+    it('non-COORDINATOR role via RolesGuard -> throws ForbiddenException', () => {
       const reflector = new Reflector();
       const rolesGuard = new RolesGuard(reflector);
 
@@ -912,8 +934,6 @@ describe('CommitteesController', () => {
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
-        controller.assignGroupToCommittee(committeeId, payload, req),
-      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('repository failure -> propagates 500', async () => {

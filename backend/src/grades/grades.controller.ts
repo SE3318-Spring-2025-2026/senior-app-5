@@ -1,10 +1,14 @@
 import {
+  Body,
   Controller,
   ForbiddenException,
   Get,
+  HttpCode,
+  HttpStatus,
   Logger,
   Param,
   ParseUUIDPipe,
+  Post,
   Query,
   Req,
   UseGuards,
@@ -18,6 +22,8 @@ import {
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiConflictResponse,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -29,6 +35,8 @@ import { GroupFinalGradeDto } from './dto/group-final-grade.dto';
 import { StudentFinalGradeDto } from './dto/student-final-grade.dto';
 import { ListGradeHistoryQueryDto } from './dto/list-grade-history-query.dto';
 import { PaginatedGradeHistoryDto } from './dto/paginated-grade-history.dto';
+import { CalculateGradeDto } from './dto/calculate-grade.dto';
+import { GradeCalculationResultDto } from './dto/grade-calculation-result.dto';
 
 interface RequestWithUser extends Request {
   user: { userId?: string; sub?: string; _id?: string; role: Role };
@@ -140,5 +148,40 @@ export class GradesController {
     @Query() query: ListGradeHistoryQueryDto,
   ): Promise<PaginatedGradeHistoryDto> {
     return this.gradesService.getGradeHistory(groupId, query);
+  }
+
+  @ApiOperation({
+    operationId: 'calculateGrade',
+    summary: 'Calculate and persist final grades for a group',
+  })
+  @ApiOkResponse({ type: GradeCalculationResultDto })
+  @ApiConflictResponse({ description: 'Final grade already exists and force=false' })
+  @ApiUnprocessableEntityResponse({ description: 'Missing preconditions (evaluations not complete, config missing, etc)' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @Roles(Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  @Post('groups/:groupId/calculate')
+  async calculateGrade(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Body() dto: CalculateGradeDto,
+    @Req() req: RequestWithUser,
+  ): Promise<GradeCalculationResultDto> {
+    const triggeredBy = this.getJwtStudentId(req);
+    const correlationId = this.getCorrelationId(req);
+    
+    // In a real scenario, this would use a proper user ID. For our MVP, we extract
+    // what we can or fall back to 'SYSTEM'
+    const finalTriggeredBy = triggeredBy ?? 'SYSTEM';
+    
+    return this.gradesService.calculateGrade(
+      groupId,
+      dto,
+      finalTriggeredBy,
+      correlationId,
+    );
   }
 }

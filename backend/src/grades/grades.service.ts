@@ -29,7 +29,7 @@ import {
 import {
   Deliverable,
   DeliverableDocument,
-} from './schemas/deliverable.schema';
+} from '../deliverables/schemas/deliverable.schema';
 import {
   DeliverableEvaluation,
   DeliverableEvaluationDocument,

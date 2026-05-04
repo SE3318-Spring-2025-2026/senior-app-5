@@ -291,7 +291,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(2),
       });
 
-      const query: ListGradeHistoryQueryDto = {};
+      const query = new ListGradeHistoryQueryDto();
 
       // Act
       const result = await service.getGradeHistory(groupId, query);
@@ -336,7 +336,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(0),
       });
 
-      const query: ListGradeHistoryQueryDto = {};
+      const query = new ListGradeHistoryQueryDto();
 
       // Act & Assert
       await expect(service.getGradeHistory(groupId, query)).rejects.toThrow(
@@ -375,7 +375,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(1),
       });
 
-      const query: ListGradeHistoryQueryDto = { page: 0, limit: 20 };
+      const query = { page: 0, limit: 20 } as ListGradeHistoryQueryDto;
 
       // Act
       const result = await service.getGradeHistory(groupId, query);
@@ -405,7 +405,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(0),
       });
 
-      const query: ListGradeHistoryQueryDto = { page: 1, limit: 200 };
+      const query = { page: 1, limit: 200 } as ListGradeHistoryQueryDto;
 
       // Act & Assert
       // Actual implementation: no cap enforced in normalizePagination
@@ -431,7 +431,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(100),
       });
 
-      const query: ListGradeHistoryQueryDto = { page: 2, limit: 10 };
+      const query = { page: 2, limit: 10 } as ListGradeHistoryQueryDto;
 
       // Act
       const result = await service.getGradeHistory(groupId, query);
@@ -479,7 +479,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(3),
       });
 
-      const query: ListGradeHistoryQueryDto = {};
+      const query = new ListGradeHistoryQueryDto();
 
       // Act
       const result = await service.getGradeHistory(groupId, query);
@@ -524,7 +524,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(1),
       });
 
-      const query: ListGradeHistoryQueryDto = {};
+      const query = new ListGradeHistoryQueryDto();
 
       // Act
       await service.getGradeHistory(groupId, query);
@@ -556,7 +556,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(1),
       });
 
-      const query: ListGradeHistoryQueryDto = {};
+      const query = new ListGradeHistoryQueryDto();
 
       // Act
       const result = await service.getGradeHistory(groupId, query);
@@ -601,7 +601,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(1),
       });
 
-      const query: ListGradeHistoryQueryDto = {};
+      const query = new ListGradeHistoryQueryDto();
 
       // Act
       const result = await service.getGradeHistory('group-id', query);
@@ -671,7 +671,7 @@ describe('GradesService', () => {
         exec: jest.fn().mockResolvedValue(1),
       });
 
-      const query: ListGradeHistoryQueryDto = { page: 0, limit: 20 };
+      const query = { page: 0, limit: 20 } as ListGradeHistoryQueryDto;
 
       // Act
       const result = await service.getGradeHistory('group-id', query);

@@ -17,6 +17,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
 import { CommitteesModule } from './committees/committees.module';
 import { GradesModule } from './grades/grades.module';
 import { SprintEvaluationsModule } from './sprint-evaluations/sprint-evaluations.module';
+import { DeliverablesModule } from './deliverables/deliverables.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SprintEvaluationsModule } from './sprint-evaluations/sprint-evaluations
     StoryPointsModule,
     GradesModule,
     SprintEvaluationsModule,
+    DeliverablesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -22,6 +22,13 @@ const formatDisplayDate = (value) => {
   return Number.isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleString();
 };
 
+const formatUtcDate = (value) => {
+  if (!value) return 'No UTC value stored';
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Invalid UTC value' : date.toISOString();
+};
+
 const formatErrorMessages = (message) => {
   if (Array.isArray(message)) return message;
   if (typeof message === 'string' && message.trim()) return [message];
@@ -41,6 +48,7 @@ function PhaseSchedulingPage() {
     () => phases.find((phase) => phase.phaseId === phaseId) || null,
     [phaseId, phases],
   );
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time';
 
   useEffect(() => {
     const fetchPhases = async () => {
@@ -132,6 +140,10 @@ function PhaseSchedulingPage() {
 
     const startDate = parseDateTime(submissionStart);
     const endDate = parseDateTime(submissionEnd);
+    const previousSchedule = {
+      submissionStart: selectedPhase?.submissionStart,
+      submissionEnd: selectedPhase?.submissionEnd,
+    };
 
     setStatus({ loading: true, loadingPhases: false, message: '', errors: [] });
 
@@ -141,7 +153,14 @@ function PhaseSchedulingPage() {
         submissionEnd: endDate.toISOString(),
       });
 
-      setResult(response.data);
+      setResult({
+        phaseId,
+        previous: previousSchedule,
+        updated: {
+          submissionStart: response.data.submissionStart,
+          submissionEnd: response.data.submissionEnd,
+        },
+      });
       setPhases((currentPhases) =>
         currentPhases.map((phase) =>
           phase.phaseId === phaseId
@@ -181,6 +200,9 @@ function PhaseSchedulingPage() {
         <p className={styles.lead}>
           Select a phase, review its current submission window, and update the schedule.
         </p>
+        <p className={styles.timezoneNote}>
+          Date fields use {timezoneName}; updates are saved to the server as UTC ISO timestamps.
+        </p>
       </header>
 
       <section className={styles.card}>
@@ -212,10 +234,12 @@ function PhaseSchedulingPage() {
                 <div>
                   <dt>Submission Start</dt>
                   <dd>{formatDisplayDate(selectedPhase.submissionStart)}</dd>
+                  <dd className={styles.utcValue}>{formatUtcDate(selectedPhase.submissionStart)}</dd>
                 </div>
                 <div>
                   <dt>Submission End</dt>
                   <dd>{formatDisplayDate(selectedPhase.submissionEnd)}</dd>
+                  <dd className={styles.utcValue}>{formatUtcDate(selectedPhase.submissionEnd)}</dd>
                 </div>
               </dl>
             </div>
@@ -226,6 +250,7 @@ function PhaseSchedulingPage() {
             <input
               type="datetime-local"
               value={submissionStart}
+              disabled={!phaseId || status.loading}
               onChange={(event) => {
                 setSubmissionStart(event.target.value);
                 setFieldErrors((current) => ({ ...current, submissionStart: '' }));
@@ -243,6 +268,7 @@ function PhaseSchedulingPage() {
               type="datetime-local"
               value={submissionEnd}
               min={submissionStart}
+              disabled={!phaseId || status.loading}
               onChange={(event) => {
                 setSubmissionEnd(event.target.value);
                 setFieldErrors((current) => ({ ...current, submissionEnd: '' }));
@@ -281,8 +307,29 @@ function PhaseSchedulingPage() {
 
         {result && (
           <div className={styles.resultBox}>
-            <strong>Updated Phase</strong>
-            <pre>{JSON.stringify(result, null, 2)}</pre>
+            <strong>Schedule Changes</strong>
+            <dl className={styles.changeList}>
+              <div>
+                <dt>Previous Start</dt>
+                <dd>{formatDisplayDate(result.previous.submissionStart)}</dd>
+                <dd className={styles.utcValue}>{formatUtcDate(result.previous.submissionStart)}</dd>
+              </div>
+              <div>
+                <dt>Updated Start</dt>
+                <dd>{formatDisplayDate(result.updated.submissionStart)}</dd>
+                <dd className={styles.utcValue}>{formatUtcDate(result.updated.submissionStart)}</dd>
+              </div>
+              <div>
+                <dt>Previous End</dt>
+                <dd>{formatDisplayDate(result.previous.submissionEnd)}</dd>
+                <dd className={styles.utcValue}>{formatUtcDate(result.previous.submissionEnd)}</dd>
+              </div>
+              <div>
+                <dt>Updated End</dt>
+                <dd>{formatDisplayDate(result.updated.submissionEnd)}</dd>
+                <dd className={styles.utcValue}>{formatUtcDate(result.updated.submissionEnd)}</dd>
+              </div>
+            </dl>
           </div>
         )}
       </section>

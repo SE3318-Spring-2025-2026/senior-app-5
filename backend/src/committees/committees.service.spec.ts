@@ -74,7 +74,6 @@ describe('CommitteesService', () => {
     expect(service).toBeDefined();
   });
 
-  });
   // ─── createCommittee ──────────────────────────────────────────────────────
 
   describe('createCommittee', () => {
@@ -635,6 +634,8 @@ describe('CommitteesService', () => {
         expect.any(Object),
       );
       expect(mockCommitteeModel.countDocuments).toHaveBeenCalledWith({});
+    });
+  });
   // ─── removeJuryMember ─────────────────────────────────────────────────────
 
   describe('removeJuryMember', () => {
@@ -736,6 +737,9 @@ describe('CommitteesService', () => {
         'Failed to remove jury member due to an unexpected error.',
       );
     });
+  });
+
+  // ─── assignGroupToCommittee ────────────────────────────────────────────────
   describe('assignGroupToCommittee', () => {
     const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const groupId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';

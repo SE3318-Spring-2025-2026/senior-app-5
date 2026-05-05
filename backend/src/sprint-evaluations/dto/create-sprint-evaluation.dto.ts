@@ -28,6 +28,10 @@ export class CreateSprintEvaluationDto {
   @IsUUID()
   sprintId!: string;
 
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  deliverableId!: string;
+
   @ApiProperty({ enum: SprintEvaluationType })
   @IsEnum(SprintEvaluationType)
   evaluationType!: SprintEvaluationType;

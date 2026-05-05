@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { RubricsModule } from '../rubrics/rubrics.module';
 import { Group, GroupSchema } from '../groups/group.entity';
 import { Schedule, ScheduleSchema } from '../advisors/schemas/schedule.schema';
 import { SprintEvaluationsController } from './sprint-evaluations.controller';
@@ -11,6 +12,7 @@ import {
 
 @Module({
   imports: [
+    RubricsModule,
     MongooseModule.forFeature([
       { name: Group.name, schema: GroupSchema },
       { name: Schedule.name, schema: ScheduleSchema },

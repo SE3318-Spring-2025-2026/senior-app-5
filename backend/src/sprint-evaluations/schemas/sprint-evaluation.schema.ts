@@ -31,8 +31,9 @@ export class SprintEvaluationResponseItem {
   softGrade!: SoftGrade;
 }
 
-export const SprintEvaluationResponseItemSchema =
-  SchemaFactory.createForClass(SprintEvaluationResponseItem);
+export const SprintEvaluationResponseItemSchema = SchemaFactory.createForClass(
+  SprintEvaluationResponseItem,
+);
 
 @Schema({ timestamps: true })
 export class SprintEvaluation {
@@ -45,7 +46,14 @@ export class SprintEvaluation {
   @Prop({ type: String, required: true })
   sprintId!: string;
 
-  @Prop({ type: String, required: true, enum: Object.values(SprintEvaluationType) })
+  @Prop({ type: String, required: true })
+  deliverableId!: string;
+
+  @Prop({
+    type: String,
+    required: true,
+    enum: Object.values(SprintEvaluationType),
+  })
   evaluationType!: SprintEvaluationType;
 
   @Prop({ type: String, required: true })
@@ -57,9 +65,18 @@ export class SprintEvaluation {
   @Prop({ type: Number, required: true })
   averageScore!: number;
 
-  @Prop({ type: String, required: true, enum: Object.values(SprintEvaluationStatus), default: SprintEvaluationStatus.DRAFT })
+  @Prop({
+    type: String,
+    required: true,
+    enum: Object.values(SprintEvaluationStatus),
+    default: SprintEvaluationStatus.DRAFT,
+  })
   status!: SprintEvaluationStatus;
 }
 
-export const SprintEvaluationSchema = SchemaFactory.createForClass(SprintEvaluation);
-SprintEvaluationSchema.index({ groupId: 1, sprintId: 1, evaluationType: 1 }, { unique: true });
+export const SprintEvaluationSchema =
+  SchemaFactory.createForClass(SprintEvaluation);
+SprintEvaluationSchema.index(
+  { groupId: 1, sprintId: 1, deliverableId: 1, evaluationType: 1 },
+  { unique: true },
+);

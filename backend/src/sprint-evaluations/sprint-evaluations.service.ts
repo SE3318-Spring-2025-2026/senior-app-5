@@ -29,11 +29,8 @@ import {
 } from './schemas/sprint-evaluation.schema';
 import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
-import {
-  resolveSprintRubricFixture,
-  softGradeValue,
-  SprintRubricFixture,
-} from './fixtures/sprint-rubric.fixtures';
+import { RubricsService } from '../rubrics/rubrics.service';
+import { RubricDocument } from '../rubrics/schemas/rubric.schema';
 
 interface RequestContext {
   userId?: string;
@@ -50,6 +47,7 @@ export class SprintEvaluationsService {
     private readonly scheduleModel: Model<ScheduleDocument>,
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
+    private readonly rubricsService: RubricsService,
   ) {}
 
   async recordSprintEvaluation(
@@ -68,7 +66,10 @@ export class SprintEvaluationsService {
       advisorUserId,
       correlationId,
     );
-    const rubric = this.resolveRubricFixture(dto, correlationId);
+    const rubric = await this.resolveActiveRubric(
+      dto.deliverableId,
+      correlationId,
+    );
     this.ensureQuestionMatch(dto, rubric);
     await this.ensureEvaluationDoesNotExist(dto, correlationId);
 
@@ -76,6 +77,7 @@ export class SprintEvaluationsService {
     const evaluation = await this.sprintEvaluationModel.create({
       groupId: dto.groupId,
       sprintId: dto.sprintId,
+      deliverableId: dto.deliverableId,
       evaluationType: dto.evaluationType,
       rubricId: rubric.rubricId,
       responses: dto.responses,
@@ -88,6 +90,7 @@ export class SprintEvaluationsService {
       evaluationId: evaluation.evaluationId,
       groupId: dto.groupId,
       sprintId: dto.sprintId,
+      deliverableId: dto.deliverableId,
       evaluationType: dto.evaluationType,
       rubricId: rubric.rubricId,
       correlationId,
@@ -207,6 +210,7 @@ export class SprintEvaluationsService {
       .findOne({
         groupId: dto.groupId,
         sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
       })
       .exec();
@@ -216,43 +220,42 @@ export class SprintEvaluationsService {
         event: 'sprint_evaluation_duplicate_detected',
         groupId: dto.groupId,
         sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
         correlationId,
       });
       throw new ConflictException(
-        'A sprint evaluation already exists for this group, sprint, and evaluation type.',
+        'A sprint evaluation already exists for this group, sprint, deliverable, and evaluation type.',
       );
     }
   }
 
-  private resolveRubricFixture(
-    dto: CreateSprintEvaluationDto,
+  private async resolveActiveRubric(
+    deliverableId: string,
     correlationId?: string,
-  ): SprintRubricFixture {
-    const rubric = resolveSprintRubricFixture({
-      groupId: dto.groupId,
-      sprintId: dto.sprintId,
-      evaluationType: dto.evaluationType,
-    });
+  ): Promise<RubricDocument> {
+    const rubric = await this.rubricsService.getActiveRubric(
+      deliverableId,
+      correlationId,
+    );
 
     if (!rubric) {
       this.logger.warn({
         event: 'sprint_evaluation_rubric_missing',
-        groupId: dto.groupId,
-        sprintId: dto.sprintId,
-        evaluationType: dto.evaluationType,
+        deliverableId,
         correlationId,
       });
       throw new BadRequestException(
-        'No active rubric fixture is available for this group, sprint, and evaluation type.',
+        'No active rubric is available for this deliverable.',
       );
     }
+
     return rubric;
   }
 
   private ensureQuestionMatch(
     dto: CreateSprintEvaluationDto,
-    rubric: SprintRubricFixture,
+    rubric: RubricDocument,
   ): void {
     const rubricQuestionIds = new Set(
       rubric.questions.map((question) => question.questionId),
@@ -280,6 +283,7 @@ export class SprintEvaluationsService {
       evaluationId: evaluation.evaluationId,
       groupId: evaluation.groupId,
       sprintId: evaluation.sprintId,
+      deliverableId: evaluation.deliverableId,
       evaluationType: evaluation.evaluationType,
       rubricId: evaluation.rubricId,
       responses: evaluation.responses.map((response) => ({
@@ -301,7 +305,7 @@ export class SprintEvaluationsService {
 
   private calculateAverageScore(
     responses: CreateSprintEvaluationDto['responses'],
-    rubric: SprintRubricFixture,
+    rubric: RubricDocument,
   ): number {
     const weightByQuestionId = new Map(
       rubric.questions.map((question) => [
@@ -312,9 +316,26 @@ export class SprintEvaluationsService {
 
     const weightedScore = responses.reduce((sum, response) => {
       const criteriaWeight = weightByQuestionId.get(response.questionId) ?? 0;
-      return sum + softGradeValue(response.softGrade) * criteriaWeight;
+      return sum + this.softGradeValue(response.softGrade) * criteriaWeight;
     }, 0);
 
     return Number(weightedScore.toFixed(2));
+  }
+
+  private softGradeValue(softGrade: string): number {
+    switch (softGrade) {
+      case 'A':
+        return 100;
+      case 'B':
+        return 80;
+      case 'C':
+        return 60;
+      case 'D':
+        return 50;
+      case 'F':
+        return 0;
+      default:
+        return 0;
+    }
   }
 }

@@ -34,10 +34,16 @@ import {
 } from '../advisors/schemas/schedule.schema';
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
+import { Submission, SubmissionDocument } from '../submissions/schemas/submission.schema';
 
 @Injectable()
 export class CommitteesService {
   private readonly logger = new Logger(CommitteesService.name);
+  private static readonly ACTIVE_GRADING_STATUSES = [
+    'GRADING',
+    'IN_REVIEW',
+    'UNDER_REVIEW',
+  ];
 
   constructor(
     @InjectModel(Committee.name)
@@ -46,7 +52,83 @@ export class CommitteesService {
     private readonly groupModel: Model<GroupDocument>,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
+    @InjectModel(Submission.name)
+    private readonly submissionModel: Model<SubmissionDocument>,
   ) {}
+
+  async deleteCommittee(
+    committeeId: string,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<void> {
+    try {
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
+
+      if (!committee) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      const groupIds = ((committee.groups as Array<{ groupId?: string }>) ?? [])
+        .map((group) => group.groupId)
+        .filter((groupId): groupId is string => typeof groupId === 'string');
+
+      if (groupIds.length > 0) {
+        const activeGradingCount = await this.submissionModel
+          .countDocuments({
+            groupId: { $in: groupIds },
+            status: {
+              $in: CommitteesService.ACTIVE_GRADING_STATUSES,
+            },
+          })
+          .exec();
+
+        if (activeGradingCount > 0) {
+          throw new ConflictException(
+            'Committee has active grading in progress and cannot be deleted.',
+          );
+        }
+      }
+
+      const deleteResult = await this.committeeModel
+        .deleteOne({ id: committeeId })
+        .exec();
+
+      if (deleteResult.deletedCount === 0) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      this.logger.log({
+        event: 'committee_deleted',
+        committeeId,
+        coordinatorId,
+        cascadedJuryCount: ((committee.jury as unknown[]) ?? []).length,
+        cascadedAdvisorCount: ((committee.advisors as unknown[]) ?? []).length,
+        cascadedGroupCount: ((committee.groups as unknown[]) ?? []).length,
+        correlationId,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ConflictException) {
+        throw error;
+      }
+
+      this.logger.error({
+        event: 'committee_delete_failed',
+        committeeId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to delete committee due to an unexpected error.',
+      );
+    }
+  }
 
   async listCommittees(
     query: ListCommitteesQueryDto,

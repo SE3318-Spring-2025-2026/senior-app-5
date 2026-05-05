@@ -123,6 +123,45 @@ export class CommitteesController {
 
   @ApiBearerAuth('access-token')
   @ApiOperation({
+    operationId: 'deleteCommittee',
+    summary: 'Delete a committee (COORDINATOR only)',
+  })
+  @ApiNoContentResponse({
+    description: 'Committee and assignment links deleted successfully',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiConflictResponse({
+    description: 'Committee has active grading in progress and cannot be deleted',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Delete(':committeeId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteCommittee(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Request() req: RequestWithUser,
+  ): Promise<void> {
+    const coordinatorId =
+      req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+
+    await this.committeesService.deleteCommittee(
+      committeeId,
+      coordinatorId,
+      correlationId,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
     operationId: 'getCommitteeById',
     summary: 'Get a committee by its ID (any authenticated user)',
   })

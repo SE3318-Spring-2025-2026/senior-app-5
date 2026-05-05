@@ -11,10 +11,6 @@ import {
   StudentFinalGradeSchema,
 } from './schemas/grade-records.schema';
 import {
-  Deliverable,
-  DeliverableSchema,
-} from './schemas/deliverable.schema';
-import {
   DeliverableEvaluation,
   DeliverableEvaluationSchema,
 } from './schemas/deliverable-evaluation.schema';
@@ -30,14 +26,15 @@ import {
   StoryPointRecord,
   StoryPointRecordSchema,
 } from '../story-points/schemas/story-point-record.schema';
+import { DeliverablesModule } from '../deliverables/deliverables.module';
 
 @Module({
   imports: [
+    DeliverablesModule,
     MongooseModule.forFeature([
       { name: StudentFinalGrade.name, schema: StudentFinalGradeSchema },
       { name: GroupFinalGrade.name, schema: GroupFinalGradeSchema },
       { name: GradeHistoryEntry.name, schema: GradeHistoryEntrySchema },
-      { name: Deliverable.name, schema: DeliverableSchema },
       { name: DeliverableEvaluation.name, schema: DeliverableEvaluationSchema },
       { name: SprintEvaluation.name, schema: SprintEvaluationSchema },
       { name: SprintConfig.name, schema: SprintConfigSchema },

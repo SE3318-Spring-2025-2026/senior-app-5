@@ -24,6 +24,7 @@ import SanitizationPage from './pages/admin/SanitizationPage';
 
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
+import GradeDisplayPage from './pages/GradeDisplayPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import './App.css';
 
@@ -57,6 +58,7 @@ function App() {
             <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
+            <Route path="/grades" element={<GradeDisplayPage />} />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route
               path="/phases/schedule"

@@ -44,6 +44,9 @@ export const apiConfig = {
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
+    groupFinalGrade: (groupId) => `/groups/${groupId}/final-grade`,
+    studentFinalGrade: (studentId) => `/students/${studentId}/final-grade`,
+    groupGradeHistory: (groupId) => `/groups/${groupId}/grade-history`,
   },  
 };
 

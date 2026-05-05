@@ -29,7 +29,6 @@ import {
 } from './schemas/sprint-evaluation.schema';
 import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
-import { softGradeValue } from './fixtures/sprint-rubric.fixtures';
 import { RubricsService } from '../rubrics/rubrics.service';
 import { RubricDocument } from '../rubrics/schemas/rubric.schema';
 
@@ -317,9 +316,26 @@ export class SprintEvaluationsService {
 
     const weightedScore = responses.reduce((sum, response) => {
       const criteriaWeight = weightByQuestionId.get(response.questionId) ?? 0;
-      return sum + softGradeValue(response.softGrade) * criteriaWeight;
+      return sum + this.softGradeValue(response.softGrade) * criteriaWeight;
     }, 0);
 
     return Number(weightedScore.toFixed(2));
+  }
+
+  private softGradeValue(softGrade: string): number {
+    switch (softGrade) {
+      case 'A':
+        return 100;
+      case 'B':
+        return 80;
+      case 'C':
+        return 60;
+      case 'D':
+        return 50;
+      case 'F':
+        return 0;
+      default:
+        return 0;
+    }
   }
 }

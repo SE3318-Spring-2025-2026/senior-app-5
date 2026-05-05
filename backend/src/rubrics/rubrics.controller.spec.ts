@@ -38,13 +38,13 @@ describe('RubricsController', () => {
       },
     } as never;
 
-    const result = await controller.listRubrics(
-      '33333333-3333-4333-8333-333333333333',
-      { page: 1, limit: 20 },
-      req,
-    );
-
-    expect(result).toEqual(response);
+    await expect(
+      controller.listRubrics(
+        '33333333-3333-4333-8333-333333333333',
+        { page: 1, limit: 20 },
+        req,
+      ),
+    ).resolves.toEqual(response);
     expect(mockService.listRubrics).toHaveBeenCalledWith(
       '33333333-3333-4333-8333-333333333333',
       { page: 1, limit: 20 },
@@ -81,13 +81,13 @@ describe('RubricsController', () => {
       },
     } as never;
 
-    const result = await controller.createRubric(
-      '33333333-3333-4333-8333-333333333333',
-      body,
-      req,
-    );
-
-    expect(result).toEqual(response);
+    await expect(
+      controller.createRubric(
+        '33333333-3333-4333-8333-333333333333',
+        body,
+        req,
+      ),
+    ).resolves.toEqual(response);
     expect(mockService.createRubric).toHaveBeenCalledWith(
       body,
       'coord-1',

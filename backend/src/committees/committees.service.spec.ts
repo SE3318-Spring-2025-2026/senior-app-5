@@ -74,6 +74,7 @@ describe('CommitteesService', () => {
     expect(service).toBeDefined();
   });
 
+  });
   // ─── createCommittee ──────────────────────────────────────────────────────
 
   describe('createCommittee', () => {
@@ -734,6 +735,7 @@ describe('CommitteesService', () => {
       ).rejects.toThrow(
         'Failed to remove jury member due to an unexpected error.',
       );
+    });
   describe('assignGroupToCommittee', () => {
     const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const groupId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';

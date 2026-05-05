@@ -80,16 +80,18 @@ describe('SubmissionsService', () => {
 
   describe('findOne', () => {
     it('should return a submission if found', async () => {
-      const mockSubmission = { _id: 'sub-1', title: 'Test Proposal' };
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d1';
+      const mockSubmission = { _id: submissionId, title: 'Test Proposal' };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockSubmission) });
-      const result = await service.findOne('sub-1');
-      expect(mockFindById).toHaveBeenCalledWith('sub-1');
+      const result = await service.findOne(submissionId);
+      expect(mockFindById).toHaveBeenCalledWith(submissionId);
       expect(result).toEqual(mockSubmission);
     });
 
     it('should throw NotFoundException if submission not found', async () => {
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d2';
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
-      await expect(service.findOne('invalid-id')).rejects.toThrow(BadRequestException);
+      await expect(service.findOne(submissionId)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -140,10 +142,11 @@ describe('SubmissionsService', () => {
 
   describe('findById', () => {
     it('should return submission when found', async () => {
-      const submission = { _id: 'sub-1', title: 'Test' };
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d3';
+      const submission = { _id: submissionId, title: 'Test' };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
-      const result = await service.findById('sub-1');
-      expect(mockFindById).toHaveBeenCalledWith('sub-1');
+      const result = await service.findById(submissionId);
+      expect(mockFindById).toHaveBeenCalledWith(submissionId);
       expect(result).toEqual(submission);
     });
 
@@ -155,8 +158,9 @@ describe('SubmissionsService', () => {
 
   describe('getCompleteness', () => {
     it('should return completeness when all required fields are present', async () => {
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d4';
       const submission = {
-        _id: 'sub-1',
+        _id: submissionId,
         title: 'Test Proposal',
         groupId: 'group-1',
         type: 'INITIAL',
@@ -167,13 +171,14 @@ describe('SubmissionsService', () => {
       const phase = { phaseId: 'phase-1', requiredFields: ['title', 'documents'] };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
       phasesService.findByPhaseId.mockResolvedValue(phase);
-      const result = await service.getCompleteness('sub-1');
-      expect(result).toEqual({ submissionId: 'sub-1', isComplete: true, missingFields: [], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
+      const result = await service.getCompleteness(submissionId);
+      expect(result).toEqual({ submissionId, isComplete: true, missingFields: [], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
     });
 
     it('should return incompleteness when required fields are missing', async () => {
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d5';
       const submission = {
-        _id: 'sub-1',
+        _id: submissionId,
         title: '',
         groupId: 'group-1',
         type: 'INITIAL',
@@ -184,8 +189,8 @@ describe('SubmissionsService', () => {
       const phase = { phaseId: 'phase-1', requiredFields: ['title', 'documents'] };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
       phasesService.findByPhaseId.mockResolvedValue(phase);
-      const result = await service.getCompleteness('sub-1');
-      expect(result).toEqual({ submissionId: 'sub-1', isComplete: false, missingFields: ['title', 'documents'], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
+      const result = await service.getCompleteness(submissionId);
+      expect(result).toEqual({ submissionId, isComplete: false, missingFields: ['title', 'documents'], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
     });
   });
 

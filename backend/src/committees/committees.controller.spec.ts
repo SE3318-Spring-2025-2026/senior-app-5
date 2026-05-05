@@ -209,6 +209,7 @@ describe('CommitteesController', () => {
         ForbiddenException,
       );
     });
+    });
   });
 
   // ─── GET /committees/:committeeId ─────────────────────────────────────────
@@ -750,6 +751,7 @@ describe('CommitteesController', () => {
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
+    });
   // ─── DELETE /committees/:committeeId/jury-members/:userId ────────────────────
 
   describe('DELETE /committees/:committeeId/jury-members/:userId', () => {
@@ -912,8 +914,6 @@ describe('CommitteesController', () => {
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
-        controller.assignGroupToCommittee(committeeId, payload, req),
-      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('repository failure -> propagates 500', async () => {

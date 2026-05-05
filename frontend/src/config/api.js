@@ -16,6 +16,7 @@ export const apiConfig = {
     },
     groups: '/groups',
     groupMembers: (groupId) => `/groups/${groupId}/members`,
+    phases: '/phases',
     phaseById: (phaseId) => `/phases/${phaseId}`,
     submissionDocuments: (submissionId) => `/submissions/${submissionId}/documents`,
     groupCommittee: (groupId) => `/groups/${groupId}/committee`,
@@ -29,6 +30,8 @@ export const apiConfig = {
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
     submissions: {
+      list: '/submissions',
+      byGroup: (groupId) => `/submissions?groupId=${groupId}`,
       mine: '/submissions/me',
       uploadDocument: (submissionId) => `/submissions/${submissionId}/documents`,
     },

@@ -108,3 +108,66 @@
     padding: 1.5rem 1rem;
   }
 }
+
+/* Breadcrumb Navigation */
+.breadcrumbNavigation {
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0.75rem 1.5rem;
+}
+
+.breadcrumbList {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  list-style: none;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.breadcrumbItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.breadcrumbLink {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.breadcrumbLink:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+.breadcrumbSeparator {
+  color: #999;
+  margin: 0 0.25rem;
+  font-size: 0.85rem;
+}
+
+.breadcrumbCurrent {
+  color: #333;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .breadcrumbNavigation {
+    padding: 0.5rem 1rem;
+  }
+
+  .breadcrumbList {
+    font-size: 0.8rem;
+    gap: 0.25rem;
+  }
+
+  .breadcrumbSeparator {
+    margin: 0 0.15rem;
+  }
+}

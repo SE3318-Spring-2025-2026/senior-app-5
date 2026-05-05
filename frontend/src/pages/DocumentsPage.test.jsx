@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import DocumentsPage from './DocumentsPage';
 import apiClient from '../utils/apiClient';
+import apiConfig from '../config/api';
 
 // 1. Mock the apiClient to prevent real network requests
 vi.mock('../utils/apiClient');
@@ -74,7 +75,7 @@ describe('DocumentsPage Component', () => {
     expect(screen.getByText('Approved')).toBeTruthy();
     
     // Check if the API was called with the correct query parameter
-    expect(apiClient.get).toHaveBeenCalledWith('/submissions?groupId=group-123');
+    expect(apiClient.get).toHaveBeenCalledWith(apiConfig.endpoints.submissions.byGroup('group-123'));
   });
 
   it('should show an error message if the user session is missing', async () => {
@@ -103,6 +104,22 @@ describe('DocumentsPage Component', () => {
     await waitFor(() => {
       expect(screen.getByText(/No submissions found/i)).toBeTruthy();
     });
+  });
+
+  it('should show a friendly error when a student has no group assigned', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'Student' }));
+
+    render(
+      <BrowserRouter>
+        <DocumentsPage />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/You are not assigned to any group yet/i)).toBeTruthy();
+    });
+
+    expect(apiClient.get).not.toHaveBeenCalled();
   });
 
   it('should navigate to details page when "View Details" is clicked', async () => {

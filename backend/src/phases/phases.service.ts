@@ -14,6 +14,14 @@ export class PhasesService {
     @InjectModel(Phase.name) private phaseModel: Model<PhaseDocument>,
   ) {}
 
+  async listForScheduling(): Promise<Phase[]> {
+    return this.phaseModel
+      .find()
+      .select('phaseId submissionStart submissionEnd -_id')
+      .sort({ phaseId: 1 })
+      .exec();
+  }
+
   async findByPhaseId(phaseId: string): Promise<Phase> {
     const phase = await this.phaseModel.findOne({ phaseId }).exec();
     if (!phase) {

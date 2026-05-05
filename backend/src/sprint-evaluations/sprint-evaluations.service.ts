@@ -76,6 +76,7 @@ export class SprintEvaluationsService {
     const evaluation = await this.sprintEvaluationModel.create({
       groupId: dto.groupId,
       sprintId: dto.sprintId,
+      deliverableId: dto.deliverableId,
       evaluationType: dto.evaluationType,
       rubricId: rubric.rubricId,
       responses: dto.responses,
@@ -88,6 +89,7 @@ export class SprintEvaluationsService {
       evaluationId: evaluation.evaluationId,
       groupId: dto.groupId,
       sprintId: dto.sprintId,
+      deliverableId: dto.deliverableId,
       evaluationType: dto.evaluationType,
       rubricId: rubric.rubricId,
       correlationId,
@@ -207,6 +209,7 @@ export class SprintEvaluationsService {
       .findOne({
         groupId: dto.groupId,
         sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
       })
       .exec();
@@ -216,11 +219,12 @@ export class SprintEvaluationsService {
         event: 'sprint_evaluation_duplicate_detected',
         groupId: dto.groupId,
         sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
         correlationId,
       });
       throw new ConflictException(
-        'A sprint evaluation already exists for this group, sprint, and evaluation type.',
+        'A sprint evaluation already exists for this group, sprint, deliverable, and evaluation type.',
       );
     }
   }
@@ -280,6 +284,7 @@ export class SprintEvaluationsService {
       evaluationId: evaluation.evaluationId,
       groupId: evaluation.groupId,
       sprintId: evaluation.sprintId,
+      deliverableId: evaluation.deliverableId,
       evaluationType: evaluation.evaluationType,
       rubricId: evaluation.rubricId,
       responses: evaluation.responses.map((response) => ({

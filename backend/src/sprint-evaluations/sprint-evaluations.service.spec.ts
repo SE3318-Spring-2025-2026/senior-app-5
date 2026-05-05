@@ -11,6 +11,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '../auth/enums/role.enum';
 import { Group } from '../groups/group.entity';
 import { Schedule } from '../advisors/schemas/schedule.schema';
+import { RubricsService } from '../rubrics/rubrics.service';
 import { SprintEvaluationsService } from './sprint-evaluations.service';
 import {
   SprintEvaluation,
@@ -34,6 +35,10 @@ describe('SprintEvaluationsService', () => {
     create: jest.fn(),
   };
 
+  const mockRubricsService = {
+    getActiveRubric: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -46,8 +51,31 @@ describe('SprintEvaluationsService', () => {
           provide: getModelToken(SprintEvaluation.name),
           useValue: mockSprintEvaluationModel,
         },
+        {
+          provide: RubricsService,
+          useValue: mockRubricsService,
+        },
       ],
     }).compile();
+
+    mockRubricsService.getActiveRubric.mockResolvedValue({
+      rubricId: '44444444-4444-4444-8444-444444444441',
+      deliverableId: '33333333-3333-4333-8333-333333333333',
+      name: 'Sprint 1 SCRUM Rubric',
+      isActive: true,
+      questions: [
+        {
+          questionId: '55555555-5555-4555-8555-555555555551',
+          criteriaName: 'Team planning quality',
+          criteriaWeight: 0.4,
+        },
+        {
+          questionId: '55555555-5555-4555-8555-555555555552',
+          criteriaName: 'Sprint execution quality',
+          criteriaWeight: 0.6,
+        },
+      ],
+    });
 
     service = module.get(SprintEvaluationsService);
   });
@@ -56,6 +84,7 @@ describe('SprintEvaluationsService', () => {
     const dto = {
       groupId: '66666666-6666-4666-8666-666666666661',
       sprintId: '22222222-2222-4222-8222-222222222222',
+      deliverableId: '33333333-3333-4333-8333-333333333333',
       evaluationType: SprintEvaluationType.SCRUM,
       responses: [
         {
@@ -115,6 +144,7 @@ describe('SprintEvaluationsService', () => {
         evaluationId: 'evaluation-1',
         groupId: dto.groupId,
         sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
         rubricId: '44444444-4444-4444-8444-444444444441',
         responses: dto.responses,
@@ -130,6 +160,7 @@ describe('SprintEvaluationsService', () => {
         evaluationId: 'evaluation-1',
         groupId: dto.groupId,
         sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
         rubricId: '44444444-4444-4444-8444-444444444441',
         responses: dto.responses,
@@ -142,6 +173,7 @@ describe('SprintEvaluationsService', () => {
       expect(mockSprintEvaluationModel.create).toHaveBeenCalledWith({
         groupId: dto.groupId,
         sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
         rubricId: '44444444-4444-4444-8444-444444444441',
         responses: dto.responses,
@@ -186,17 +218,13 @@ describe('SprintEvaluationsService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('throws BadRequestException when no rubric fixture exists', async () => {
-      const missingRubricDto = {
-        ...dto,
-        sprintId: '99999999-9999-9999-9999-999999999999',
-      };
-
+    it('throws BadRequestException when no active rubric exists', async () => {
       mockOpenWindow();
       mockOwnedGroup();
+      mockRubricsService.getActiveRubric.mockResolvedValue(null);
 
       await expect(
-        service.recordSprintEvaluation(missingRubricDto as never, caller),
+        service.recordSprintEvaluation(dto as never, caller),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 

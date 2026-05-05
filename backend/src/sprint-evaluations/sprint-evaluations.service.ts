@@ -29,11 +29,9 @@ import {
 } from './schemas/sprint-evaluation.schema';
 import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
-import {
-  resolveSprintRubricFixture,
-  softGradeValue,
-  SprintRubricFixture,
-} from './fixtures/sprint-rubric.fixtures';
+import { softGradeValue } from './fixtures/sprint-rubric.fixtures';
+import { RubricsService } from '../rubrics/rubrics.service';
+import { RubricDocument } from '../rubrics/schemas/rubric.schema';
 
 interface RequestContext {
   userId?: string;
@@ -50,6 +48,7 @@ export class SprintEvaluationsService {
     private readonly scheduleModel: Model<ScheduleDocument>,
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
+    private readonly rubricsService: RubricsService,
   ) {}
 
   async recordSprintEvaluation(
@@ -68,7 +67,10 @@ export class SprintEvaluationsService {
       advisorUserId,
       correlationId,
     );
-    const rubric = this.resolveRubricFixture(dto, correlationId);
+    const rubric = await this.resolveActiveRubric(
+      dto.deliverableId,
+      correlationId,
+    );
     this.ensureQuestionMatch(dto, rubric);
     await this.ensureEvaluationDoesNotExist(dto, correlationId);
 
@@ -229,34 +231,32 @@ export class SprintEvaluationsService {
     }
   }
 
-  private resolveRubricFixture(
-    dto: CreateSprintEvaluationDto,
+  private async resolveActiveRubric(
+    deliverableId: string,
     correlationId?: string,
-  ): SprintRubricFixture {
-    const rubric = resolveSprintRubricFixture({
-      groupId: dto.groupId,
-      sprintId: dto.sprintId,
-      evaluationType: dto.evaluationType,
-    });
+  ): Promise<RubricDocument> {
+    const rubric = await this.rubricsService.getActiveRubric(
+      deliverableId,
+      correlationId,
+    );
 
     if (!rubric) {
       this.logger.warn({
         event: 'sprint_evaluation_rubric_missing',
-        groupId: dto.groupId,
-        sprintId: dto.sprintId,
-        evaluationType: dto.evaluationType,
+        deliverableId,
         correlationId,
       });
       throw new BadRequestException(
-        'No active rubric fixture is available for this group, sprint, and evaluation type.',
+        'No active rubric is available for this deliverable.',
       );
     }
+
     return rubric;
   }
 
   private ensureQuestionMatch(
     dto: CreateSprintEvaluationDto,
-    rubric: SprintRubricFixture,
+    rubric: RubricDocument,
   ): void {
     const rubricQuestionIds = new Set(
       rubric.questions.map((question) => question.questionId),
@@ -306,7 +306,7 @@ export class SprintEvaluationsService {
 
   private calculateAverageScore(
     responses: CreateSprintEvaluationDto['responses'],
-    rubric: SprintRubricFixture,
+    rubric: RubricDocument,
   ): number {
     const weightByQuestionId = new Map(
       rubric.questions.map((question) => [

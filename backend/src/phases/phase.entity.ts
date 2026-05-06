@@ -9,6 +9,9 @@ export class Phase {
   @Prop({ type: String, default: () => randomUUID(), unique: true })
   phaseId!: string;
 
+  @Prop({ type: String, trim: true, default: '' })
+  name!: string;
+
   @Prop({ type: Date })
   submissionStart?: Date;
 

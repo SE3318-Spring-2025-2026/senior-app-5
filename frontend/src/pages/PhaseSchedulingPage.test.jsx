@@ -57,6 +57,7 @@ describe('PhaseSchedulingPage', () => {
     expect(screen.getByText(/Current Schedule/i)).toBeTruthy();
     expect(screen.getByLabelText(/Submission Start/i).value).toBeTruthy();
     expect(screen.getByLabelText(/Submission End/i).value).toBeTruthy();
+    expect(screen.getAllByText(/UTC time:/i)).toHaveLength(2);
   });
 
   it('sets the minimum submissionEnd date based on submissionStart', async () => {
@@ -111,9 +112,28 @@ describe('PhaseSchedulingPage', () => {
     expect(startInput.value).toBe(originalStart);
   });
 
-  it('shows a success message and refreshed result when the API call succeeds', async () => {
+  it('locks phase selection and shows a refreshed schedule summary when the API call succeeds', async () => {
+    let resolveUpdate;
+    const updatePromise = new Promise((resolve) => {
+      resolveUpdate = resolve;
+    });
+
     apiClient.get.mockResolvedValueOnce({ data: mockPhases });
-    apiClient.put.mockResolvedValueOnce({
+    apiClient.put.mockReturnValueOnce(updatePromise);
+
+    render(<PhaseSchedulingPage />);
+
+    const phaseSelect = await screen.findByLabelText(/^Phase$/i);
+    fireEvent.change(phaseSelect, { target: { value: 'phase-123' } });
+    fireEvent.change(screen.getByLabelText(/Submission Start/i), { target: { value: '2026-04-26T09:00' } });
+    fireEvent.change(screen.getByLabelText(/Submission End/i), { target: { value: '2026-05-03T09:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /Update Phase Schedule/i }));
+
+    await waitFor(() => {
+      expect(phaseSelect.disabled).toBe(true);
+    });
+
+    resolveUpdate({
       data: {
         phaseId: 'phase-123',
         submissionStart: '2026-04-26T09:00:00.000Z',
@@ -121,18 +141,11 @@ describe('PhaseSchedulingPage', () => {
       },
     });
 
-    render(<PhaseSchedulingPage />);
-
-    fireEvent.change(await screen.findByLabelText(/^Phase$/i), { target: { value: 'phase-123' } });
-    fireEvent.change(screen.getByLabelText(/Submission Start/i), { target: { value: '2026-04-26T09:00' } });
-    fireEvent.change(screen.getByLabelText(/Submission End/i), { target: { value: '2026-05-03T09:00' } });
-    fireEvent.click(screen.getByRole('button', { name: /Update Phase Schedule/i }));
-
     await waitFor(() => {
       expect(screen.getByText(/Phase phase-123 schedule updated successfully/i)).toBeTruthy();
     });
 
-    expect(screen.getByText(/Updated Phase/i)).toBeTruthy();
+    expect(screen.getByText(/Schedule Changes/i)).toBeTruthy();
     expect(apiClient.put).toHaveBeenCalledWith(apiConfig.endpoints.phaseSchedule('phase-123'), {
       submissionStart: expect.stringMatching(/Z$/),
       submissionEnd: expect.stringMatching(/Z$/),

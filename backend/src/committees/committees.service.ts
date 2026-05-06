@@ -579,4 +579,56 @@ export class CommitteesService {
       );
     }
   }
+
+  async removeGroupFromCommittee(
+    committeeId: string,
+    groupId: string,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<void> {
+    try {
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
+      if (!committee) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      const groupExistsInCommittee = ((committee.groups as any[]) ?? []).some(
+        (group) => group.groupId === groupId,
+      );
+      if (!groupExistsInCommittee) {
+        throw new NotFoundException(
+          `Group '${groupId}' is not assigned to committee '${committeeId}'.`,
+        );
+      }
+
+      await this.committeeModel
+        .updateOne({ id: committeeId }, { $pull: { groups: { groupId } } })
+        .exec();
+
+      this.logger.log({
+        event: 'committee_group_removed',
+        committeeId,
+        groupId,
+        coordinatorId,
+        correlationId,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({
+        event: 'committee_group_remove_failed',
+        committeeId,
+        groupId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to remove group from committee due to an unexpected error.',
+      );
+    }
+  }
 }

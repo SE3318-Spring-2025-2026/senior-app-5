@@ -7,6 +7,7 @@ export type ScheduleDocument = HydratedDocument<Schedule>;
 export enum SchedulePhase {
   ADVISOR_SELECTION = 'ADVISOR_SELECTION',
   COMMITTEE_ASSIGNMENT = 'COMMITTEE_ASSIGNMENT',
+  SPRINT = 'SPRINT',
 }
 
 @Schema({ timestamps: true })

@@ -739,6 +739,7 @@ describe('CommitteesService', () => {
     });
   });
 
+  // ─── assignGroupToCommittee ────────────────────────────────────────────────
   describe('assignGroupToCommittee', () => {
     const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const groupId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';

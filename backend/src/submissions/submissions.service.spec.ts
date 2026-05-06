@@ -1,7 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Group } from '../groups/group.entity';
+import { Group, GroupStatus } from '../groups/group.entity';
+import { Role } from '../auth/enums/role.enum';
 import { PhasesService } from '../phases/phases.service';
 import { User } from '../users/data/user.schema';
 import {
@@ -37,10 +38,7 @@ describe('SubmissionsService', () => {
   const mockGroupModel = { findOne: jest.fn() };
   const mockUserModel = { findById: jest.fn() };
 
-  const phasesService = {
-    findByPhaseId: jest.fn(),
-    getPhaseById: jest.fn(),
-  };
+
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -73,48 +71,6 @@ describe('SubmissionsService', () => {
   });
 
   describe('uploadDocument', () => {
-    it('should append a valid document and save submission', async () => {
-      const submission = {
-        _id: '64f1a2b3c4d5e6f7a8b9c0d1',
-        phaseId: 'phase-1',
-        documents: [],
-        save: jest.fn().mockResolvedValue(undefined),
-      } as any;
-
-      phasesService.getPhaseById.mockResolvedValue({
-        phaseId: 'phase-1',
-        submissionStart: new Date(Date.now() - 60_000),
-        submissionEnd: new Date(Date.now() + 60_000),
-      });
-
-  describe('findOne', () => {
-    it('should return a submission if found', async () => {
-      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d1';
-      const mockSubmission = { _id: submissionId, title: 'Test Proposal' };
-      mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockSubmission) });
-      const result = await service.findOne(submissionId);
-      expect(mockFindById).toHaveBeenCalledWith(submissionId);
-      expect(result).toEqual(mockSubmission);
-    });
-
-    it('should throw NotFoundException if submission not found', async () => {
-      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d2';
-      mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
-      await expect(service.findOne(submissionId)).rejects.toThrow(NotFoundException);
-    });
-  });
-
-      const file = {
-        originalname: 'report.pdf',
-        mimetype: 'application/pdf',
-        buffer: Buffer.from('binary-data'),
-      } as Express.Multer.File;
-
-      await expect(
-        service.uploadDocument('64f1a2b3c4d5e6f7a8b9c0d1', file),
-      ).rejects.toThrow(NotFoundException);
-    });
-
     it('should throw BadRequestException for invalid submissionId format', async () => {
       const file = {
         originalname: 'report.pdf',
@@ -141,6 +97,23 @@ describe('SubmissionsService', () => {
       expect(mockSubmissionModel).toHaveBeenCalledTimes(1);
       expect(mockSave).toHaveBeenCalledTimes(1);
       expect(result).toEqual(savedSubmission);
+    });
+  });
+
+  describe('findOne', () => {
+    it('should return a submission if found', async () => {
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d1';
+      const mockSubmission = { _id: submissionId, title: 'Test Proposal' };
+      mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockSubmission) });
+      const result = await service.findOne(submissionId);
+      expect(mockFindById).toHaveBeenCalledWith(submissionId);
+      expect(result).toEqual(mockSubmission);
+    });
+
+    it('should throw NotFoundException if submission not found', async () => {
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d2';
+      mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      await expect(service.findOne(submissionId)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -214,16 +187,6 @@ describe('SubmissionsService', () => {
       await expect(service.assertAuthorizedGroupMember({ userId: 'student-id', role: Role.Student }, 'group-1')).rejects.toThrow(ForbiddenException);
     });
 
-      const file = {
-        originalname: 'report.pdf',
-        mimetype: 'application/pdf',
-        buffer: Buffer.from('binary-data'),
-      } as Express.Multer.File;
-
-      await expect(
-        service.uploadDocument('64f1a2b3c4d5e6f7a8b9c0d1', file, submission),
-      ).rejects.toThrow(BadRequestException);
-    });
   });
 
   describe('uploadDocument (Document Integrity - Issue #68)', () => {

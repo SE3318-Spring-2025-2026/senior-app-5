@@ -64,6 +64,12 @@ describe('CommitteesService', () => {
           provide: getModelToken(Schedule.name),
           useValue: mockScheduleModel,
         },
+        {
+          provide: getModelToken('User'),
+          useValue: {
+            findById: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -999,6 +1005,84 @@ describe('CommitteesService', () => {
       await expect(
         service.removeCommitteeAdvisor(committeeId, advisorUserId, coordinatorId),
       ).rejects.toBeInstanceOf(InternalServerErrorException);
+    });
+  });
+
+  // ─── addCommitteeAdvisor ──────────────────────────────────────────────────
+  describe('addCommitteeAdvisor', () => {
+    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const advisorUserId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const coordinatorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+    const mockAdvisor = { _id: advisorUserId, role: 'Professor' };
+
+    it('happy path: valid COORDINATOR + valid advisorUserId → returns CommitteeAdvisorResponse', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId }),
+      });
+      const mockUserModel = { findById: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(mockAdvisor) }) };
+      service['userModel'] = mockUserModel as any;
+
+      mockCommitteeModel.updateOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+      });
+
+      const result = await service.addCommitteeAdvisor(
+        committeeId,
+        { advisorUserId },
+        coordinatorId,
+      );
+
+      expect(result.advisorUserId).toBe(advisorUserId);
+      expect(result.assignedByUserId).toBe(coordinatorId);
+      expect(result.assignedAt).toBeInstanceOf(Date);
+      expect(mockCommitteeModel.updateOne).toHaveBeenCalledWith(
+        { id: committeeId },
+        { $push: { advisors: expect.objectContaining({ advisorUserId, assignedByUserId: coordinatorId }) } },
+      );
+    });
+
+    it('failure: committee not found → NotFoundException', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.addCommitteeAdvisor(committeeId, { advisorUserId }, coordinatorId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('failure: user is not ADVISOR role → NotFoundException', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId }),
+      });
+      const mockUserModel = { findById: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: advisorUserId, role: 'STUDENT' }) }) };
+      service['userModel'] = mockUserModel as any;
+
+      await expect(
+        service.addCommitteeAdvisor(committeeId, { advisorUserId }, coordinatorId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('failure: advisor already linked → ConflictException', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ ...mockCommittee, id: committeeId, advisors: [{ advisorUserId }] }),
+      });
+      const mockUserModel = { findById: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(mockAdvisor) }) };
+      service['userModel'] = mockUserModel as any;
+
+      await expect(
+        service.addCommitteeAdvisor(committeeId, { advisorUserId }, coordinatorId),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('failure: repository throws → InternalServerErrorException', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockRejectedValue(new Error('DB error')),
+      });
+
+      await expect(
+        service.addCommitteeAdvisor(committeeId, { advisorUserId }, coordinatorId),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

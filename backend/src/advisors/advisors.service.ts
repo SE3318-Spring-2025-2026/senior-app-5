@@ -109,6 +109,28 @@ export interface ReleaseTeamInput {
   callerRole: string;
 }
 
+export interface ListRequestsInput {
+  callerId: string;
+  callerRole: string;
+  requestedAdvisorId?: string;
+  status?: AdvisorRequestStatus;
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedRequestsResponse {
+  data: AdvisorRequest[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface TransferAdvisorInput {
+  groupId: string;
+  currentAdvisorId: string;
+  newAdvisorId: string;
+}
+
 export interface GroupAssignmentStatusResponse {
   groupId: string;
   status: GroupAssignmentStatus | 'DISBANDED';
@@ -653,6 +675,180 @@ export class AdvisorsService {
       throw new InternalServerErrorException(
         'Failed to release group advisor.',
       );
+    }
+  }
+
+  async listRequests(
+    input: ListRequestsInput,
+  ): Promise<PaginatedRequestsResponse> {
+    const filter: Record<string, unknown> = {};
+
+    if (input.callerRole === Role.TeamLeader) {
+      const group = await this.groupModel
+        .findOne({ leaderUserId: input.callerId, status: GroupStatus.ACTIVE })
+        .lean<Group>()
+        .exec();
+      if (!group) {
+        throw new NotFoundException('No active group found for this team leader.');
+      }
+      filter.groupId = group.groupId;
+    } else if (input.callerRole === Role.Professor) {
+      filter.requestedAdvisorId = input.callerId;
+    } else {
+      if (input.requestedAdvisorId) {
+        filter.requestedAdvisorId = input.requestedAdvisorId;
+      }
+    }
+
+    if (input.status) {
+      filter.status = input.status;
+    }
+
+    const skip = (input.page - 1) * input.limit;
+
+    try {
+      const [data, total] = await Promise.all([
+        this.advisorRequestModel
+          .find(filter)
+          .skip(skip)
+          .limit(input.limit)
+          .lean<AdvisorRequest[]>()
+          .exec(),
+        this.advisorRequestModel.countDocuments(filter).exec(),
+      ]);
+
+      return { data, total, page: input.page, limit: input.limit };
+    } catch {
+      throw new InternalServerErrorException('Failed to list advisor requests.');
+    }
+  }
+
+  async getGroupStatus(groupId: string): Promise<GroupAssignmentStatusResponse> {
+    const group = await this.groupModel
+      .findOne({ groupId })
+      .lean<Group>()
+      .exec();
+
+    if (!group) {
+      throw new NotFoundException('Group was not found.');
+    }
+
+    let advisor: Pick<User, 'email'> | null = null;
+    if (group.assignedAdvisorId) {
+      advisor = await this.userModel
+        .findOne({ _id: group.assignedAdvisorId })
+        .lean<User>()
+        .exec();
+    }
+
+    return this.buildGroupAssignmentStatus(group, advisor);
+  }
+
+  async transferAdvisor(
+    input: TransferAdvisorInput,
+  ): Promise<GroupAssignmentStatusResponse> {
+    if (input.currentAdvisorId === input.newAdvisorId) {
+      throw new BadRequestException(
+        'newAdvisorId must differ from currentAdvisorId.',
+      );
+    }
+
+    try {
+      const group = await this.groupModel
+        .findOne({ groupId: input.groupId })
+        .lean<Group>()
+        .exec();
+
+      if (!group) {
+        throw new NotFoundException('Group was not found.');
+      }
+
+      if (group.status === GroupStatus.DISBANDED) {
+        throw new ConflictException('Group is disbanded.');
+      }
+
+      if (group.assignedAdvisorId !== input.currentAdvisorId) {
+        throw new BadRequestException(
+          "currentAdvisorId does not match the group's current advisor.",
+        );
+      }
+
+      const newAdvisor = await this.userModel
+        .findOne({
+          _id: input.newAdvisorId,
+          role: { $in: getAdvisorRoleFilters() },
+        })
+        .lean<User>()
+        .exec();
+
+      if (!newAdvisor) {
+        throw new NotFoundException('New advisor was not found.');
+      }
+
+      const updatedGroup = await this.groupModel
+        .findOneAndUpdate(
+          { groupId: input.groupId, assignedAdvisorId: input.currentAdvisorId },
+          { $set: { assignedAdvisorId: input.newAdvisorId } },
+          { returnDocument: 'after' },
+        )
+        .lean<Group>()
+        .exec();
+
+      if (!updatedGroup) {
+        throw new InternalServerErrorException('Failed to transfer advisor.');
+      }
+
+      await this.notificationsService.notifyAdvisorReleased({
+        recipientUserId: input.currentAdvisorId,
+        groupId: input.groupId,
+      });
+
+      return this.buildGroupAssignmentStatus(updatedGroup, newAdvisor);
+    } catch (error: unknown) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException ||
+        error instanceof BadRequestException ||
+        error instanceof HttpException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to transfer advisor.');
+    }
+  }
+
+  async disbandGroup(groupId: string): Promise<void> {
+    const group = await this.groupModel
+      .findOne({ groupId })
+      .lean<Group>()
+      .exec();
+
+    if (!group) {
+      throw new NotFoundException('Group was not found.');
+    }
+
+    if (group.status === GroupStatus.DISBANDED) {
+      return;
+    }
+
+    if (group.assignmentStatus === GroupAssignmentStatus.ASSIGNED) {
+      throw new ConflictException(
+        'Group is currently assigned to an advisor. Release the advisor first.',
+      );
+    }
+
+    try {
+      await this.groupModel
+        .updateOne({ groupId }, { $set: { status: GroupStatus.DISBANDED } })
+        .exec();
+
+      await this.advisorRequestModel.deleteMany({ groupId }).exec();
+
+      await this.userModel
+        .updateMany({ teamId: groupId }, { $set: { teamId: null } })
+        .exec();
+    } catch {
+      throw new InternalServerErrorException('Failed to disband group.');
     }
   }
 

@@ -26,7 +26,7 @@ export const Sidebar = () => {
         </NavLink>
 
         
-        {role === 'Student' && (
+        {(role === 'Student' || role === 'TeamLeader') && (
           <>
             <div style={styles.sectionHeader}>STUDENT MENU</div>
             <NavLink 
@@ -40,6 +40,18 @@ export const Sidebar = () => {
               style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
             >
               📄 <span style={styles.linkText}>My Documents</span>
+            </NavLink>
+          </>
+        )}
+
+        {role === 'Professor' && (
+          <>
+            <div style={styles.sectionHeader}>PROFESSOR MENU</div>
+            <NavLink
+              to="/review"
+              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+            >
+              <span>Review</span>
             </NavLink>
           </>
         )}

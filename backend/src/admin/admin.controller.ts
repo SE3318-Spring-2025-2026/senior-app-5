@@ -6,7 +6,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { MoveStudentDto } from './dto/move-student.dto';
 import { SanitizeGroupsDto } from './dto/sanitize-groups.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { DashboardMetricsDto } from './dto/dashboard-metrics.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -44,5 +45,13 @@ export class AdminController {
   @Roles(Role.Coordinator, Role.Admin)
   async getActivityLogs() {
     return this.adminService.getActivityLogs();
+  }
+
+  @Get('dashboard-metrics')
+  @Roles(Role.Coordinator, Role.Admin)
+  @ApiOperation({ summary: 'Get dashboard metrics' })
+  @ApiOkResponse({ type: DashboardMetricsDto })
+  async getDashboardMetrics() {
+    return this.adminService.getDashboardMetrics();
   }
 }

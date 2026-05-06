@@ -11,11 +11,18 @@ export const Sidebar = () => {
       <nav style={styles.nav}>
         
         
-        <NavLink 
-          to="/dashboard" 
+        <NavLink
+          to="/dashboard"
           style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
         >
           📊 <span style={styles.linkText}>Dashboard</span>
+        </NavLink>
+
+        <NavLink
+          to="/integrations"
+          style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+        >
+          🔗 <span style={styles.linkText}>Integrations</span>
         </NavLink>
 
         

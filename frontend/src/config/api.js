@@ -47,7 +47,8 @@ export const apiConfig = {
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
-  },  
+    githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,
+  },
 };
 
 export default apiConfig;

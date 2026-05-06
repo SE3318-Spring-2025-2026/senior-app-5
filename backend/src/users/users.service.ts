@@ -103,7 +103,10 @@ export class UsersService {
         userId,
         {
           $set: { passwordHash },
-          $unset: { passwordResetTokenHash: "", passwordResetTokenExpiresAt: "" }
+          $unset: {
+            passwordResetTokenHash: '',
+            passwordResetTokenExpiresAt: '',
+          },
         },
         { new: true },
       )
@@ -126,11 +129,37 @@ export class UsersService {
   async linkGithubAccount(
     userId: string,
     githubAccountId: string,
+    githubUsername: string,
+    githubAccessToken?: string,
+    githubScopes?: string,
   ): Promise<UserDocument | null> {
     return this.userModel
       .findByIdAndUpdate(
         userId,
-        { githubAccountId },
+        {
+          githubAccountId,
+          githubUsername,
+          githubAccessToken,
+          githubScopes,
+          githubLinkedAt: new Date(),
+        },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
+
+  async unlinkGithubAccount(userId: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $unset: {
+            githubAccountId: '',
+            githubAccessToken: '',
+            githubScopes: '',
+            githubLinkedAt: '',
+          },
+        },
         { returnDocument: 'after' },
       )
       .exec();

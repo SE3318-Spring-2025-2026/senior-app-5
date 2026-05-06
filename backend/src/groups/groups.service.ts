@@ -8,7 +8,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Group, GroupDocument, GroupStatus } from './group.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
-import { Submission } from '../submissions/schemas/submission.schema';
+import {
+  Submission,
+  SubmissionStatus,
+} from '../submissions/schemas/submission.schema';
 import { User, UserDocument } from '../users/data/user.schema';
 import {
   CommitteeEvaluation,
@@ -99,24 +102,32 @@ export class GroupsService {
       (sub) => sub.type === 'RevisedProposal',
     );
 
-    const sowStatus = sow ? sow.status : 'Not Submitted';
+    const sowStatus = sow ? String(sow.status) : 'Not Submitted';
     const revisedStatus = revisedProposal
-      ? revisedProposal.status
+      ? String(revisedProposal.status)
       : 'Not Required';
 
     let validationState = 'Pending';
 
     if (
-      sowStatus === 'Approved' &&
-      (revisedStatus === 'Approved' || revisedStatus === 'Not Required')
+      sowStatus === SubmissionStatus.Approved &&
+      (revisedStatus === SubmissionStatus.Approved ||
+        revisedStatus === 'Not Required')
     ) {
-      validationState = 'Approved';
+      validationState = SubmissionStatus.Approved;
     } else if (
+      sowStatus === SubmissionStatus.NeedsRevision ||
+      revisedStatus === SubmissionStatus.NeedsRevision ||
       sowStatus === 'Needs Revision' ||
       revisedStatus === 'Needs Revision'
     ) {
       validationState = 'Needs Revision';
-    } else if (sowStatus === 'Submitted' || revisedStatus === 'Submitted') {
+    } else if (
+      sowStatus === SubmissionStatus.UnderReview ||
+      revisedStatus === SubmissionStatus.UnderReview ||
+      sowStatus === 'Submitted' ||
+      revisedStatus === 'Submitted'
+    ) {
       validationState = 'Submitted';
     }
 

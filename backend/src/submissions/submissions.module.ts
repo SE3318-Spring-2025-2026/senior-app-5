@@ -7,6 +7,7 @@ import { Submission, SubmissionSchema } from './schemas/submission.schema';
 import { User, UserSchema } from '../users/data/user.schema';
 import { GroupMemberGuard } from '../auth/guards/group-member.guard';
 import { Group, GroupSchema } from '../groups/group.entity';
+import { Committee, CommitteeSchema } from '../committees/schemas/committee.schema';
 
 
 @Module({
@@ -15,6 +16,7 @@ import { Group, GroupSchema } from '../groups/group.entity';
       { name: Submission.name, schema: SubmissionSchema },
       { name: Group.name, schema: GroupSchema },
       { name: User.name, schema: UserSchema },
+      { name: Committee.name, schema: CommitteeSchema },
     ]),
     PhasesModule,
   ],

@@ -8,6 +8,7 @@ export enum SchedulePhase {
   ADVISOR_SELECTION = 'ADVISOR_SELECTION',
   COMMITTEE_ASSIGNMENT = 'COMMITTEE_ASSIGNMENT',
   SPRINT = 'SPRINT',
+  GRADING = 'GRADING',
 }
 
 @Schema({ timestamps: true })

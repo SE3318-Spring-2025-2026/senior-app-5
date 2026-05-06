@@ -63,6 +63,7 @@ Use the exact versions below when adding or updating dependencies. These are pin
 | class-validator          | 0.15.1        |
 | cors                     | 2.8.6         |
 | docker                   | 1.0.0         |
+| cookie-parser            | 1.4.6         |
 | helmet                   | 8.1.0         |
 | mongoose                 | 9.4.1         |
 | passport                 | 0.7.0         |

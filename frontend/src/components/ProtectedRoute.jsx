@@ -5,19 +5,23 @@ import { useAuth } from '../context/AuthContext';
 const normalizeRole = (role) => String(role || '').trim().toLowerCase();
 
 export const ProtectedRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
-  let user = null;
 
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  let user = null;
   try {
     const userStr = localStorage.getItem('user');
     user = userStr ? JSON.parse(userStr) : null;
   } catch {
     user = null;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (requiredRole && normalizeRole(user?.role) !== normalizeRole(requiredRole)) {

@@ -41,6 +41,13 @@ export class User {
 
   @Prop()
   passwordResetTokenExpiresAt?: Date;
+  
+  @Prop()
+  refreshTokenHash?: string;
+
+  @Prop()
+  refreshTokenExpiresAt?: Date;
+
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

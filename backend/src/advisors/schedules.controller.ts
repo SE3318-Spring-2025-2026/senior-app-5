@@ -52,10 +52,12 @@ export class SchedulesController {
 
     this.logger.log(
       JSON.stringify({
-        event: 'schedule_set',
+        event: 'schedule_created',
         scheduleId: result.scheduleId,
         phase: result.phase,
         coordinatorId: result.coordinatorId,
+        startDatetime: result.startDatetime,
+        endDatetime: result.endDatetime,
         correlationId,
       }),
     );

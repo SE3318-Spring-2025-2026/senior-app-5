@@ -6,16 +6,25 @@ export type TeamDocument = Team & Document;
 @Schema({ timestamps: true })
 export class Team {
   @Prop({ required: true })
-  name: string;
+  name!: string;
 
   @Prop({ required: true })
-  leaderId: string;
+  leaderId!: string;
 
   @Prop()
-  jiraProjectKey: string;
+  jiraProjectKey!: string;
 
   @Prop()
-  githubRepositoryId: string;
+  githubRepositoryId!: string;
+
+  @Prop()
+  jiraDomain!: string;
+
+  @Prop()
+  jiraEmail!: string;
+
+  @Prop()
+  jiraApiToken!: string;
 }
 
 export const TeamSchema = SchemaFactory.createForClass(Team);

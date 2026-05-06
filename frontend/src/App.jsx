@@ -26,6 +26,8 @@ import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import IntegrationsPage from './pages/IntegrationsPage';
+import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
+import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import './App.css';
 
 const RootRedirect = () => {
@@ -61,6 +63,8 @@ function App() {
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
+            <Route path="/coordinator/advisor-schedule" element={<AdvisorSchedulePage />} />
             <Route
               path="/phases/schedule"
               element={

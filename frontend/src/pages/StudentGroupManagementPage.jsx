@@ -160,7 +160,7 @@ function StudentGroupManagementPage() {
     setRequestWithdrawLoadingId(String(requestId))
 
     try {
-      await apiClient.patch(apiConfig.endpoints.requestById(requestId), { action: 'withdraw' })
+      await apiClient.patch(apiConfig.endpoints.requestById(requestId), { status: 'WITHDRAWN' })
       setWithdrawState({ loading: false, message: `Request ${requestId} withdrawn.`, error: '' })
       setWithdrawModalTarget(null)
       await fetchRequests()
@@ -351,7 +351,7 @@ function StudentGroupManagementPage() {
                       <div>
                         <strong>{requestId}</strong>
                         <p className={styles.requestMeta}>
-                          Group: {request.groupId || '-'} | Advisor: {request.advisorId || '-'}
+                          Group: {request.groupId || '-'} | Advisor: {request.requestedAdvisorId || request.advisorId || '-'}
                         </p>
                       </div>
                       <div className={styles.requestActions}>

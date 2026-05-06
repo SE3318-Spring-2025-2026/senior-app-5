@@ -26,7 +26,7 @@ export const Sidebar = () => {
         </NavLink>
 
         
-        {role === 'Student' && (
+        {(role === 'Student' || role === 'TeamLeader') && (
           <>
             <div style={styles.sectionHeader}>STUDENT MENU</div>
             <NavLink 
@@ -45,6 +45,18 @@ export const Sidebar = () => {
         )}
 
         
+        {(role === 'Professor' || role === 'Advisor') && (
+          <>
+            <div style={styles.sectionHeader}>ADVISOR MENU</div>
+            <NavLink
+              to="/advisor/requests"
+              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+            >
+              📋 <span style={styles.linkText}>Advisee Requests</span>
+            </NavLink>
+          </>
+        )}
+
         {role === 'Coordinator' && (
           <>
             <div style={styles.sectionHeader}>COORDINATOR MENU</div>
@@ -53,6 +65,12 @@ export const Sidebar = () => {
               style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
             >
               🗂️ <span style={styles.linkText}>Coordinator Suite</span>
+            </NavLink>
+            <NavLink
+              to="/coordinator/advisor-schedule"
+              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+            >
+              📅 <span style={styles.linkText}>Advisor Schedule</span>
             </NavLink>
             <NavLink
               to="/phases/schedule"

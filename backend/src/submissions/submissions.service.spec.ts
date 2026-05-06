@@ -9,11 +9,9 @@ import { Role } from '../auth/enums/role.enum';
 import { Group, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User } from '../users/data/user.schema';
-import {
-  MAX_DOCUMENTS_PER_SUBMISSION,
-  SubmissionsService,
-} from './submissions.service';
+import { SubmissionsService } from './submissions.service';
 import { Submission } from './schemas/submission.schema';
+import { Committee } from '../committees/schemas/committee.schema';
 
 jest.mock('node:fs/promises', () => ({
   mkdir: jest.fn().mockResolvedValue(undefined),
@@ -44,6 +42,7 @@ describe('SubmissionsService', () => {
 
   const mockGroupModel = { findOne: jest.fn() };
   const mockUserModel = { findById: jest.fn() };
+  const mockCommitteeModel = { findOne: jest.fn() };
 
   const oneHour = 60 * 60 * 1000;
   const mockFile = {
@@ -77,6 +76,7 @@ describe('SubmissionsService', () => {
     mockFindById.mockReset();
     mockGroupModel.findOne.mockReset();
     mockUserModel.findById.mockReset();
+    mockCommitteeModel.findOne.mockReset();
 
     phasesService = {
       findByPhaseId: jest.fn(),
@@ -89,6 +89,7 @@ describe('SubmissionsService', () => {
         { provide: getModelToken(Submission.name), useValue: mockSubmissionModel },
         { provide: getModelToken(Group.name), useValue: mockGroupModel },
         { provide: getModelToken(User.name), useValue: mockUserModel },
+        { provide: getModelToken(Committee.name), useValue: mockCommitteeModel },
         { provide: PhasesService, useValue: phasesService },
       ],
     }).compile();
@@ -365,7 +366,7 @@ describe('SubmissionsService', () => {
 
     it('should reject upload when maximum document count is reached', async () => {
       const submission = makeSubmission({
-        documents: Array.from({ length: MAX_DOCUMENTS_PER_SUBMISSION }, () => ({
+        documents: Array.from({ length: 10 }, () => ({ // 10 = MAX_DOCUMENTS_PER_SUBMISSION
           originalName: 'existing.pdf',
           mimeType: 'application/pdf',
           uploadedAt: new Date(),
@@ -377,6 +378,43 @@ describe('SubmissionsService', () => {
       await expect(service.uploadDocument(validId, mockFile)).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('Jury Member Operations (assertJuryMember)', () => {
+    const mockCommittee = {
+      groups: [{ groupId: 'group-1' }],
+      jury: [{ userId: 'prof-1' }],
+    };
+
+    beforeEach(() => {
+      mockCommitteeModel.findOne.mockReset();
+    });
+
+    it('should pass if professor is in the committee jury for the group', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockCommittee),
+      });
+
+      await expect(service.assertJuryMember('prof-1', 'group-1')).resolves.toBeUndefined();
+      
+      expect(mockCommitteeModel.findOne).toHaveBeenCalledWith({ 'groups.groupId': 'group-1' });
+    });
+
+    it('should throw NotFoundException if no committee is assigned to the group', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(service.assertJuryMember('prof-1', 'group-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if professor is NOT in the committee jury', async () => {
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockCommittee),
+      });
+
+      await expect(service.assertJuryMember('prof-unknown', 'group-1')).rejects.toThrow(ForbiddenException);
     });
   });
 });

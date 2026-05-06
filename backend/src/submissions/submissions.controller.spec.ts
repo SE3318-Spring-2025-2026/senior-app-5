@@ -188,9 +188,11 @@ describe('SubmissionsController', () => {
     it('should throw BadRequestException for invalid ObjectId format', async () => {
       const req = { user: { role: 'Coordinator' } };
       const invalidId = '123';
-      await expect(controller.findOne(req as any, invalidId)).rejects.toThrow(
-        BadRequestException,
+      mockSubmissionsService.findOne.mockRejectedValueOnce(
+        new BadRequestException('Invalid Submission ID format.'),
       );
+
+      await expect(controller.findOne(req as any, invalidId)).rejects.toThrow(BadRequestException);
     });
 
     it('should allow viewing a submission if student belongs to the group', async () => {

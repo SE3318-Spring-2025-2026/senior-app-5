@@ -648,7 +648,10 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommittees').mockResolvedValue(mockPage);
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommittees({ page: 1, limit: 20 } as any, req);
+      const result = await controller.listCommittees(
+        { page: 1, limit: 20 } as any,
+        req,
+      );
 
       expect(result).toMatchObject({
         data: expect.any(Array),
@@ -684,7 +687,10 @@ describe('CommitteesController', () => {
       });
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommittees({ page: 1, limit: 20 } as any, req);
+      const result = await controller.listCommittees(
+        { page: 1, limit: 20 } as any,
+        req,
+      );
 
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
@@ -694,7 +700,10 @@ describe('CommitteesController', () => {
       jest.spyOn(service, 'listCommittees').mockResolvedValue(mockPage);
 
       const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.listCommittees({ page: 1, limit: 20 } as any, req);
+      const result = await controller.listCommittees(
+        { page: 1, limit: 20 } as any,
+        req,
+      );
 
       result.data.forEach((item: any) => {
         expect(item).not.toHaveProperty('jury');
@@ -750,241 +759,275 @@ describe('CommitteesController', () => {
       } as unknown as ExecutionContext;
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
-  // ─── DELETE /committees/:committeeId/jury-members/:userId ────────────────────
-
-  describe('DELETE /committees/:committeeId/jury-members/:userId', () => {
-    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-    const userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-
-    it('happy path: valid COORDINATOR + existing jury member → returns undefined (204)', async () => {
-      jest.spyOn(service, 'removeJuryMember').mockResolvedValue(undefined);
-
-      const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.removeJuryMember(
-        committeeId,
-        userId,
-        req,
-      );
-
-      expect(result).toBeUndefined();
-      expect(service.removeJuryMember).toHaveBeenCalledWith(
-        committeeId,
-        userId,
-        coordinatorUser.userId,
-        undefined,
-      );
     });
 
-    it('committee not found → propagates NotFoundException (404)', async () => {
-      jest
-        .spyOn(service, 'removeJuryMember')
-        .mockRejectedValue(
-          new NotFoundException(
-            `Committee with ID '${committeeId}' not found.`,
-  describe('POST /committees/:committeeId/groups', () => {
-    const committeeId = mockCommittee.id;
-    const payload = { groupId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' };
+    // ─── DELETE /committees/:committeeId/jury-members/:userId ────────────────────
 
-    it('valid COORDINATOR, valid body -> 201 with CommitteeGroupResponse', async () => {
-      jest.spyOn(service, 'assignGroupToCommittee').mockResolvedValue({
-        groupId: payload.groupId,
-        assignedAt: now,
-        assignedByUserId: coordinatorUser.userId,
+    describe('DELETE /committees/:committeeId/jury-members/:userId', () => {
+      const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+      it('happy path: valid COORDINATOR + existing jury member → returns undefined (204)', async () => {
+        jest.spyOn(service, 'removeJuryMember').mockResolvedValue(undefined);
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        const result = await controller.removeJuryMember(
+          committeeId,
+          userId,
+          req,
+        );
+
+        expect(result).toBeUndefined();
+        expect(service.removeJuryMember).toHaveBeenCalledWith(
+          committeeId,
+          userId,
+          coordinatorUser.userId,
+          undefined,
+        );
       });
 
-      const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.assignGroupToCommittee(committeeId, payload, req);
+      it('committee not found → propagates NotFoundException (404)', async () => {
+        jest
+          .spyOn(service, 'removeJuryMember')
+          .mockRejectedValue(
+            new NotFoundException(
+              `Committee with ID '${committeeId}' not found.`,
+            ),
+          );
 
-      expect(result).toEqual({
-        groupId: payload.groupId,
-        assignedAt: now,
-        assignedByUserId: coordinatorUser.userId,
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.removeJuryMember(committeeId, userId, req),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('jury member not found → propagates NotFoundException (404)', async () => {
+        jest
+          .spyOn(service, 'removeJuryMember')
+          .mockRejectedValue(
+            new NotFoundException(
+              `Jury member with user ID '${userId}' not found in committee '${committeeId}'.`,
+            ),
+          );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.removeJuryMember(committeeId, userId, req),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('repository failure → propagates InternalServerErrorException (500)', async () => {
+        jest
+          .spyOn(service, 'removeJuryMember')
+          .mockRejectedValue(
+            new InternalServerErrorException(
+              'Failed to remove jury member due to an unexpected error.',
+            ),
+          );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.removeJuryMember(committeeId, userId, req),
+        ).rejects.toThrow(InternalServerErrorException);
       });
     });
 
-    it('delegates to service with committeeId, body, coordinatorId, correlationId', async () => {
-      jest.spyOn(service, 'assignGroupToCommittee').mockResolvedValue({
-        groupId: payload.groupId,
-        assignedAt: now,
-        assignedByUserId: coordinatorUser.userId,
+    // ─── POST /committees/:committeeId/groups ─────────────────────────────────
+
+    describe('POST /committees/:committeeId/groups', () => {
+      const committeeId = mockCommittee.id;
+      const payload = { groupId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' };
+
+      it('valid COORDINATOR, valid body -> 201 with CommitteeGroupResponse', async () => {
+        jest.spyOn(service, 'assignGroupToCommittee').mockResolvedValue({
+          groupId: payload.groupId,
+          assignedAt: now,
+          assignedByUserId: coordinatorUser.userId,
+        });
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        const result = await controller.assignGroupToCommittee(
+          committeeId,
+          payload,
+          req,
+        );
+
+        expect(result).toEqual({
+          groupId: payload.groupId,
+          assignedAt: now,
+          assignedByUserId: coordinatorUser.userId,
+        });
       });
 
-      const req = {
-        user: coordinatorUser,
-        headers: { 'x-correlation-id': 'corr-38' },
-      } as any;
-      await controller.assignGroupToCommittee(committeeId, payload, req);
+      it('delegates to service with committeeId, body, coordinatorId, correlationId', async () => {
+        jest.spyOn(service, 'assignGroupToCommittee').mockResolvedValue({
+          groupId: payload.groupId,
+          assignedAt: now,
+          assignedByUserId: coordinatorUser.userId,
+        });
 
-      expect(service.assignGroupToCommittee).toHaveBeenCalledWith(
-        committeeId,
-        payload,
-        coordinatorUser.userId,
-        'corr-38',
-      );
+        const req = {
+          user: coordinatorUser,
+          headers: { 'x-correlation-id': 'corr-38' },
+        } as any;
+        await controller.assignGroupToCommittee(committeeId, payload, req);
+
+        expect(service.assignGroupToCommittee).toHaveBeenCalledWith(
+          committeeId,
+          payload,
+          coordinatorUser.userId,
+          'corr-38',
+        );
+      });
+
+      it('group has no advisor -> propagates 422', async () => {
+        jest
+          .spyOn(service, 'assignGroupToCommittee')
+          .mockRejectedValue(
+            new UnprocessableEntityException(
+              'Group does not have a confirmed advisor assignment.',
+            ),
+          );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.assignGroupToCommittee(committeeId, payload, req),
+        ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      });
+
+      it('schedule window closed -> propagates 423', async () => {
+        jest
+          .spyOn(service, 'assignGroupToCommittee')
+          .mockRejectedValue(
+            new HttpException(
+              'Committee assignment schedule window is closed.',
+              423,
+            ),
+          );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.assignGroupToCommittee(committeeId, payload, req),
+        ).rejects.toMatchObject({ status: 423 });
+      });
+
+      it('group already assigned -> propagates 409', async () => {
+        jest
+          .spyOn(service, 'assignGroupToCommittee')
+          .mockRejectedValue(
+            new ConflictException('Group is already assigned to a committee.'),
+          );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.assignGroupToCommittee(committeeId, payload, req),
+        ).rejects.toBeInstanceOf(ConflictException);
+      });
+
+      it('committee not found -> propagates 404', async () => {
+        jest
+          .spyOn(service, 'assignGroupToCommittee')
+          .mockRejectedValue(
+            new NotFoundException(
+              `Committee with ID '${committeeId}' not found.`,
+            ),
+          );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.assignGroupToCommittee(committeeId, payload, req),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('non-COORDINATOR role via RolesGuard → throws ForbiddenException', () => {
+        const reflector = new Reflector();
+        const rolesGuard = new RolesGuard(reflector);
+
+        jest
+          .spyOn(reflector, 'getAllAndOverride')
+          .mockReturnValue([Role.Coordinator]);
+
+        const ctx = {
+          switchToHttp: () => ({ getRequest: () => ({ user: studentUser }) }),
+          getHandler: () => ({}),
+          getClass: () => ({}),
+        } as unknown as ExecutionContext;
+
+        expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
+      });
+
+      it('repository failure -> propagates 500', async () => {
+        jest
+          .spyOn(service, 'assignGroupToCommittee')
+          .mockRejectedValue(
+            new InternalServerErrorException(
+              'Failed to assign group to committee due to an unexpected error.',
+            ),
+          );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.assignGroupToCommittee(committeeId, payload, req),
+        ).rejects.toBeInstanceOf(InternalServerErrorException);
+      });
     });
 
-    it('group has no advisor -> propagates 422', async () => {
-      jest
-        .spyOn(service, 'assignGroupToCommittee')
-        .mockRejectedValue(
-          new UnprocessableEntityException(
-            'Group does not have a confirmed advisor assignment.',
-          ),
+    // ─── DELETE :committeeId/advisors/:advisorUserId ──────────────────────────
+
+    describe('DELETE :committeeId/advisors/:advisorUserId', () => {
+      const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const advisorUserId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+      it('happy path: COORDINATOR → resolves void (204)', async () => {
+        jest
+          .spyOn(service, 'removeCommitteeAdvisor')
+          .mockResolvedValue(undefined);
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        const result = await controller.removeCommitteeAdvisor(
+          committeeId,
+          advisorUserId,
+          req,
         );
 
-      const req = { user: coordinatorUser, headers: {} } as any;
-      await expect(
-        controller.removeJuryMember(committeeId, userId, req),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('jury member not found → propagates NotFoundException (404)', async () => {
-      jest
-        .spyOn(service, 'removeJuryMember')
-        .mockRejectedValue(
-          new NotFoundException(
-            `Jury member with user ID '${userId}' not found in committee '${committeeId}'.`,
-          ),
-        controller.assignGroupToCommittee(committeeId, payload, req),
-      ).rejects.toBeInstanceOf(UnprocessableEntityException);
-    });
-
-    it('schedule window closed -> propagates 423', async () => {
-      jest
-        .spyOn(service, 'assignGroupToCommittee')
-        .mockRejectedValue(
-          new HttpException('Committee assignment schedule window is closed.', 423),
+        expect(result).toBeUndefined();
+        expect(service.removeCommitteeAdvisor).toHaveBeenCalledWith(
+          committeeId,
+          advisorUserId,
+          coordinatorUser.userId,
+          undefined,
         );
+      });
 
-      const req = { user: coordinatorUser, headers: {} } as any;
-      await expect(
-        controller.removeJuryMember(committeeId, userId, req),
-      ).rejects.toThrow(NotFoundException);
-    });
+      it('service throws NotFoundException → propagates', async () => {
+        jest
+          .spyOn(service, 'removeCommitteeAdvisor')
+          .mockRejectedValue(
+            new NotFoundException(
+              `Advisor link for user '${advisorUserId}' not found in committee '${committeeId}'.`,
+            ),
+          );
 
-    it('repository failure → propagates InternalServerErrorException (500)', async () => {
-      jest
-        .spyOn(service, 'removeJuryMember')
-        .mockRejectedValue(
-          new InternalServerErrorException(
-            'Failed to remove jury member due to an unexpected error.',
-          ),
-        controller.assignGroupToCommittee(committeeId, payload, req),
-      ).rejects.toMatchObject({ status: 423 });
-    });
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.removeCommitteeAdvisor(committeeId, advisorUserId, req),
+        ).rejects.toBeInstanceOf(NotFoundException);
+      });
 
-    it('group already assigned -> propagates 409', async () => {
-      jest
-        .spyOn(service, 'assignGroupToCommittee')
-        .mockRejectedValue(new ConflictException('Group is already assigned to a committee.'));
+      it('service throws InternalServerErrorException → propagates', async () => {
+        jest
+          .spyOn(service, 'removeCommitteeAdvisor')
+          .mockRejectedValue(
+            new InternalServerErrorException(
+              'Failed to remove committee advisor due to an unexpected error.',
+            ),
+          );
 
-      const req = { user: coordinatorUser, headers: {} } as any;
-      await expect(
-        controller.assignGroupToCommittee(committeeId, payload, req),
-      ).rejects.toBeInstanceOf(ConflictException);
-    });
-
-    it('committee not found -> propagates 404', async () => {
-      jest
-        .spyOn(service, 'assignGroupToCommittee')
-        .mockRejectedValue(
-          new NotFoundException(`Committee with ID '${committeeId}' not found.`),
-        );
-
-      const req = { user: coordinatorUser, headers: {} } as any;
-      await expect(
-        controller.removeJuryMember(committeeId, userId, req),
-      ).rejects.toThrow(InternalServerErrorException);
-    });
-
-    it('non-COORDINATOR role via RolesGuard → throws ForbiddenException', () => {
-      const reflector = new Reflector();
-      const rolesGuard = new RolesGuard(reflector);
-
-      jest
-        .spyOn(reflector, 'getAllAndOverride')
-        .mockReturnValue([Role.Coordinator]);
-
-      const ctx = {
-        switchToHttp: () => ({ getRequest: () => ({ user: studentUser }) }),
-        getHandler: () => ({}),
-        getClass: () => ({}),
-      } as unknown as ExecutionContext;
-
-      expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
-        controller.assignGroupToCommittee(committeeId, payload, req),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
-
-    it('repository failure -> propagates 500', async () => {
-      jest
-        .spyOn(service, 'assignGroupToCommittee')
-        .mockRejectedValue(
-          new InternalServerErrorException(
-            'Failed to assign group to committee due to an unexpected error.',
-          ),
-        );
-
-      const req = { user: coordinatorUser, headers: {} } as any;
-      await expect(
-        controller.assignGroupToCommittee(committeeId, payload, req),
-      ).rejects.toBeInstanceOf(InternalServerErrorException);
-    });
-  });
-
-  // ─── DELETE :committeeId/advisors/:advisorUserId ──────────────────────────
-
-  describe('DELETE :committeeId/advisors/:advisorUserId', () => {
-    const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-    const advisorUserId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-
-    it('happy path: COORDINATOR → resolves void (204)', async () => {
-      jest.spyOn(service, 'removeCommitteeAdvisor').mockResolvedValue(undefined);
-
-      const req = { user: coordinatorUser, headers: {} } as any;
-      const result = await controller.removeCommitteeAdvisor(
-        committeeId,
-        advisorUserId,
-        req,
-      );
-
-      expect(result).toBeUndefined();
-      expect(service.removeCommitteeAdvisor).toHaveBeenCalledWith(
-        committeeId,
-        advisorUserId,
-        coordinatorUser.userId,
-        undefined,
-      );
-    });
-
-    it('service throws NotFoundException → propagates', async () => {
-      jest
-        .spyOn(service, 'removeCommitteeAdvisor')
-        .mockRejectedValue(
-          new NotFoundException(
-            `Advisor link for user '${advisorUserId}' not found in committee '${committeeId}'.`,
-          ),
-        );
-
-      const req = { user: coordinatorUser, headers: {} } as any;
-      await expect(
-        controller.removeCommitteeAdvisor(committeeId, advisorUserId, req),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
-
-    it('service throws InternalServerErrorException → propagates', async () => {
-      jest
-        .spyOn(service, 'removeCommitteeAdvisor')
-        .mockRejectedValue(
-          new InternalServerErrorException(
-            'Failed to remove committee advisor due to an unexpected error.',
-          ),
-        );
-
-      const req = { user: coordinatorUser, headers: {} } as any;
-      await expect(
-        controller.removeCommitteeAdvisor(committeeId, advisorUserId, req),
-      ).rejects.toBeInstanceOf(InternalServerErrorException);
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.removeCommitteeAdvisor(committeeId, advisorUserId, req),
+        ).rejects.toBeInstanceOf(InternalServerErrorException);
+      });
     });
   });
 });

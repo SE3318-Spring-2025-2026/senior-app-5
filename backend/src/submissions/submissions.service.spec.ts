@@ -89,16 +89,20 @@ describe('SubmissionsService', () => {
 
   describe('findOne', () => {
     it('should return a submission if found', async () => {
-      const validId = '507f1f77bcf86cd799439011';
-      const mockSubmission = { _id: validId, title: 'Test Proposal' };
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d1';
+      const mockSubmission = { _id: submissionId, title: 'Test Proposal' };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockSubmission) });
-      const result = await service.findOne(validId);
-      expect(mockFindById).toHaveBeenCalledWith(validId);
+      const result = await service.findOne(submissionId);
+      expect(mockFindById).toHaveBeenCalledWith(submissionId);
       expect(result).toEqual(mockSubmission);
     });
 
-    it('should throw NotFoundException when submission not found', async () => {
+    it('should throw NotFoundException if submission not found', async () => {
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d2';
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      await expect(service.findOne(submissionId)).rejects.toThrow(NotFoundException);
+    });
+  });
 
       const file = {
         originalname: 'report.pdf',
@@ -142,11 +146,11 @@ describe('SubmissionsService', () => {
 
   describe('findById', () => {
     it('should return submission when found', async () => {
-      const validId = '507f1f77bcf86cd799439011';
-      const submission = { _id: validId, title: 'Test' };
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d3';
+      const submission = { _id: submissionId, title: 'Test' };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
-      const result = await service.findById(validId);
-      expect(mockFindById).toHaveBeenCalledWith(validId);
+      const result = await service.findById(submissionId);
+      expect(mockFindById).toHaveBeenCalledWith(submissionId);
       expect(result).toEqual(submission);
     });
 
@@ -158,9 +162,9 @@ describe('SubmissionsService', () => {
 
   describe('getCompleteness', () => {
     it('should return completeness when all required fields are present', async () => {
-      const validId = '507f1f77bcf86cd799439011';
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d4';
       const submission = {
-        _id: validId,
+        _id: submissionId,
         title: 'Test Proposal',
         groupId: 'group-1',
         type: 'INITIAL',
@@ -171,14 +175,14 @@ describe('SubmissionsService', () => {
       const phase = { phaseId: 'phase-1', requiredFields: ['title', 'documents'] };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
       phasesService.findByPhaseId.mockResolvedValue(phase);
-      const result = await service.getCompleteness(validId);
-      expect(result).toEqual({ submissionId: validId, isComplete: true, missingFields: [], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
+      const result = await service.getCompleteness(submissionId);
+      expect(result).toEqual({ submissionId, isComplete: true, missingFields: [], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
     });
 
     it('should return incompleteness when required fields are missing', async () => {
-      const validId = '507f1f77bcf86cd799439012';
+      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d5';
       const submission = {
-        _id: validId,
+        _id: submissionId,
         title: '',
         groupId: 'group-1',
         type: 'INITIAL',
@@ -189,8 +193,8 @@ describe('SubmissionsService', () => {
       const phase = { phaseId: 'phase-1', requiredFields: ['title', 'documents'] };
       mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
       phasesService.findByPhaseId.mockResolvedValue(phase);
-      const result = await service.getCompleteness(validId);
-      expect(result).toEqual({ submissionId: validId, isComplete: false, missingFields: ['title', 'documents'], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
+      const result = await service.getCompleteness(submissionId);
+      expect(result).toEqual({ submissionId, isComplete: false, missingFields: ['title', 'documents'], requiredFields: ['title', 'documents'], phaseId: 'phase-1' });
     });
   });
 

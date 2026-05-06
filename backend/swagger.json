@@ -66,45 +66,6 @@
         ]
       }
     },
-    "/api/v1/users/{userId}/integrations/github": {
-      "post": {
-        "operationId": "UsersController_linkGithub",
-        "parameters": [
-          {
-            "name": "userId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LinkGithubDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Link authenticated user account to GitHub",
-        "tags": [
-          "Users"
-        ]
-      }
-    },
     "/api/v1/auth/register": {
       "post": {
         "operationId": "AuthController_register",
@@ -171,9 +132,13 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Returns new access token and sets rotated refresh cookie"
+          },
+          "401": {
+            "description": "Invalid or expired refresh token"
           }
         },
+        "summary": "Rotate refresh token and return a new access token",
         "tags": [
           "Auth"
         ]
@@ -185,9 +150,13 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Logged out and refresh cookie cleared"
+          },
+          "401": {
+            "description": "Missing or invalid token (if access token provided)"
           }
         },
+        "summary": "Logout and clear refresh token cookie. Can be called with access token or refresh cookie.",
         "tags": [
           "Auth"
         ]
@@ -336,6 +305,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkGithubDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "GitHub account linked successfully"
@@ -350,6 +329,66 @@
           }
         ],
         "summary": "Link GitHub account using OAuth code",
+        "tags": [
+          "Auth"
+        ]
+      },
+      "get": {
+        "operationId": "AuthController_getGithubIntegration",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns whether the user has linked a GitHub account"
+          },
+          "401": {
+            "description": "Missing or invalid JWT token"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get GitHub link status for the user",
+        "tags": [
+          "Auth"
+        ]
+      },
+      "delete": {
+        "operationId": "AuthController_unlinkGithubIntegration",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GitHub account unlinked successfully"
+          },
+          "401": {
+            "description": "Missing or invalid JWT token"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Unlink the user’s GitHub account",
         "tags": [
           "Auth"
         ]
@@ -1658,6 +1697,81 @@
         ]
       }
     },
+    "/api/v1/submissions/committee/{groupId}": {
+      "get": {
+        "operationId": "SubmissionsController_getSubmissionsForCommittee",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JurySubmissionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List submissions for a committee-assigned group",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/committee/detail/{submissionId}": {
+      "get": {
+        "operationId": "SubmissionsController_getSubmissionDetailForCommittee",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JurySubmissionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get single submission detail for jury member",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
     "/api/v1/groups/{groupId}/sprints/{sprintId}/story-points": {
       "post": {
         "operationId": "fetchAndVerifyStoryPoints",
@@ -2515,19 +2629,6 @@
       }
     },
     "schemas": {
-      "LinkGithubDto": {
-        "type": "object",
-        "properties": {
-          "oauthAccessToken": {
-            "type": "string",
-            "example": "gho_1234567890abcdef",
-            "description": "GitHub OAuth access token"
-          }
-        },
-        "required": [
-          "oauthAccessToken"
-        ]
-      },
       "RegisterDto": {
         "type": "object",
         "properties": {
@@ -2638,6 +2739,19 @@
           "email",
           "password",
           "role"
+        ]
+      },
+      "LinkGithubDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "a1b2c3d4e5f6",
+            "description": "OAuth authorization code returned by GitHub after user consent"
+          }
+        },
+        "required": [
+          "code"
         ]
       },
       "UpdateIntegrationsDto": {
@@ -3172,6 +3286,69 @@
       "CreateSubmissionDto": {
         "type": "object",
         "properties": {}
+      },
+      "SubmissionDocumentMetadataDto": {
+        "type": "object",
+        "properties": {
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "originalName",
+          "mimeType",
+          "uploadedAt"
+        ]
+      },
+      "JurySubmissionResponseDto": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "phaseId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmissionDocumentMetadataDto"
+            }
+          }
+        },
+        "required": [
+          "_id",
+          "title",
+          "type",
+          "status",
+          "phaseId",
+          "groupId",
+          "submittedAt",
+          "documents"
+        ]
       },
       "FetchStoryPointsDto": {
         "type": "object",

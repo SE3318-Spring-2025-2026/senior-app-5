@@ -91,6 +91,10 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate refresh token and return a new access token' })
+  @ApiOkResponse({ description: 'Returns new access token and sets rotated refresh cookie' })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  @HttpCode(HttpStatus.OK)
   @Post('refresh')
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const cookies = (req as any).cookies;
@@ -116,14 +120,32 @@ export class AuthController {
     return { accessToken: result.accessToken };
   }
 
+  @ApiOperation({ summary: 'Logout and clear refresh token cookie. Can be called with access token or refresh cookie.' })
+  @ApiOkResponse({ description: 'Logged out and refresh cookie cleared' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid token (if access token provided)' })
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  @UseGuards(AuthGuard('jwt'))
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const user = req.user as JwtUser;
-    await this.authService.logout(user.userId);
+    // Attempt to derive userId from access token (if provided) or from refresh cookie
+    let userId: string | undefined;
+    try {
+      if ((req as any).user) {
+        userId = (req as any).user.userId;
+      }
+    } catch (e) {
+      // ignore
+    }
 
-    // Clear cookies
+    const cookies = (req as any).cookies;
+    if (!userId && cookies?.refreshUserId) {
+      userId = cookies.refreshUserId;
+    }
+
+    if (userId) {
+      await this.authService.logout(userId);
+    }
+
+    // Clear cookies unconditionally
     res.clearCookie('refreshToken', { path: '/' });
     res.clearCookie('refreshUserId', { path: '/' });
 

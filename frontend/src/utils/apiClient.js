@@ -16,17 +16,27 @@ const refreshClient = axios.create({
   withCredentials: true,
 });
 
+// Single-flight promise for refresh requests to avoid concurrent rotation issues
+let refreshPromise = null;
 async function tryRefreshToken() {
-  try {
-    const resp = await refreshClient.post(apiConfig.endpoints.auth.refresh);
-    if (resp?.data?.accessToken) {
-      localStorage.setItem('accessToken', resp.data.accessToken);
-      return true;
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const resp = await refreshClient.post(apiConfig.endpoints.auth.refresh);
+      if (resp?.data?.accessToken) {
+        localStorage.setItem('accessToken', resp.data.accessToken);
+        return true;
+      }
+    } catch (err) {
+      // ignore and let caller handle redirect
+    } finally {
+      refreshPromise = null;
     }
-  } catch (err) {
-    // ignore and let caller handle redirect
-  }
-  return false;
+    return false;
+  })();
+
+  return refreshPromise;
 }
 
 // Add request interceptor to include JWT token if available
@@ -63,3 +73,4 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+export { refreshClient };

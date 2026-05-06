@@ -121,6 +121,24 @@ export const authService = {
   getUserEmail() {
     return localStorage.getItem('userEmail');
   },
+
+  async getGithubStatus(userId) {
+    const response = await apiClient.get(apiConfig.endpoints.githubIntegration(userId));
+    return response.data;
+  },
+
+  async linkGithub(userId, code) {
+    const response = await apiClient.post(
+      apiConfig.endpoints.githubIntegration(userId),
+      { code },
+    );
+    return response.data;
+  },
+
+  async unlinkGithub(userId) {
+    const response = await apiClient.delete(apiConfig.endpoints.githubIntegration(userId));
+    return response.data;
+  },
 };
 
 export default authService;

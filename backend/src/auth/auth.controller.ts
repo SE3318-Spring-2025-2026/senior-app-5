@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Req,
@@ -8,18 +9,20 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 import { RegisterDto } from '../users/data/dto/register.dto';
 import { LoginDto } from '../users/data/dto/login.dto';
 import { CreateProfessorDto } from './dto/create-professor.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
+import { LinkGithubDto } from '../users/dto/link-github.dto';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { Role } from './enums/role.enum';
@@ -46,7 +49,10 @@ interface RequestWithUser extends Request {
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @ApiOperation({ summary: 'Register a new user' })
   @ApiCreatedResponse({ description: 'User registered successfully' })
@@ -98,22 +104,28 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new coordinator (Admin only)' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized or invalid token' })
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.Admin) 
+  @Roles(Role.Admin)
   @Post('admin/coordinators')
   async registerCoordinator(@Body() body: RegisterDto) {
-    return this.authService.register(body.email, body.password, Role.Coordinator);
+    return this.authService.register(
+      body.email,
+      body.password,
+      Role.Coordinator,
+    );
   }
-  
+
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current authenticated user details' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized or invalid token' })
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
-  me(@Req() req: RequestWithUser) {
+  async me(@Req() req: RequestWithUser) {
+    const user = await this.usersService.findById(req.user.userId);
     return {
       id: req.user.userId,
       email: req.user.email,
       role: req.user.role,
+      isGithubConnected: !!user?.githubAccountId,
     };
   }
 
@@ -126,13 +138,53 @@ export class AuthController {
   async linkGithubIntegration(
     @Req() req: RequestWithUser,
     @Param('userId') userId: string,
-    @Body('code') code: string,
+    @Body() dto: LinkGithubDto,
   ) {
-    // SECURITY: Prevent changing someone else's account from your own (403)
     if (req.user.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to modify this account');
+      throw new ForbiddenException(
+        'You do not have permission to modify this account',
+      );
     }
 
-    return this.authService.linkGithubAccount(userId, code);
+    return this.authService.linkGithubAccount(userId, dto.code);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get GitHub link status for the user' })
+  @ApiOkResponse({
+    description: 'Returns whether the user has linked a GitHub account',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
+  @UseGuards(AuthGuard('jwt'))
+  @Get('users/:userId/integrations/github')
+  async getGithubIntegration(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+  ) {
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to view this account',
+      );
+    }
+    return this.authService.getGithubStatus(userId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Unlink the user’s GitHub account' })
+  @ApiOkResponse({ description: 'GitHub account unlinked successfully' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  @Delete('users/:userId/integrations/github')
+  async unlinkGithubIntegration(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+  ) {
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this account',
+      );
+    }
+    return this.authService.unlinkGithubAccount(userId);
   }
 }

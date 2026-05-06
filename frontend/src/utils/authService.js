@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient, { refreshClient } from './apiClient';
 import apiConfig from '../config/api';
 
 export const authService = {
@@ -101,9 +101,15 @@ export const authService = {
   /**
    * Logout user (clears local storage)
    */
-  logout() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userEmail');
+  async logout() {
+    try {
+      // Use refreshClient (no interceptors) so logout cannot trigger a token refresh
+      await refreshClient.post(apiConfig.endpoints.auth.logout).catch(() => {});
+    } finally {
+      // Clear client state regardless of remote result
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userEmail');
+    }
   },
 
   /**

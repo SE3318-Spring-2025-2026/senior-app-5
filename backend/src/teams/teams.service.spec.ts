@@ -11,26 +11,20 @@ describe('TeamsService - updateIntegrations', () => {
   let httpService: HttpService;
 
   const mockTeamId = 'team123';
-  const mockJiraProjectKey = 'JIRA-1';
-  const mockJiraDomain = 'test.atlassian.net';
-  const mockJiraEmail = 'test@test.com';
-  const mockJiraApiToken = 'token123';
-  const mockGithubRepositoryId = 'repo123';
+  const mockDto = {
+    jiraProjectKey: 'JIRA-1',
+    jiraDomain: 'test.atlassian.net',
+    jiraEmail: 'test@test.com',
+    jiraApiToken: 'token123',
+    githubRepositoryId: 'repo123',
+  };
 
   const mockUpdatedTeam = {
     _id: mockTeamId,
-    jiraProjectKey: mockJiraProjectKey,
-    jiraDomain: mockJiraDomain,
-    jiraEmail: mockJiraEmail,
-    jiraApiToken: mockJiraApiToken,
-    githubRepositoryId: mockGithubRepositoryId,
+    ...mockDto,
     toObject: jest.fn().mockReturnValue({
       _id: mockTeamId,
-      jiraProjectKey: mockJiraProjectKey,
-      jiraDomain: mockJiraDomain,
-      jiraEmail: mockJiraEmail,
-      jiraApiToken: mockJiraApiToken,
-      githubRepositoryId: mockGithubRepositoryId,
+      ...mockDto,
     }),
   };
 
@@ -61,27 +55,18 @@ describe('TeamsService - updateIntegrations', () => {
   it('should update integrations successfully and strip jiraApiToken from response', async () => {
     jest.spyOn(httpService, 'get').mockImplementation(() => of({ data: {} } as any));
 
-    const result = await service.updateIntegrations(
-      mockTeamId,
-      mockJiraProjectKey,
-      mockJiraDomain,
-      mockJiraEmail,
-      mockJiraApiToken,
-      mockGithubRepositoryId
-    );
+    const result = await service.updateIntegrations(mockTeamId, mockDto);
 
     expect(result.success).toBe(true);
     
     expect(result.data.jiraApiToken).toBeUndefined();
-    expect(result.data.jiraDomain).toBe(mockJiraDomain);
+    expect(result.data.jiraDomain).toBe(mockDto.jiraDomain);
   });
 
   it('should throw 422 if GitHub repository is invalid', async () => {
     jest.spyOn(httpService, 'get').mockImplementationOnce(() => throwError(() => new Error('GitHub Error')));
 
-    await expect(service.updateIntegrations(
-      mockTeamId, mockJiraProjectKey, mockJiraDomain, mockJiraEmail, mockJiraApiToken, mockGithubRepositoryId
-    )).rejects.toThrow(
+    await expect(service.updateIntegrations(mockTeamId, mockDto)).rejects.toThrow(
       new HttpException('Invalid or not found GitHub Repository ID.', HttpStatus.UNPROCESSABLE_ENTITY),
     );
   });
@@ -90,9 +75,7 @@ describe('TeamsService - updateIntegrations', () => {
     jest.spyOn(httpService, 'get').mockImplementationOnce(() => of({ data: {} } as any));
     jest.spyOn(httpService, 'get').mockImplementationOnce(() => throwError(() => ({ response: { status: 401 } })));
 
-    await expect(service.updateIntegrations(
-      mockTeamId, mockJiraProjectKey, mockJiraDomain, mockJiraEmail, mockJiraApiToken, mockGithubRepositoryId
-    )).rejects.toThrow(
+    await expect(service.updateIntegrations(mockTeamId, mockDto)).rejects.toThrow(
       new HttpException('Jira Authentication failed. Please check your Email and API Token.', HttpStatus.UNPROCESSABLE_ENTITY),
     );
   });
@@ -101,9 +84,7 @@ describe('TeamsService - updateIntegrations', () => {
     jest.spyOn(httpService, 'get').mockImplementationOnce(() => of({ data: {} } as any));
     jest.spyOn(httpService, 'get').mockImplementationOnce(() => throwError(() => ({ response: { status: 404 } })));
 
-    await expect(service.updateIntegrations(
-      mockTeamId, mockJiraProjectKey, mockJiraDomain, mockJiraEmail, mockJiraApiToken, mockGithubRepositoryId
-    )).rejects.toThrow(
+    await expect(service.updateIntegrations(mockTeamId, mockDto)).rejects.toThrow(
       new HttpException('Invalid Jira Project Key or Domain.', HttpStatus.UNPROCESSABLE_ENTITY),
     );
   });

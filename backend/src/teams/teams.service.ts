@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { lastValueFrom } from 'rxjs';
 import { Team, TeamDocument } from './schemas/team.schema';
+import { UpdateIntegrationsDto } from './dto/update-integrations.dto';
 
 @Injectable()
 export class TeamsService {
@@ -12,14 +13,16 @@ export class TeamsService {
     @InjectModel(Team.name) private teamModel: Model<TeamDocument>,
   ) {}
 
-  async updateIntegrations(
-    teamId: string,
-    jiraProjectKey: string,
-    jiraDomain: string,
-    jiraEmail: string,
-    jiraApiToken: string,
-    githubRepositoryId: string,
-  ) {
+  async updateIntegrations(teamId: string, dto: UpdateIntegrationsDto) {
+    
+    const { 
+      jiraProjectKey, 
+      jiraDomain, 
+      jiraEmail, 
+      jiraApiToken, 
+      githubRepositoryId 
+    } = dto;
+
     try {
       await lastValueFrom(
         this.httpService.get(
@@ -35,7 +38,6 @@ export class TeamsService {
     }
 
     try {
-      
       const authToken = Buffer.from(`${jiraEmail}:${jiraApiToken}`).toString('base64');
       
       await lastValueFrom(

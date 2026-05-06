@@ -9,6 +9,7 @@ import { Model, isValidObjectId } from 'mongoose';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Role } from '../auth/enums/role.enum';
+import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User, UserDocument } from '../users/data/user.schema';
@@ -32,6 +33,7 @@ export class SubmissionsService {
     private submissionModel: Model<SubmissionDocument>,
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Committee.name) private committeeModel: Model<CommitteeDocument>,
     private readonly phasesService: PhasesService,
   ) {}
 
@@ -97,7 +99,57 @@ export class SubmissionsService {
     return submission.save();
   }
 
-  async findAll(groupId?: string) {
+  private getJuryUserIds(committee: Pick<Committee, 'jury'>): string[] {
+    return ((committee.jury as any[]) ?? [])
+      .map((member) => member.userId ?? member.reviewerUserId ?? member.id)
+      .filter(Boolean)
+      .map(String);
+  }
+
+  private getCommitteeGroupIds(committee: Pick<Committee, 'groups'>): string[] {
+    return ((committee.groups as any[]) ?? [])
+      .map((group) => group.groupId ?? group.id)
+      .filter(Boolean)
+      .map(String);
+  }
+
+  async getCommitteeSubmissionGroupIds(
+    committeeId: string,
+    professorUserId: string,
+  ): Promise<string[]> {
+    const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+    if (!committee) {
+      throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+    }
+
+    if (!this.getJuryUserIds(committee).includes(String(professorUserId))) {
+      throw new ForbiddenException('Caller is not in the committee jury.');
+    }
+
+    return this.getCommitteeGroupIds(committee);
+  }
+
+  async assertProfessorCanAccessSubmission(
+    submission: SubmissionDocument,
+    professorUserId: string,
+  ): Promise<void> {
+    const committee = await this.committeeModel
+      .findOne({ 'groups.groupId': submission.groupId, 'jury.userId': professorUserId })
+      .exec();
+    if (!committee) {
+      throw new ForbiddenException(
+        'Submission is outside the calling professor committee.',
+      );
+    }
+  }
+
+  async findAll(groupId?: string, committeeGroupIds?: string[]) {
+    if (committeeGroupIds) {
+      return this.submissionModel
+        .find({ groupId: { $in: committeeGroupIds } })
+        .sort({ createdAt: -1 })
+        .exec();
+    }
     const query = groupId ? { groupId } : {};
     return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }

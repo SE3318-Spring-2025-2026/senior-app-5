@@ -1359,6 +1359,20 @@
         ]
       }
     },
+    "/api/v1/phases": {
+      "get": {
+        "operationId": "PhasesController_listPhases",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Phases"
+        ]
+      }
+    },
     "/api/v1/phases/{phaseId}": {
       "get": {
         "operationId": "PhasesController_getPhase",
@@ -1474,6 +1488,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "committeeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1521,6 +1543,72 @@
         ]
       }
     },
+    "/api/v1/submissions/{submissionId}/documents": {
+      "post": {
+        "operationId": "SubmissionsController_uploadFile",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Document uploaded successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a document for a submission",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/{submissionId}/documents/{documentIndex}": {
+      "get": {
+        "operationId": "SubmissionsController_downloadDocument",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "documentIndex",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a submission document by index",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
     "/api/v1/submissions/{id}": {
       "get": {
         "operationId": "SubmissionsController_findOne",
@@ -1547,6 +1635,189 @@
         "summary": "Get submission details by ID",
         "tags": [
           "Submissions"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/sprints/{sprintId}/story-points": {
+      "post": {
+        "operationId": "fetchAndVerifyStoryPoints",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FetchStoryPointsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Story points fetched and verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryPointSummaryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Requires COORDINATOR or ADVISOR role"
+          },
+          "404": {
+            "description": "Group, sprint config, or student not found"
+          },
+          "422": {
+            "description": "Sprint config missing or no active sprint window"
+          },
+          "502": {
+            "description": "JIRA/GitHub API unreachable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fetch and verify story points from JIRA/GitHub per student per sprint",
+        "tags": [
+          "Story Points"
+        ]
+      },
+      "get": {
+        "operationId": "getStoryPoints",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Story point records returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryPointSummaryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Requires COORDINATOR or ADVISOR role"
+          },
+          "422": {
+            "description": "Sprint config not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get story point records for a group sprint",
+        "tags": [
+          "Story Points"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/sprints/{sprintId}/story-points/override": {
+      "patch": {
+        "operationId": "overrideStoryPoints",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideStoryPointsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Story point record updated with COORDINATOR_OVERRIDE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentStoryPointRecordDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Requires COORDINATOR role"
+          },
+          "404": {
+            "description": "Sprint config or student record not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Override story points for a student (COORDINATOR only)",
+        "tags": [
+          "Story Points"
         ]
       }
     },
@@ -1710,6 +1981,233 @@
         ]
       }
     },
+    "/api/v1/groups/{groupId}/calculate": {
+      "post": {
+        "operationId": "calculateGrade",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculateGradeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeCalculationResultDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "409": {
+            "description": "Final grade already exists and force=false"
+          },
+          "422": {
+            "description": "Missing preconditions (evaluations not complete, config missing, etc)"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Calculate and persist final grades for a group",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/deliverables": {
+      "get": {
+        "operationId": "listDeliverables",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page index",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedDeliverablesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List deliverables with pagination",
+        "tags": [
+          "Deliverables"
+        ]
+      },
+      "post": {
+        "operationId": "createDeliverable",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "409": {
+            "description": "Deliverable name already exists"
+          },
+          "422": {
+            "description": "Deliverable percentage total would exceed 100"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a deliverable",
+        "tags": [
+          "Deliverables"
+        ]
+      }
+    },
+    "/api/v1/deliverables/{deliverableId}": {
+      "patch": {
+        "operationId": "updateDeliverableWeights",
+        "parameters": [
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Deliverable not found"
+          },
+          "422": {
+            "description": "Deliverable percentage total would exceed 100"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update deliverable weights",
+        "tags": [
+          "Deliverables"
+        ]
+      }
+    },
     "/api/v1/sprint-evaluations": {
       "post": {
         "operationId": "recordSprintEvaluation",
@@ -1810,6 +2308,349 @@
         "summary": "Get a sprint evaluation record",
         "tags": [
           "Sprint Evaluations"
+        ]
+      }
+    },
+    "/api/v1/deliverables/{deliverableId}/rubrics": {
+      "get": {
+        "operationId": "listRubrics",
+        "parameters": [
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedRubricsDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List rubrics for a deliverable",
+        "tags": [
+          "Rubrics"
+        ]
+      },
+      "post": {
+        "operationId": "createRubric",
+        "parameters": [
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRubricDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Question weights do not sum to 1.0"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a rubric for a deliverable",
+        "tags": [
+          "Rubrics"
+        ]
+      }
+    },
+    "/api/v1/deliverables/{deliverableId}/rubrics/{rubricId}": {
+      "delete": {
+        "operationId": "deleteRubric",
+        "parameters": [
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rubricId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Rubric not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete a rubric",
+        "tags": [
+          "Rubrics"
+        ]
+      }
+    },
+    "/api/v1/reviews": {
+      "post": {
+        "operationId": "ReviewsController_createReview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}": {
+      "get": {
+        "operationId": "ReviewsController_getReview",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/comments": {
+      "post": {
+        "operationId": "ReviewsController_addComment",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/comments/{commentId}": {
+      "delete": {
+        "operationId": "ReviewsController_deleteComment",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/revision-requests": {
+      "post": {
+        "operationId": "ReviewsController_createRevisionRequest",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRevisionRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/grade": {
+      "post": {
+        "operationId": "ReviewsController_submitGrade",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitGradeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reviews"
         ]
       }
     }
@@ -2471,6 +3312,91 @@
         "type": "object",
         "properties": {}
       },
+      "FetchStoryPointsDto": {
+        "type": "object",
+        "properties": {
+          "studentIds": {
+            "description": "Subset of student UUIDs to fetch; defaults to all group members",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "StudentStoryPointRecordDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "completedPoints": {
+            "type": "number"
+          },
+          "targetPoints": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "JIRA_GITHUB",
+              "COORDINATOR_OVERRIDE",
+              "MANUAL"
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "completedPoints",
+          "targetPoints",
+          "source",
+          "updatedAt"
+        ]
+      },
+      "StoryPointSummaryDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "sprintId": {
+            "type": "string"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentStoryPointRecordDto"
+            }
+          }
+        },
+        "required": [
+          "groupId",
+          "sprintId",
+          "records"
+        ]
+      },
+      "OverrideStoryPointsDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "description": "UUID of the student to override"
+          },
+          "completedPoints": {
+            "type": "number",
+            "description": "Override completed story points (must be >= 0)",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "studentId",
+          "completedPoints"
+        ]
+      },
       "StudentFinalGradeDto": {
         "type": "object",
         "properties": {
@@ -2607,6 +3533,251 @@
           "limit"
         ]
       },
+      "CalculateGradeDto": {
+        "type": "object",
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "When false (default), returns 409 if a final grade already exists. When true, recalculates and overwrites D4; a new snapshot is always appended to D5.",
+            "default": false
+          }
+        },
+        "required": [
+          "force"
+        ]
+      },
+      "ScaledDeliverableGradeDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Deliverable identifier"
+          },
+          "rawGrade": {
+            "type": "number",
+            "example": 80,
+            "description": "Raw numeric grade from committee evaluation (100/80/60/50/0)"
+          },
+          "teamScalar": {
+            "type": "number",
+            "example": 0.8,
+            "description": "Team scalar [0–1]: average of all sprint evaluation scores for sprints mapped to this deliverable, divided by 100"
+          },
+          "categoryWeight": {
+            "type": "number",
+            "example": 0.5,
+            "description": "Category weight from D1 deliverable config"
+          },
+          "subWeight": {
+            "type": "number",
+            "example": 0.35,
+            "description": "Sub-weight from D1 deliverable config"
+          },
+          "scaledGrade": {
+            "type": "number",
+            "example": 22.4,
+            "description": "Scaled grade: rawGrade × teamScalar × categoryWeight × subWeight"
+          }
+        },
+        "required": [
+          "deliverableId",
+          "rawGrade",
+          "teamScalar",
+          "categoryWeight",
+          "subWeight",
+          "scaledGrade"
+        ]
+      },
+      "GradeCalculationResultDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Group identifier"
+          },
+          "teamGrade": {
+            "type": "number",
+            "example": 74.88,
+            "description": "Sum of all scaled deliverable grades, capped at 100"
+          },
+          "teamScalar": {
+            "type": "number",
+            "example": 0.815,
+            "description": "Overall team scalar: average of per-deliverable scalars"
+          },
+          "scaledDeliverableGrades": {
+            "description": "Breakdown of scaled grades per deliverable",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScaledDeliverableGradeDto"
+            }
+          },
+          "individualGrades": {
+            "description": "Final grades per student (teamGrade × individualAllowanceRatio)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentFinalGradeDto"
+            }
+          },
+          "triggeredBy": {
+            "type": "string",
+            "format": "uuid",
+            "description": "userId of the coordinator who triggered the calculation"
+          },
+          "calculatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Timestamp of calculation"
+          }
+        },
+        "required": [
+          "groupId",
+          "teamGrade",
+          "teamScalar",
+          "scaledDeliverableGrades",
+          "individualGrades",
+          "triggeredBy",
+          "calculatedAt"
+        ]
+      },
+      "DeliverableResponseDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "description": "UUID of the deliverable"
+          },
+          "name": {
+            "type": "string",
+            "description": "Unique deliverable name"
+          },
+          "categoryWeight": {
+            "type": "number",
+            "description": "Top-level category weight"
+          },
+          "subWeight": {
+            "type": "number",
+            "description": "Deliverable weight within its category"
+          },
+          "deliverablePercentage": {
+            "type": "number",
+            "description": "Overall contribution percentage"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Creation timestamp"
+          },
+          "updatedAt": {
+            "type": "object",
+            "description": "Last update timestamp",
+            "nullable": true
+          }
+        },
+        "required": [
+          "deliverableId",
+          "name",
+          "categoryWeight",
+          "subWeight",
+          "deliverablePercentage",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PaginatedDeliverablesDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliverableResponseDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of matching deliverables"
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page index (1-based)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Page size"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "CreateDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique deliverable name",
+            "example": "Statement of Work"
+          },
+          "categoryWeight": {
+            "type": "number",
+            "description": "Top-level category weight in the final grade formula",
+            "example": 0.5,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "subWeight": {
+            "type": "number",
+            "description": "Deliverable weight within its category",
+            "example": 0.35,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "deliverablePercentage": {
+            "type": "number",
+            "description": "Overall contribution percentage of the deliverable",
+            "example": 17.5,
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "name",
+          "categoryWeight",
+          "subWeight",
+          "deliverablePercentage"
+        ]
+      },
+      "UpdateDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "categoryWeight": {
+            "type": "number",
+            "description": "Top-level category weight in the final grade formula",
+            "example": 0.5,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "subWeight": {
+            "type": "number",
+            "description": "Deliverable weight within its category",
+            "example": 0.35,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "deliverablePercentage": {
+            "type": "number",
+            "description": "Overall contribution percentage of the deliverable",
+            "example": 17.5,
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
       "CreateSprintEvaluationResponseItemDto": {
         "type": "object",
         "properties": {
@@ -2641,6 +3812,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "evaluationType": {
             "type": "string",
             "enum": [
@@ -2658,6 +3833,7 @@
         "required": [
           "groupId",
           "sprintId",
+          "deliverableId",
           "evaluationType",
           "responses"
         ]
@@ -2697,6 +3873,10 @@
             "format": "uuid"
           },
           "sprintId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableId": {
             "type": "string",
             "format": "uuid"
           },
@@ -2741,6 +3921,7 @@
           "evaluationId",
           "groupId",
           "sprintId",
+          "deliverableId",
           "evaluationType",
           "rubricId",
           "responses",
@@ -2749,6 +3930,158 @@
           "createdAt",
           "updatedAt"
         ]
+      },
+      "RubricQuestionResponseDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "criteriaName": {
+            "type": "string"
+          },
+          "criteriaWeight": {
+            "type": "number",
+            "example": 0.5
+          }
+        },
+        "required": [
+          "questionId",
+          "criteriaName",
+          "criteriaWeight"
+        ]
+      },
+      "RubricResponseDto": {
+        "type": "object",
+        "properties": {
+          "rubricId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RubricQuestionResponseDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "rubricId",
+          "deliverableId",
+          "name",
+          "isActive",
+          "questions",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PaginatedRubricsDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RubricResponseDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "CreateRubricQuestionDto": {
+        "type": "object",
+        "properties": {
+          "criteriaName": {
+            "type": "string",
+            "description": "Descriptive name of the evaluation criteria",
+            "example": "Code readability"
+          },
+          "criteriaWeight": {
+            "type": "number",
+            "description": "Weight as a decimal (0–1). Sum of all questions must = 1.0.",
+            "example": 0.5
+          }
+        },
+        "required": [
+          "criteriaName",
+          "criteriaWeight"
+        ]
+      },
+      "CreateRubricDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "description": "The deliverable this rubric evaluates",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name for this rubric version",
+            "example": "Sprint 1 SCRUM Evaluation"
+          },
+          "questions": {
+            "description": "Array of evaluation criteria questions",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateRubricQuestionDto"
+            }
+          }
+        },
+        "required": [
+          "deliverableId",
+          "name",
+          "questions"
+        ]
+      },
+      "CreateReviewDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddCommentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateRevisionRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SubmitGradeDto": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

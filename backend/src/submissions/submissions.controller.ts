@@ -194,12 +194,27 @@ export class SubmissionsController {
     summary: 'Get all submissions. Filter enforced for students.',
   })
   @ApiQuery({ name: 'groupId', required: false, type: String })
+  @ApiQuery({ name: 'committeeId', required: false, type: String })
   async findAll(
     @Req() req: Request & { user: any },
     @Query('groupId') groupId?: string,
+    @Query('committeeId') committeeId?: string,
   ) {
     const userRole = req.user.role;
     const userGroupId = req.user.groupId;
+
+    if (committeeId) {
+      if (userRole !== Role.Professor) {
+        throw new ForbiddenException(
+          'Only professors can filter submissions by committee.',
+        );
+      }
+      const groupIds = await this.submissionsService.getCommitteeSubmissionGroupIds(
+        committeeId,
+        req.user.userId,
+      );
+      return this.submissionsService.findAll(undefined, groupIds);
+    }
 
     if (userRole === Role.Student) {
       if (!groupId || String(groupId) !== String(userGroupId)) {
@@ -226,6 +241,13 @@ export class SubmissionsController {
     ) {
       throw new ForbiddenException(
         'You do not have permission to access this document.',
+      );
+    }
+
+    if (userRole === Role.Professor) {
+      await this.submissionsService.assertProfessorCanAccessSubmission(
+        submission,
+        req.user.userId,
       );
     }
 

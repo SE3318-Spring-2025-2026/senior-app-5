@@ -25,6 +25,8 @@ import SanitizationPage from './pages/admin/SanitizationPage';
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
 import ActivityPage from './pages/admin/ActivityPage';
+import CommitteesPage from './pages/admin/CommitteesPage';
+import CommitteeDetailPage from './pages/admin/CommitteeDetailPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
 import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
@@ -85,6 +87,8 @@ function App() {
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
               <Route path="professors" element={<ProfessorsPage />} />
+              <Route path="committees" element={<CommitteesPage />} />
+              <Route path="committees/:committeeId" element={<CommitteeDetailPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
 
               <Route path="activity" element={<ActivityPage />} />

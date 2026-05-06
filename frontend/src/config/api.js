@@ -48,6 +48,7 @@ export const apiConfig = {
     committeeAdvisorByUser: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}`,
     committeeGroups: (committeeId) => `/committees/${committeeId}/groups`,
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
+    committeeAdvisorGradingScope: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}/groups`,
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
     githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,

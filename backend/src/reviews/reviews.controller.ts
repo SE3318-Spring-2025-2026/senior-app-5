@@ -8,6 +8,7 @@ import {
   Get,
   Req,
   UseGuards,
+  HttpStatus,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -78,6 +79,7 @@ export class ReviewsController {
 
   @Post(':reviewId/grade')
   @Roles(Role.Professor)
+  @HttpCode(HttpStatus.OK)
   submitGrade(
     @Req() req: RequestWithUser,
     @Param('reviewId') reviewId: string,

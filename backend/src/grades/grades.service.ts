@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
@@ -31,9 +32,16 @@ import {
   DeliverableDocument,
 } from '../deliverables/schemas/deliverable.schema';
 import {
+  Group,
+  GroupAssignmentStatus,
+  GroupDocument,
+} from '../groups/group.entity';
+import {
   DeliverableEvaluation,
+  DeliverableGrade,
   DeliverableEvaluationDocument,
   DeliverableEvaluationStatus,
+  deliverableGradeValue,
 } from './schemas/deliverable-evaluation.schema';
 import {
   SprintEvaluation,
@@ -47,6 +55,8 @@ import {
   StoryPointRecord,
   StoryPointRecordDocument,
 } from '../story-points/schemas/story-point-record.schema';
+import { DeliverableEvaluationResponseDto } from './dto/deliverable-evaluation-response.dto';
+import { CreateDeliverableEvaluationDto } from './dto/create-deliverable-evaluation.dto';
 
 @Injectable()
 export class GradesService {
@@ -61,6 +71,8 @@ export class GradesService {
     private readonly gradeHistoryEntryModel: Model<GradeHistoryEntryDocument>,
     @InjectModel(Deliverable.name)
     private readonly deliverableModel: Model<DeliverableDocument>,
+    @InjectModel(Group.name)
+    private readonly groupModel: Model<GroupDocument>,
     @InjectModel(DeliverableEvaluation.name)
     private readonly deliverableEvaluationModel: Model<DeliverableEvaluationDocument>,
     @InjectModel(SprintEvaluation.name)
@@ -173,6 +185,74 @@ export class GradesService {
         ),
       );
     }
+  }
+
+  async recordDeliverableEvaluation(
+    dto: CreateDeliverableEvaluationDto,
+    gradedBy: string,
+  ): Promise<DeliverableEvaluationResponseDto> {
+    const deliverable = await this.deliverableModel
+      .findOne({ deliverableId: dto.deliverableId })
+      .lean()
+      .exec();
+    if (!deliverable) {
+      throw new BadRequestException(
+        `Deliverable with ID '${dto.deliverableId}' does not exist.`,
+      );
+    }
+
+    const group = await this.groupModel.findOne({ groupId: dto.groupId }).lean().exec();
+    if (!group || group.assignmentStatus !== GroupAssignmentStatus.ASSIGNED) {
+      throw new BadRequestException(
+        `Group '${dto.groupId}' must exist and be in ASSIGNED state.`,
+      );
+    }
+
+    try {
+      const created = await this.deliverableEvaluationModel.create({
+        groupId: dto.groupId,
+        deliverableId: dto.deliverableId,
+        deliverableGrade: dto.deliverableGrade,
+        rawGrade: deliverableGradeValue(dto.deliverableGrade as DeliverableGrade),
+        status: DeliverableEvaluationStatus.GRADED,
+        gradedBy,
+      });
+
+      return this.toDeliverableEvaluationResponseDto(created.toObject());
+    } catch (error) {
+      const isDuplicateKey =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: number }).code === 11000;
+
+      if (isDuplicateKey) {
+        throw new ConflictException(
+          `Evaluation already exists for group '${dto.groupId}' and deliverable '${dto.deliverableId}'.`,
+        );
+      }
+
+      throw new InternalServerErrorException(
+        'Failed to record deliverable evaluation due to an unexpected error.',
+      );
+    }
+  }
+
+  async getDeliverableEvaluation(
+    evaluationId: string,
+  ): Promise<DeliverableEvaluationResponseDto> {
+    const evaluation = await this.deliverableEvaluationModel
+      .findOne({ evaluationId })
+      .lean()
+      .exec();
+
+    if (!evaluation) {
+      throw new NotFoundException(
+        `Deliverable evaluation with ID '${evaluationId}' not found.`,
+      );
+    }
+
+    return this.toDeliverableEvaluationResponseDto(evaluation);
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -523,6 +603,20 @@ export class GradesService {
       gradeComponents: gradeHistoryEntry.gradeComponents,
       triggeredBy: gradeHistoryEntry.triggeredBy,
       changedAt: gradeHistoryEntry.changedAt,
+    };
+  }
+
+  private toDeliverableEvaluationResponseDto(
+    evaluation: DeliverableEvaluation & { createdAt: Date; updatedAt: Date },
+  ): DeliverableEvaluationResponseDto {
+    return {
+      evaluationId: evaluation.evaluationId,
+      groupId: evaluation.groupId,
+      deliverableId: evaluation.deliverableId,
+      deliverableGrade: evaluation.deliverableGrade,
+      gradedBy: evaluation.gradedBy,
+      createdAt: evaluation.createdAt,
+      updatedAt: evaluation.updatedAt,
     };
   }
 }

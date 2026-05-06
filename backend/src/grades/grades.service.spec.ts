@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { GradesService } from './grades.service';
 import {
   StudentFinalGrade,
@@ -15,12 +19,17 @@ import { StoryPointRecord } from '../story-points/schemas/story-point-record.sch
 import { StudentFinalGradeDto } from './dto/student-final-grade.dto';
 import { GroupFinalGradeDto } from './dto/group-final-grade.dto';
 import { ListGradeHistoryQueryDto } from './dto/list-grade-history-query.dto';
+import { Group, GroupAssignmentStatus } from '../groups/group.entity';
+import { DeliverableGrade } from './schemas/deliverable-evaluation.schema';
 
 describe('GradesService', () => {
   let service: GradesService;
   let mockStudentGradeModel: any;
   let mockGroupGradeModel: any;
   let mockGradeHistoryModel: any;
+  let mockDeliverableModel: any;
+  let mockGroupModel: any;
+  let mockDeliverableEvaluationModel: any;
 
   beforeEach(async () => {
     // Create mock models
@@ -34,6 +43,16 @@ describe('GradesService', () => {
     mockGradeHistoryModel = {
       find: jest.fn(),
       countDocuments: jest.fn(),
+    };
+    mockDeliverableModel = {
+      findOne: jest.fn(),
+    };
+    mockGroupModel = {
+      findOne: jest.fn(),
+    };
+    mockDeliverableEvaluationModel = {
+      create: jest.fn(),
+      findOne: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -53,11 +72,15 @@ describe('GradesService', () => {
         },
         {
           provide: getModelToken(Deliverable.name),
-          useValue: {},
+          useValue: mockDeliverableModel,
+        },
+        {
+          provide: getModelToken(Group.name),
+          useValue: mockGroupModel,
         },
         {
           provide: getModelToken(DeliverableEvaluation.name),
-          useValue: {},
+          useValue: mockDeliverableEvaluationModel,
         },
         {
           provide: getModelToken(SprintEvaluation.name),
@@ -567,6 +590,155 @@ describe('GradesService', () => {
       expect(mockGradeHistoryModel.countDocuments).toHaveBeenCalled();
       expect(result.total).toBe(1);
       expect(result.data).toHaveLength(1);
+    });
+  });
+
+  describe('recordDeliverableEvaluation', () => {
+    const dto = {
+      groupId: '11111111-1111-1111-1111-111111111111',
+      deliverableId: '22222222-2222-2222-2222-222222222222',
+      deliverableGrade: DeliverableGrade.B,
+    };
+
+    it('creates a deliverable evaluation using gradedBy from JWT', async () => {
+      mockDeliverableModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest
+            .fn()
+            .mockResolvedValue({ deliverableId: dto.deliverableId }),
+        }),
+      });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({
+            groupId: dto.groupId,
+            assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+          }),
+        }),
+      });
+      const now = new Date('2026-05-06T10:00:00.000Z');
+      mockDeliverableEvaluationModel.create.mockResolvedValue({
+        toObject: () => ({
+          evaluationId: '33333333-3333-3333-3333-333333333333',
+          groupId: dto.groupId,
+          deliverableId: dto.deliverableId,
+          deliverableGrade: dto.deliverableGrade,
+          gradedBy: '44444444-4444-4444-4444-444444444444',
+          createdAt: now,
+          updatedAt: now,
+        }),
+      });
+
+      const result = await service.recordDeliverableEvaluation(
+        dto as any,
+        '44444444-4444-4444-4444-444444444444',
+      );
+
+      expect(mockDeliverableEvaluationModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          groupId: dto.groupId,
+          deliverableId: dto.deliverableId,
+          deliverableGrade: DeliverableGrade.B,
+          rawGrade: 80,
+          gradedBy: '44444444-4444-4444-4444-444444444444',
+        }),
+      );
+      expect(result.gradedBy).toBe('44444444-4444-4444-4444-444444444444');
+    });
+
+    it('throws BadRequestException when deliverable does not exist', async () => {
+      mockDeliverableModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(null),
+        }),
+      });
+
+      await expect(
+        service.recordDeliverableEvaluation(dto as any, 'user-id'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when group is not ASSIGNED', async () => {
+      mockDeliverableModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest
+            .fn()
+            .mockResolvedValue({ deliverableId: dto.deliverableId }),
+        }),
+      });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({
+            groupId: dto.groupId,
+            assignmentStatus: GroupAssignmentStatus.UNASSIGNED,
+          }),
+        }),
+      });
+
+      await expect(
+        service.recordDeliverableEvaluation(dto as any, 'user-id'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws ConflictException on duplicate groupId + deliverableId', async () => {
+      mockDeliverableModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest
+            .fn()
+            .mockResolvedValue({ deliverableId: dto.deliverableId }),
+        }),
+      });
+      mockGroupModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({
+            groupId: dto.groupId,
+            assignmentStatus: GroupAssignmentStatus.ASSIGNED,
+          }),
+        }),
+      });
+      mockDeliverableEvaluationModel.create.mockRejectedValue({ code: 11000 });
+
+      await expect(
+        service.recordDeliverableEvaluation(dto as any, 'user-id'),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('getDeliverableEvaluation', () => {
+    it('returns evaluation when found', async () => {
+      const now = new Date('2026-05-06T10:00:00.000Z');
+      mockDeliverableEvaluationModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({
+            evaluationId: '55555555-5555-5555-5555-555555555555',
+            groupId: '11111111-1111-1111-1111-111111111111',
+            deliverableId: '22222222-2222-2222-2222-222222222222',
+            deliverableGrade: DeliverableGrade.A,
+            gradedBy: '66666666-6666-6666-6666-666666666666',
+            createdAt: now,
+            updatedAt: now,
+          }),
+        }),
+      });
+
+      const result = await service.getDeliverableEvaluation(
+        '55555555-5555-5555-5555-555555555555',
+      );
+      expect(result.evaluationId).toBe('55555555-5555-5555-5555-555555555555');
+    });
+
+    it('throws NotFoundException when evaluation does not exist', async () => {
+      mockDeliverableEvaluationModel.findOne.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(null),
+        }),
+      });
+
+      await expect(
+        service.getDeliverableEvaluation(
+          '55555555-5555-5555-5555-555555555555',
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

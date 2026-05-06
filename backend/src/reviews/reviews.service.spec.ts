@@ -117,7 +117,17 @@ describe('ReviewsService', () => {
       { userId: 'prof-1', role: 'Professor' },
     );
 
-    expect(result).toEqual(savedReview);
+    expect(result).toMatchObject({
+      reviewId: savedReview.reviewId,
+      submissionId: savedReview.submissionId,
+      committeeId: savedReview.committeeId,
+      reviewerUserId: savedReview.reviewerUserId,
+      grade: savedReview.grade,
+      status: savedReview.status,
+      comments: [],
+      revisionRequests: [],
+    });
+    expect(result).not.toHaveProperty('save');
     expect(sub.status).toBe(SubmissionStatus.UnderReview);
     expect(sub.save).toHaveBeenCalled();
   });

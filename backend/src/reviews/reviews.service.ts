@@ -27,6 +27,12 @@ import {
 import { AddCommentDto } from './dto/add-comment.dto';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
+import {
+  ReviewCommentResponseDto,
+  ReviewResponseDto,
+  RevisionRequestResponseDto,
+  SubmitGradeResponseDto,
+} from './dto/review-response.dto';
 import { SubmitGradeDto } from './dto/submit-grade.dto';
 import {
   Review,
@@ -80,6 +86,50 @@ export class ReviewsService {
       throw new NotFoundException('Review not found.');
     }
     return review;
+  }
+
+  private toCommentResponse(comment: ReviewComment): ReviewCommentResponseDto {
+    return {
+      commentId: comment.commentId,
+      text: comment.text,
+      authorUserId: comment.authorUserId,
+      createdAt: comment.createdAt,
+    };
+  }
+
+  private toRevisionRequestResponse(
+    revisionRequest: RevisionRequest,
+  ): RevisionRequestResponseDto {
+    return {
+      revisionRequestId: revisionRequest.revisionRequestId,
+      description: revisionRequest.description,
+      dueDatetime: revisionRequest.dueDatetime,
+      createdAt: revisionRequest.createdAt,
+    };
+  }
+
+  private toReviewResponse(review: ReviewDocument): ReviewResponseDto {
+    const timestamps = review as ReviewDocument & {
+      createdAt?: Date;
+      updatedAt?: Date;
+    };
+
+    return {
+      reviewId: review.reviewId,
+      submissionId: review.submissionId,
+      committeeId: review.committeeId,
+      reviewerUserId: review.reviewerUserId,
+      grade: review.grade,
+      status: review.status,
+      comments: review.comments.map((comment) =>
+        this.toCommentResponse(comment),
+      ),
+      revisionRequests: review.revisionRequests.map((revisionRequest) =>
+        this.toRevisionRequestResponse(revisionRequest),
+      ),
+      createdAt: timestamps.createdAt,
+      updatedAt: timestamps.updatedAt,
+    };
   }
 
   private async findSubmissionOrThrow(
@@ -143,7 +193,10 @@ export class ReviewsService {
     }
   }
 
-  async createReview(dto: CreateReviewDto, actor: ReviewActor) {
+  async createReview(
+    dto: CreateReviewDto,
+    actor: ReviewActor,
+  ): Promise<ReviewResponseDto> {
     const reviewerUserId = this.assertUser(actor);
     const submission = await this.findSubmissionOrThrow(dto.submissionId);
     const committee = await this.findCommitteeOrThrow(dto.committeeId);
@@ -176,10 +229,13 @@ export class ReviewsService {
     submission.status = SubmissionStatus.UnderReview;
     await submission.save();
 
-    return saved;
+    return this.toReviewResponse(saved);
   }
 
-  async getReview(reviewId: string, actor: ReviewActor) {
+  async getReview(
+    reviewId: string,
+    actor: ReviewActor,
+  ): Promise<ReviewResponseDto> {
     const review = await this.findReviewOrThrow(reviewId);
     const submission = await this.findSubmissionOrThrow(review.submissionId);
 
@@ -187,24 +243,28 @@ export class ReviewsService {
       if (String(review.reviewerUserId) !== String(actor.userId)) {
         throw new ForbiddenException('Access denied.');
       }
-      return review;
+      return this.toReviewResponse(review);
     }
 
     if (actor.role === Role.Student || actor.role === Role.TeamLeader) {
       if (String(submission.groupId) !== String(actor.groupId)) {
         throw new ForbiddenException('Access denied.');
       }
-      return review;
+      return this.toReviewResponse(review);
     }
 
     if (actor.role === Role.Coordinator || actor.role === Role.Admin) {
-      return review;
+      return this.toReviewResponse(review);
     }
 
     throw new ForbiddenException('Access denied.');
   }
 
-  async addComment(reviewId: string, dto: AddCommentDto, actor: ReviewActor) {
+  async addComment(
+    reviewId: string,
+    dto: AddCommentDto,
+    actor: ReviewActor,
+  ): Promise<ReviewCommentResponseDto> {
     const authorUserId = this.assertUser(actor);
     const review = await this.findReviewOrThrow(reviewId);
     if (String(review.reviewerUserId) !== String(authorUserId)) {
@@ -219,7 +279,7 @@ export class ReviewsService {
     };
     review.comments.push(comment);
     await review.save();
-    return comment;
+    return this.toCommentResponse(comment);
   }
 
   async deleteComment(
@@ -249,7 +309,7 @@ export class ReviewsService {
     reviewId: string,
     dto: CreateRevisionRequestDto,
     actor: ReviewActor,
-  ) {
+  ): Promise<RevisionRequestResponseDto> {
     const reviewerUserId = this.assertUser(actor);
     const review = await this.findReviewOrThrow(reviewId);
     if (String(review.reviewerUserId) !== String(reviewerUserId)) {
@@ -272,7 +332,7 @@ export class ReviewsService {
       )
       .exec();
 
-    return revisionRequest;
+    return this.toRevisionRequestResponse(revisionRequest);
   }
 
   private async assertGradingWindowOpen() {
@@ -292,7 +352,11 @@ export class ReviewsService {
     }
   }
 
-  async submitGrade(reviewId: string, dto: SubmitGradeDto, actor: ReviewActor) {
+  async submitGrade(
+    reviewId: string,
+    dto: SubmitGradeDto,
+    actor: ReviewActor,
+  ): Promise<SubmitGradeResponseDto> {
     if (dto.grade < 0 || dto.grade > 100) {
       throw new UnprocessableEntityException('Grade must be between 0 and 100.');
     }

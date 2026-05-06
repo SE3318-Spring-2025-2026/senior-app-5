@@ -47,6 +47,10 @@ export const apiConfig = {
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
+    storyPoints: (groupId, sprintId) =>
+      `/groups/${groupId}/sprints/${sprintId}/story-points`,
+    overrideStoryPoints: (groupId, sprintId) =>
+      `/groups/${groupId}/sprints/${sprintId}/story-points/override`,
   },  
 };
 

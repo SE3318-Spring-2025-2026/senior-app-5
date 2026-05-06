@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from '../../pages/DashboardPage.module.css';
+import StoryPointsPanel from './StoryPointsPanel';
 
 const ProfessorView = ({ user }) => {
   // Bakkal Hesabı: Yarın Port 3001'den gelecek örnek veriler
@@ -55,6 +56,7 @@ const ProfessorView = ({ user }) => {
           </tbody>
         </table>
       </div>
+      <StoryPointsPanel canOverride={false} />
     </div>
   );
 };

@@ -12,6 +12,8 @@ describe('SubmissionsController', () => {
   let controller: SubmissionsController;
   let service: SubmissionsService;
 
+  const validSubmissionId = '507f1f77bcf86cd799439011';
+
   const mockSubmissionsService = {
     findAll: jest.fn(),
     findOne: jest.fn(),
@@ -72,7 +74,7 @@ describe('SubmissionsController', () => {
         type: 'INITIAL',
         phaseId: 'phase-1',
       };
-      const created = { _id: 'sub-1', ...dto };
+      const created = { _id: validSubmissionId, ...dto };
 
       mockSubmissionsService.assertAuthorizedGroupMember.mockResolvedValue(
         undefined,

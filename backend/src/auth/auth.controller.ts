@@ -5,6 +5,7 @@ import {
   Get,
   Post,
   Req,
+  Res,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -13,7 +14,7 @@ import {
 } from '@nestjs/common';
 
 import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from '../users/data/dto/register.dto';
@@ -70,8 +71,63 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid login credentials' })
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto.email, dto.password);
+
+    // Set refresh token as HttpOnly cookie
+    if (result.refreshToken && result.userId) {
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      };
+      res.cookie('refreshToken', result.refreshToken, cookieOptions);
+      res.cookie('refreshUserId', result.userId, cookieOptions);
+    }
+
+    return { accessToken: result.accessToken };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const cookies = (req as any).cookies;
+    const refreshToken = cookies?.refreshToken;
+    const refreshUserId = cookies?.refreshUserId;
+    if (!refreshToken || !refreshUserId) {
+      throw new ForbiddenException('Refresh token not found');
+    }
+
+    const result = await this.authService.refreshAccessToken(refreshUserId, refreshToken);
+
+    // Rotate refresh token cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    };
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+    res.cookie('refreshUserId', result.userId, cookieOptions);
+
+    return { accessToken: result.accessToken };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  @UseGuards(AuthGuard('jwt'))
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const user = req.user as JwtUser;
+    await this.authService.logout(user.userId);
+
+    // Clear cookies
+    res.clearCookie('refreshToken', { path: '/' });
+    res.clearCookie('refreshUserId', { path: '/' });
+
+    return { message: 'Logged out' };
   }
 
   @ApiOperation({ summary: 'Request a password reset link' })

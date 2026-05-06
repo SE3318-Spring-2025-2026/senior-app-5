@@ -28,6 +28,20 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.use(helmet());
+  // lightweight cookie parser to avoid adding cookie-parser dependency during build
+  app.use((req, _res, next) => {
+    const header = (req.headers && (req.headers.cookie as string)) || '';
+    const cookies: Record<string, string> = {};
+    header.split(';').forEach((cookie) => {
+      const [rawName, ...rest] = cookie.split('=');
+      const name = rawName && rawName.trim();
+      if (!name) return;
+      const value = rest.join('=').trim();
+      cookies[name] = decodeURIComponent(value);
+    });
+    (req as any).cookies = cookies;
+    next();
+  });
   app.use(bodyParser.json());
   app.use(bodyParser.urlencoded({ extended: true }));
   await app.listen(process.env.PORT ?? 3000);

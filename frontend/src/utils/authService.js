@@ -102,8 +102,13 @@ export const authService = {
    * Logout user (clears local storage)
    */
   logout() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userEmail');
+    try {
+      // Inform server to clear refresh token
+      apiClient.post(apiConfig.endpoints.auth.logout).catch(() => {});
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userEmail');
+    }
   },
 
   /**

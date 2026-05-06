@@ -27,7 +27,7 @@ import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
 import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import IntegrationsPage from './pages/IntegrationsPage';
-import './App.css';
+
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();

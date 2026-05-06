@@ -147,7 +147,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /groups/{groupId}/sprints/{sprintId}/story-points/{studentId}:
+  /groups/{groupId}/sprints/{sprintId}/story-points/override:
     patch:
       tags: [story-points]
       summary: Override story points for a specific student in a sprint
@@ -180,13 +180,6 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: studentId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: The student whose story points are being overridden
       requestBody:
         required: true
         content:
@@ -511,12 +504,16 @@ components:
     OverrideStoryPointsRequest:
       type: object
       properties:
+        studentId:
+          type: string
+          format: uuid
+          description: The student whose story points are being overridden
         completedPoints:
           type: integer
           minimum: 0
           description: Override value for completed story points
           example: 18
-      required: [completedPoints]
+      required: [studentId, completedPoints]
 
     # ── Committee Grade ───────────────────────────
     CommitteeGradeResult:

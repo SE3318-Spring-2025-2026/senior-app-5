@@ -17,10 +17,6 @@ export class TeamsController {
     @Param('teamId') teamId: string,
     @Body() body: UpdateIntegrationsDto,
   ) {
-    return this.teamsService.updateIntegrations(
-      teamId,
-      body.jiraProjectKey,
-      body.githubRepositoryId,
-    );
+    return this.teamsService.updateIntegrations(teamId, body);
   }
 }

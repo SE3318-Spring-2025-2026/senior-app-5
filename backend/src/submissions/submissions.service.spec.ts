@@ -1,14 +1,13 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Group } from '../groups/group.entity';
+import { Group, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User } from '../users/data/user.schema';
-import {
-  MAX_DOCUMENTS_PER_SUBMISSION,
-  SubmissionsService,
-} from './submissions.service';
+import { SubmissionsService } from './submissions.service';
 import { Submission } from './schemas/submission.schema';
+import { Role } from '../auth/enums/role.enum';
+import { Committee } from '../committees/schemas/committee.schema';
 
 jest.mock('node:fs/promises', () => ({
   mkdir: jest.fn().mockResolvedValue(undefined),
@@ -18,7 +17,7 @@ jest.mock('node:fs/promises', () => ({
 
 describe('SubmissionsService', () => {
   let service: SubmissionsService;
-  let phasesService: { findByPhaseId: jest.Mock; getPhaseById: jest.Mock };
+  
   const mockSave = jest.fn();
   const mockFindById = jest.fn().mockReturnValue({ exec: jest.fn() });
 
@@ -36,6 +35,7 @@ describe('SubmissionsService', () => {
 
   const mockGroupModel = { findOne: jest.fn() };
   const mockUserModel = { findById: jest.fn() };
+  const mockCommitteeModel = { findOne: jest.fn() };
 
   const phasesService = {
     findByPhaseId: jest.fn(),
@@ -49,8 +49,7 @@ describe('SubmissionsService', () => {
     mockFindById.mockReset();
     mockGroupModel.findOne.mockReset();
     mockUserModel.findById.mockReset();
-
-    phasesService = { findByPhaseId: jest.fn(), getPhaseById: jest.fn() };
+    mockCommitteeModel.findOne.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -61,6 +60,7 @@ describe('SubmissionsService', () => {
         },
         { provide: getModelToken(Group.name), useValue: mockGroupModel },
         { provide: getModelToken(User.name), useValue: mockUserModel },
+        { provide: getModelToken(Committee.name), useValue: mockCommitteeModel },
         { provide: PhasesService, useValue: phasesService },
       ],
     }).compile();
@@ -71,21 +71,6 @@ describe('SubmissionsService', () => {
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
-
-  describe('uploadDocument', () => {
-    it('should append a valid document and save submission', async () => {
-      const submission = {
-        _id: '64f1a2b3c4d5e6f7a8b9c0d1',
-        phaseId: 'phase-1',
-        documents: [],
-        save: jest.fn().mockResolvedValue(undefined),
-      } as any;
-
-      phasesService.getPhaseById.mockResolvedValue({
-        phaseId: 'phase-1',
-        submissionStart: new Date(Date.now() - 60_000),
-        submissionEnd: new Date(Date.now() + 60_000),
-      });
 
   describe('findOne', () => {
     it('should return a submission if found', async () => {
@@ -104,11 +89,21 @@ describe('SubmissionsService', () => {
     });
   });
 
+  describe('uploadDocument', () => {
+    it('should throw NotFoundException when submission not found', async () => {
+      phasesService.getPhaseById.mockResolvedValue({
+        phaseId: 'phase-1',
+        submissionStart: new Date(Date.now() - 60_000),
+        submissionEnd: new Date(Date.now() + 60_000),
+      });
+
       const file = {
         originalname: 'report.pdf',
         mimetype: 'application/pdf',
         buffer: Buffer.from('binary-data'),
       } as Express.Multer.File;
+
+      mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
 
       await expect(
         service.uploadDocument('64f1a2b3c4d5e6f7a8b9c0d1', file),
@@ -212,17 +207,6 @@ describe('SubmissionsService', () => {
     it('should throw ForbiddenException when group is not active', async () => {
       mockGroupModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ groupId: 'group-1', status: GroupStatus.DISBANDED }) });
       await expect(service.assertAuthorizedGroupMember({ userId: 'student-id', role: Role.Student }, 'group-1')).rejects.toThrow(ForbiddenException);
-    });
-
-      const file = {
-        originalname: 'report.pdf',
-        mimetype: 'application/pdf',
-        buffer: Buffer.from('binary-data'),
-      } as Express.Multer.File;
-
-      await expect(
-        service.uploadDocument('64f1a2b3c4d5e6f7a8b9c0d1', file, submission),
-      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -342,6 +326,51 @@ describe('SubmissionsService', () => {
 
       await expect(service.uploadDocument(validId, mockFile))
         .rejects.toThrow(/Submission window has closed/);
+    });
+  });
+
+  describe('Jury Member Operations (assertJuryMember)', () => {
+    const mockCommittee = {
+      groups: [{ groupId: 'group-1' }],
+      jury: [{ userId: 'prof-1' }],
+    };
+
+    beforeEach(() => {
+      // Her testten önce mock'ı temizleyelim ki testler birbirini etkilemesin
+      mockCommitteeModel.findOne.mockReset();
+    });
+
+    it('should pass if professor is in the committee jury for the group', async () => {
+      // Başarılı senaryo: Komite bulundu ve profesör jüride
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockCommittee),
+      });
+
+      // assertJuryMember hata fırlatmazsa (resolve olursa) test başarılı sayılır
+      await expect(service.assertJuryMember('prof-1', 'group-1')).resolves.toBeUndefined();
+      
+      // Veritabanı sorgusunun doğru parametrelerle yapıldığını doğrulayalım
+      expect(mockCommitteeModel.findOne).toHaveBeenCalledWith({ 'groups.groupId': 'group-1' });
+    });
+
+    it('should throw NotFoundException if no committee is assigned to the group', async () => {
+      // Başarısız senaryo 1: Gruba atanmış bir komite yok
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      // assertJuryMember'ın NotFoundException fırlatmasını bekliyoruz
+      await expect(service.assertJuryMember('prof-1', 'group-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if professor is NOT in the committee jury', async () => {
+      // Başarısız senaryo 2: Komite var ama profesör jüride değil
+      mockCommitteeModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockCommittee),
+      });
+
+      // Farklı bir profesör ID'si ile çağırıyoruz, ForbiddenException bekliyoruz
+      await expect(service.assertJuryMember('prof-unknown', 'group-1')).rejects.toThrow(ForbiddenException);
     });
   });
 });

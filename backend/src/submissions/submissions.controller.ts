@@ -31,7 +31,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { GroupMemberGuard } from '../auth/guards/group-member.guard';
-
+import { JurySubmissionResponseDto } from './dto/jury-submission-response.dto';
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_EXTENSIONS_REGEX =
   /\.(pdf|doc|docx|png|jpg|jpeg)$/i;
@@ -231,4 +231,30 @@ export class SubmissionsController {
 
     return submission;
   }
+
+  @Get('committee/:groupId')
+  @Roles(Role.Professor)
+  @ApiOperation({ summary: 'List submissions for a committee-assigned group' })
+  @ApiResponse({ status: 200, type: [JurySubmissionResponseDto] })
+  async getSubmissionsForCommittee(
+    @Req() req: Request & { user: any },
+    @Param('groupId') groupId: string,
+  ) {
+    const userId = req.user.userId || req.user.sub || req.user._id;
+    return this.submissionsService.listSubmissionsForJury(userId, groupId);
+  }
+
+  @Get('committee/detail/:submissionId')
+  @Roles(Role.Professor)
+  @ApiOperation({ summary: 'Get single submission detail for jury member' })
+  @ApiResponse({ status: 200, type: JurySubmissionResponseDto })
+  async getSubmissionDetailForCommittee(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+  ) {
+    const userId = req.user.userId || req.user.sub || req.user._id;
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    return this.submissionsService.getSubmissionForJury(userId, submissionId);
+  }
+  
 }

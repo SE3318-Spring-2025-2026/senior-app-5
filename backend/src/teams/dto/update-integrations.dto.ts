@@ -20,7 +20,7 @@ export class UpdateIntegrationsDto {
   @IsString()
   @Transform(({ value }) => {
     if (!value) return value;
-    // Kullanıcı "https://domain.atlassian.net/" girerse protokolu ve sondaki slash'ı temizler
+    
     return value.replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
   })
   jiraDomain!: string;

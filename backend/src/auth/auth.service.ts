@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   Logger,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -39,7 +39,7 @@ export class AuthService {
       const user = await this.usersService.createUser({
         email,
         passwordHash,
-          role,
+        role,
       });
 
       this.logger.log(`User registered successfully: ${email} as ${role}`);
@@ -124,24 +124,29 @@ export class AuthService {
       this.logger.debug(`Exchanging GitHub code for user: ${userId}`);
 
       // STEP 1: Swap with GitHub
-      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
+      const tokenResponse = await fetch(
+        'https://github.com/login/oauth/access_token',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: process.env.GITHUB_CLIENT_ID,
+            client_secret: process.env.GITHUB_CLIENT_SECRET,
+            code: code,
+          }),
         },
-        body: JSON.stringify({
-          client_id: process.env.GITHUB_CLIENT_ID,
-          client_secret: process.env.GITHUB_CLIENT_SECRET,
-          code: code,
-        }),
-      });
+      );
 
       const tokenData = await tokenResponse.json();
 
       if (tokenData.error) {
         this.logger.error(`GitHub Token Error: ${tokenData.error_description}`);
-        throw new BadRequestException('Invalid or expired GitHub authorization code');
+        throw new BadRequestException(
+          'Invalid or expired GitHub authorization code',
+        );
       }
 
       // STEP 2: Retrieve GitHub ID using the token
@@ -159,18 +164,63 @@ export class AuthService {
         throw new BadRequestException('Failed to retrieve GitHub user data');
       }
 
-      // STEP 3: Call the function you already wrote in UsersService!
-      await this.usersService.linkGithubAccount(userId, githubUser.id.toString());
+      // STEP 3: Persist the GitHub identity AND the access token + granted
+      // scopes so the backend can later read project / issue data on behalf
+      // of the user (e.g. story points, issue completion).
+      await this.usersService.linkGithubAccount(
+        userId,
+        githubUser.id.toString(),
+        githubUser.login,
+        tokenData.access_token,
+        tokenData.scope,
+      );
       this.logger.log(`Successfully linked GitHub account for user: ${userId}`);
-      
-      return { message: 'GitHub account linked successfully', isGithubConnected: true };
 
-    }  catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        message: 'GitHub account linked successfully',
+        isGithubConnected: true,
+        scopes: tokenData.scope ?? '',
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to link GitHub account: ${errorMessage}`);
-      
-      if (error instanceof BadRequestException || error instanceof NotFoundException) throw error;
-      throw new BadRequestException('An error occurred while linking GitHub account');
+
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      )
+        throw error;
+      throw new BadRequestException(
+        'An error occurred while linking GitHub account',
+      );
     }
+  }
+
+  async unlinkGithubAccount(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.usersService.unlinkGithubAccount(userId);
+    this.logger.log(`Unlinked GitHub account for user: ${userId}`);
+    return {
+      message: 'GitHub account unlinked successfully',
+      isGithubConnected: false,
+    };
+  }
+
+  async getGithubStatus(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      isGithubConnected: !!user.githubAccountId,
+      githubAccountId: user.githubAccountId ?? null,
+      scopes: user.githubScopes ?? null,
+      linkedAt: user.githubLinkedAt ?? null,
+    };
   }
 }

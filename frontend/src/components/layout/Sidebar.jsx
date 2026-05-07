@@ -13,6 +13,7 @@ import {
   Star,
   BookOpen,
   GitBranch,
+  Kanban
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -68,6 +69,13 @@ export const Sidebar = () => {
           </>
         )}
 
+        {role === 'TeamLeader' && (
+          <>
+            <SectionHeader label="Team Leader Menu" />
+            <SideNavLink to="/scrum" icon={GitBranch} label="Scrum" />
+          </>
+        )}
+
         {role === 'Professor' && (
           <>
             <SectionHeader label="Professor" />
@@ -91,6 +99,7 @@ export const Sidebar = () => {
             <SideNavLink to="/phases/schedule" icon={CalendarDays} label="Phase Scheduling" />
             <SideNavLink to="/coordinator/rubrics" icon={BookOpen} label="Rubric Management" />
             <SideNavLink to="/coordinator/sprint-config" icon={GitBranch} label="Sprint Config" />
+            <SideNavLink to="/scrum" icon={Kanban} label="Scrum" />
             <SideNavLink to="/admin" icon={ShieldCheck} label="Admin Panel" matchPrefix />
           </>
         )}

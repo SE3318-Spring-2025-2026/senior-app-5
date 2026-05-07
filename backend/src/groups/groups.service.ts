@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -55,6 +56,31 @@ export class GroupsService {
 
   async findGroupById(groupId: string): Promise<Group | null> {
     return this.groupModel.findOne({ groupId }).exec();
+  }
+
+  async searchGroups(field?: string, value?: string, limit?: number): Promise<Group[]> {
+    if (!field && !value) {
+      return this.groupModel.find().limit(limit ?? 50).exec();
+    }
+
+    const allowedFields = new Set(['groupId', 'groupName', 'leaderUserId']);
+    if (!field || !allowedFields.has(field)) {
+      throw new BadRequestException(
+        `Invalid field '${field}'. Allowed fields: groupId, groupName, leaderUserId.`,
+      );
+    }
+
+    const rawValue = value?.trim();
+    if (!rawValue) {
+      return [];
+    }
+
+    const query =
+      field === 'groupId'
+        ? { [field]: rawValue }
+        : { [field]: { $regex: rawValue, $options: 'i' } };
+
+    return this.groupModel.find(query).limit(limit ?? 20).exec();
   }
 
   async addMember(groupId: string, memberUserId: string) {

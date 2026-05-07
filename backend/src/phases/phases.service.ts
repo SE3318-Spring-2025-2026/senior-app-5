@@ -15,11 +15,33 @@ export class PhasesService {
     @InjectModel(Phase.name) private phaseModel: Model<PhaseDocument>,
   ) {}
 
-  async listForScheduling(): Promise<Phase[]> {
+  async listForScheduling(field?: string, value?: string, limit?: number): Promise<Phase[]> {
+    const query: Record<string, unknown> = {};
+
+    if (field || value) {
+      const allowedFields = new Set(['phaseId', 'name']);
+      if (!field || !allowedFields.has(field)) {
+        throw new BadRequestException(
+          `Invalid field '${field}'. Allowed fields: phaseId, name.`,
+        );
+      }
+
+      const rawValue = value?.trim();
+      if (!rawValue) {
+        return [];
+      }
+
+      query[field] =
+        field === 'phaseId'
+          ? rawValue
+          : { $regex: rawValue, $options: 'i' };
+    }
+
     return this.phaseModel
-      .find()
+      .find(query)
       .select('phaseId name submissionStart submissionEnd -_id')
       .sort({ phaseId: 1 })
+      .limit(limit ?? 50)
       .exec();
   }
 

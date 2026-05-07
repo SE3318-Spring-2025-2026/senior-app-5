@@ -3,15 +3,15 @@ import { useParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { getSubmissionWindowStatus, WINDOW_STATE } from '../utils/submissionWindow';
+import EntitySearchSelect from '../components/EntitySearchSelect';
 import { PageHeader } from '../components/ui';
 
 const initialFeedback = { loading: false, message: '', error: '' };
 
 function StudentSubmissionPage() {
-  const { phaseId: urlPhaseId, submissionId: urlSubmissionId } = useParams();
+  const { phaseId: urlPhaseId } = useParams();
   const fileInputRef = useRef(null);
   const [phaseId, setPhaseId] = useState(urlPhaseId || '');
-  const [submissionId, setSubmissionId] = useState(urlSubmissionId || '');
   const [file, setFile] = useState(null);
   const [phase, setPhase] = useState(null);
   const [windowStatus, setWindowStatus] = useState(() => getSubmissionWindowStatus(null, null));
@@ -77,7 +77,7 @@ function StudentSubmissionPage() {
       setPhaseFeedback({
         loading: false,
         message: '',
-        error: 'Please enter a valid Phase ID first.',
+        error: 'Please select a phase first.',
       });
       return null;
     }
@@ -104,14 +104,36 @@ function StudentSubmissionPage() {
     }
   };
 
+  const resolveSubmissionIdForPhase = async (selectedPhaseId) => {
+    const rawUser = localStorage.getItem('user');
+    const parsedUser = rawUser ? JSON.parse(rawUser) : null;
+    const groupId = parsedUser?.teamId || parsedUser?.groupId;
+
+    if (!groupId) {
+      throw new Error('Unable to determine your group. Please sign in again.');
+    }
+
+    const existingSubmissionsResponse = await apiClient.get(apiConfig.endpoints.submissions.byGroup(groupId));
+    const existingSubmissions = Array.isArray(existingSubmissionsResponse.data)
+      ? existingSubmissionsResponse.data
+      : [];
+    const existingSubmission = existingSubmissions.find(
+      (submission) => submission?.phaseId === selectedPhaseId,
+    );
+
+    if (existingSubmission?._id) {
+      return existingSubmission._id;
+    }
+
+    const createResponse = await apiClient.post(apiConfig.endpoints.submissions.list, {
+      groupId,
+      phaseId: selectedPhaseId,
+    });
+    return createResponse.data?._id;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    const trimmedSubmissionId = submissionId.trim();
-    if (!trimmedSubmissionId) {
-      setSubmitFeedback({ loading: false, message: '', error: 'Submission ID is required to upload a document.' });
-      return;
-    }
 
     if (!file) {
       setSubmitFeedback({ loading: false, message: '', error: 'Please choose a file to upload.' });
@@ -126,7 +148,7 @@ function StudentSubmissionPage() {
       setSubmitFeedback({
         loading: false,
         message: '',
-        error: !phaseId || !phaseId.trim() ? 'Please enter a valid Phase ID first.' : 'Failed to fetch phase status. Upload is blocked.',
+        error: !phaseId || !phaseId.trim() ? 'Please select a phase first.' : 'Failed to fetch phase status. Upload is blocked.',
       });
       return;
     }
@@ -144,8 +166,13 @@ function StudentSubmissionPage() {
     payload.append('file', file);
 
     try {
+      const resolvedSubmissionId = await resolveSubmissionIdForPhase(phaseId.trim());
+      if (!resolvedSubmissionId) {
+        throw new Error('Unable to resolve submission for the selected phase.');
+      }
+
       const response = await apiClient.post(
-        apiConfig.endpoints.submissionDocuments(trimmedSubmissionId),
+        apiConfig.endpoints.submissionDocuments(resolvedSubmissionId),
         payload,
         {
           headers: {
@@ -183,16 +210,17 @@ function StudentSubmissionPage() {
 
         {!urlPhaseId && (
           <>
-            <div className="flex flex-col gap-1.5 mb-4">
-              <label htmlFor="phaseId" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                Phase ID
-              </label>
-              <input
-                id="phaseId"
+            <div className="mb-4">
+              <EntitySearchSelect
+                label="Phase"
+                endpoint={apiConfig.endpoints.phases}
+                searchField="name"
+                returnField="phaseId"
+                displayField="name"
                 value={phaseId}
-                onChange={(event) => setPhaseId(event.target.value)}
-                placeholder="Enter phase UUID"
-                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                onChange={setPhaseId}
+                placeholder="Search phase by name"
+                required
               />
             </div>
             <button
@@ -245,23 +273,6 @@ function StudentSubmissionPage() {
         <h2 className="text-sm font-bold text-slate-200 mb-4">2. Upload Submission Document</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label htmlFor="submissionId" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Submission ID
-            </label>
-            <input
-              id="submissionId"
-              value={submissionId}
-              onChange={(event) => setSubmissionId(event.target.value)}
-              placeholder="Enter submission ID"
-              disabled={isSubmissionDisabled}
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            {urlSubmissionId && (
-              <p className="text-sm text-slate-500 mt-2">Submission ID provided via URL</p>
-            )}
-          </div>
-
           <div>
             <label htmlFor="submissionFile" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Document

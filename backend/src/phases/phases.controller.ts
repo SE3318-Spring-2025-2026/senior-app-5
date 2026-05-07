@@ -4,10 +4,11 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -23,9 +24,23 @@ export class PhasesController {
   constructor(private readonly phasesService: PhasesService) {}
 
   @Get()
-  @Roles(Role.Coordinator)
-  async listPhases() {
-    return this.phasesService.listForScheduling();
+  @Roles(
+    Role.Student,
+    Role.TeamLeader,
+    Role.Professor,
+    Role.Coordinator,
+    Role.Admin,
+  )
+  @ApiQuery({ name: 'field', enum: ['phaseId', 'name'], required: false })
+  @ApiQuery({ name: 'value', type: String, required: false })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  async listPhases(
+    @Query('field') field?: string,
+    @Query('value') value?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    return this.phasesService.listForScheduling(field, value, parsedLimit);
   }
 
   @Post()

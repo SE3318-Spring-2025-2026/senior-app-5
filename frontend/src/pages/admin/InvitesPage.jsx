@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
+import EntitySearchSelect from '../../components/EntitySearchSelect'
 import { SectionCard, StatusBlock, Button, PageHeader } from '../../components/ui'
 import { useAdminGroup } from '../../context/AdminGroupContext'
 
@@ -42,30 +43,28 @@ function InvitesPage() {
 
       <SectionCard title="Deliver Invite" description="Send a group invite notification to a student.">
         <form className="space-y-4" onSubmit={handleDeliverInvite}>
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Group ID
-            </label>
-            <input
-              value={inviteGroupId}
-              onChange={(e) => setInviteGroupId(e.target.value)}
-              placeholder="UUID of group"
-              required
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Recipient User ID
-            </label>
-            <input
-              value={recipientUserId}
-              onChange={(e) => setRecipientUserId(e.target.value)}
-              placeholder="UUID of recipient"
-              required
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
-            />
-          </div>
+          <EntitySearchSelect
+            label="Group"
+            endpoint={apiConfig.endpoints.groups}
+            searchField="groupName"
+            returnField="groupId"
+            displayField="groupName"
+            value={inviteGroupId}
+            onChange={setInviteGroupId}
+            placeholder="Search group by name"
+            required
+          />
+          <EntitySearchSelect
+            label="Recipient"
+            endpoint={apiConfig.endpoints.userSearch}
+            searchField="email"
+            returnField="_id"
+            displayField="email"
+            value={recipientUserId}
+            onChange={setRecipientUserId}
+            placeholder="Search user by email"
+            required
+          />
           <Button type="submit" variant="primary" loading={inviteStatus.loading} disabled={inviteStatus.loading}>
             {inviteStatus.loading ? 'Delivering…' : 'Deliver Invite'}
           </Button>

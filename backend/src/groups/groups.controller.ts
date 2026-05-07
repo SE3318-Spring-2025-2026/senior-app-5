@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -55,6 +57,24 @@ export class GroupsController {
   @HttpCode(HttpStatus.CREATED)
   async createGroup(@Body() createGroupDto: CreateGroupDto) {
     return this.groupsService.createGroup(createGroupDto);
+  }
+
+  @ApiOperation({
+    summary: 'Search groups by whitelisted field (groupId, groupName, leaderUserId)',
+  })
+  @ApiQuery({ name: 'field', enum: ['groupId', 'groupName', 'leaderUserId'], required: false })
+  @ApiQuery({ name: 'value', type: String, required: false })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  @Get()
+  @Roles(Role.Admin, Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  async searchGroups(
+    @Query('field') field?: string,
+    @Query('value') value?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    return this.groupsService.searchGroups(field, value, parsedLimit);
   }
 
   @ApiOperation({ summary: 'Add a member to a group (by groupId UUID)' })

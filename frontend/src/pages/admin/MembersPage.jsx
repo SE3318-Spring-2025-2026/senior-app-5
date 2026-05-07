@@ -43,18 +43,17 @@ function MembersPage() {
 
       <SectionCard title="Add Member" description="Assign a student to the created or existing group.">
         <form className="space-y-4" onSubmit={handleAddMember}>
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Group ID
-            </label>
-            <input
-              value={groupIdForMembers}
-              onChange={(e) => setGroupIdForMembers(e.target.value)}
-              placeholder="UUID of group"
-              required
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
-            />
-          </div>
+          <EntitySearchSelect
+            label="Group"
+            endpoint={apiConfig.endpoints.groups}
+            searchField="groupName"
+            returnField="groupId"
+            displayField="groupName"
+            value={groupIdForMembers}
+            onChange={setGroupIdForMembers}
+            placeholder="Search group by name"
+            required
+          />
           <EntitySearchSelect
             label="Member"
             endpoint={apiConfig.endpoints.userSearch}

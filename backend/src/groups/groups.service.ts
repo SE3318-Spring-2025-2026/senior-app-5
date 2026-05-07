@@ -57,6 +57,45 @@ export class GroupsService {
     return this.groupModel.findOne({ groupId }).exec();
   }
 
+  async findGroupWithDetails(groupId: string) {
+    const group = await this.groupModel.findOne({ groupId }).lean().exec();
+    if (!group) {
+      throw new NotFoundException(`Group not found: ${groupId}`);
+    }
+
+    const [members, leader, advisor] = await Promise.all([
+      this.userModel
+        .find({ teamId: groupId })
+        .select('_id name email role -passwordHash')
+        .lean()
+        .exec(),
+      group.leaderUserId
+        ? this.userModel
+            .findById(group.leaderUserId)
+            .select('_id name email')
+            .lean()
+            .exec()
+        : null,
+      group.advisorUserId
+        ? this.userModel
+            .findById(group.advisorUserId)
+            .select('_id name email')
+            .lean()
+            .exec()
+        : null,
+    ]);
+
+    return {
+      groupId: group.groupId,
+      groupName: group.groupName,
+      status: group.status,
+      assignmentStatus: group.assignmentStatus,
+      leader: leader ?? null,
+      advisor: advisor ?? null,
+      members: members as Array<{ _id: unknown; name?: string; email: string; role: string }>,
+    };
+  }
+
   async findAll(
     page: number,
     limit: number,

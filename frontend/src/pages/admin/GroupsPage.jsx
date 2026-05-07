@@ -1,9 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import EntitySearchSelect from '../../components/EntitySearchSelect'
 import { SectionCard, StatusBlock, Badge, Button, PageHeader } from '../../components/ui'
 import { useAdminGroup } from '../../context/AdminGroupContext'
+
+const PAGE_LIMIT = 15
 
 const getApiError = (error) => {
   const message = error?.response?.data?.message
@@ -19,14 +22,16 @@ function StatusBadge({ status }) {
 
 function GroupsPage() {
   const { setCurrentGroupId } = useAdminGroup()
+  const navigate = useNavigate()
 
   const [groupName, setGroupName] = useState('')
   const [leaderUserId, setLeaderUserId] = useState('')
-  const [createdGroup, setCreatedGroup] = useState(null)
   const [groupStatus, setGroupStatus] = useState({ loading: false, message: '', error: '' })
 
   const [groups, setGroups] = useState([])
-  const [listState, setListState] = useState({ loading: false, message: '', error: '' })
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [listState, setListState] = useState({ loading: true, error: '' })
 
   const [transferModal, setTransferModal] = useState(null)
   const [newAdvisorId, setNewAdvisorId] = useState('')
@@ -35,18 +40,28 @@ function GroupsPage() {
   const [disbandModal, setDisbandModal] = useState(null)
   const [disbandState, setDisbandState] = useState({ loading: false, message: '', error: '' })
 
-  const fetchGroups = useCallback(async () => {
-    setListState({ loading: true, message: '', error: '' })
+  const fetchGroups = useCallback(async (p = 1) => {
+    setListState({ loading: true, error: '' })
     try {
-      const response = await apiClient.get(apiConfig.endpoints.groups)
-      const list = response.data?.data || response.data?.items || response.data || []
+      const response = await apiClient.get(apiConfig.endpoints.groups, {
+        params: { page: p, limit: PAGE_LIMIT },
+      })
+      const body = response.data
+      const list = body.data || body.items || body || []
       setGroups(Array.isArray(list) ? list : [])
-      setListState({ loading: false, message: '', error: '' })
+      const total = body.total ?? list.length
+      setTotalPages(Math.max(1, Math.ceil(total / PAGE_LIMIT)))
+      setPage(p)
+      setListState({ loading: false, error: '' })
     } catch (error) {
-      setListState({ loading: false, message: '', error: getApiError(error) })
+      setListState({ loading: false, error: getApiError(error) })
       setGroups([])
     }
   }, [])
+
+  useEffect(() => {
+    fetchGroups(1)
+  }, [fetchGroups])
 
   const handleCreateGroup = async (event) => {
     event.preventDefault()
@@ -56,11 +71,11 @@ function GroupsPage() {
         groupName,
         leaderUserId,
       })
-      setCreatedGroup(response.data)
       setCurrentGroupId(response.data.groupId)
-      setGroupStatus({ loading: false, message: `Group created with ID ${response.data.groupId}.`, error: '' })
+      setGroupStatus({ loading: false, message: `Group "${response.data.groupName}" created.`, error: '' })
       setGroupName('')
       setLeaderUserId('')
+      await fetchGroups(1)
     } catch (error) {
       const details = error.response?.data?.message || error.message || 'Unable to create group.'
       setGroupStatus({ loading: false, message: '', error: details })
@@ -86,7 +101,7 @@ function GroupsPage() {
       })
       setTransferState({ loading: false, message: 'Advisor transferred successfully.', error: '' })
       setTransferModal(null)
-      await fetchGroups()
+      await fetchGroups(page)
     } catch (error) {
       setTransferState({ loading: false, message: '', error: getApiError(error) })
     }
@@ -105,11 +120,13 @@ function GroupsPage() {
       await apiClient.delete(apiConfig.endpoints.groupDisband(groupId))
       setDisbandState({ loading: false, message: 'Group disbanded.', error: '' })
       setDisbandModal(null)
-      await fetchGroups()
+      await fetchGroups(page)
     } catch (error) {
       setDisbandState({ loading: false, message: '', error: getApiError(error) })
     }
   }
+
+  const goTo = (p) => fetchGroups(p)
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 p-1">
@@ -146,92 +163,103 @@ function GroupsPage() {
         </form>
         <StatusBlock title="Create Group" message={groupStatus.message} type="success" />
         <StatusBlock title="Create Group" message={groupStatus.error} type="error" />
-        {createdGroup && (
-          <div className="mt-3 rounded-xl border border-[#1e293b] bg-[#080f1f] p-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Created Group</p>
-            <pre className="text-xs text-slate-300 overflow-x-auto">{JSON.stringify(createdGroup, null, 2)}</pre>
-          </div>
-        )}
       </SectionCard>
 
       <SectionCard
         title="Group Management"
-        description="List all groups. Transfer their advisor or disband unassigned groups."
+        description="All groups. Transfer their advisor, view details, or disband unassigned groups."
       >
-        <div className="mb-4">
-          <Button type="button" variant="ghost" loading={listState.loading} disabled={listState.loading} onClick={fetchGroups}>
-            {listState.loading ? 'Loading…' : 'Load Groups'}
-          </Button>
-        </div>
-
         {listState.error && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3" role="status">
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mb-3" role="status">
             {listState.error}
           </div>
         )}
 
-        {groups.length === 0 && !listState.loading ? (
-          <p className="py-12 text-center text-sm text-slate-500">No groups loaded. Click "Load Groups" to fetch.</p>
+        {listState.loading ? (
+          <div className="py-12 text-center text-sm text-slate-500">Loading groups…</div>
+        ) : groups.length === 0 ? (
+          <p className="py-12 text-center text-sm text-slate-500">No groups found.</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-[#1e293b]">
-            <table className="w-full">
-              <thead className="bg-[#080f1f]">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Name / ID</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((group) => {
-                  const groupId = group.groupId || group.id
-                  const name = group.groupName || group.name || `Group ${groupId}`
-                  const status = String(group.status || '').toUpperCase()
-                  const isAssigned = status === 'ASSIGNED'
-                  const isUnassigned = status === 'UNASSIGNED'
+          <>
+            <div className="overflow-hidden rounded-2xl border border-[#1e293b]">
+              <table className="w-full">
+                <thead className="bg-[#080f1f]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Name</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map((group) => {
+                    const groupId = group.groupId || group.id
+                    const name = group.groupName || group.name || `Group ${groupId}`
+                    const status = String(group.status || '').toUpperCase()
+                    const isAssigned = status === 'ASSIGNED'
+                    const isUnassigned = status === 'UNASSIGNED'
 
-                  return (
-                    <tr key={groupId} className="border-t border-[#1e293b] hover:bg-white/[0.02]">
-                      <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-slate-200">{name}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {groupId}
-                          {group.advisorUserId || group.advisorId
-                            ? ` · Advisor: ${group.advisorUserId || group.advisorId}`
-                            : ''}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        <StatusBadge status={group.status} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            disabled={!isAssigned}
-                            title={isAssigned ? 'Transfer to another advisor' : 'Group must be ASSIGNED to transfer'}
-                            onClick={() => openTransferModal(group)}
+                    return (
+                      <tr key={groupId} className="border-t border-[#1e293b] hover:bg-white/2">
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => navigate(`/admin/groups/${groupId}`)}
+                            className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors text-left"
                           >
-                            Transfer
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="danger"
-                            disabled={!isUnassigned}
-                            title={isUnassigned ? 'Disband this group' : 'Only UNASSIGNED groups can be disbanded'}
-                            onClick={() => openDisbandModal(group)}
-                          >
-                            Disband
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                            {name}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-slate-300">
+                          <StatusBadge status={group.status} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={!isAssigned}
+                              title={isAssigned ? 'Transfer to another advisor' : 'Group must be ASSIGNED to transfer'}
+                              onClick={() => openTransferModal(group)}
+                            >
+                              Transfer
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="danger"
+                              disabled={!isUnassigned}
+                              title={isUnassigned ? 'Disband this group' : 'Only UNASSIGNED groups can be disbanded'}
+                              onClick={() => openDisbandModal(group)}
+                            >
+                              Disband
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between border-t border-[#1e293b] pt-4">
+                <button
+                  onClick={() => goTo(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  className="text-xs text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-40"
+                >
+                  ← Prev
+                </button>
+                <span className="text-xs text-slate-500">{page} / {totalPages}</span>
+                <button
+                  onClick={() => goTo(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  className="text-xs text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-40"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </SectionCard>
 
@@ -254,16 +282,6 @@ function GroupsPage() {
             </p>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                  Current Advisor ID
-                </label>
-                <input
-                  disabled
-                  value={transferModal.advisorUserId || transferModal.advisorId || '(none)'}
-                  className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
-                />
-              </div>
               <EntitySearchSelect
                 label="New Advisor"
                 endpoint={apiConfig.endpoints.advisors}

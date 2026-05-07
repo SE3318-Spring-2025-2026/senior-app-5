@@ -29,6 +29,7 @@ import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import CommitteesPage from './pages/admin/CommitteesPage';
 import CommitteeDetailPage from './pages/admin/CommitteeDetailPage';
+import GroupDetailPage from './pages/admin/GroupDetailPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
 import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
@@ -114,6 +115,7 @@ function App() {
             }>
               <Route index element={<Navigate to="groups" replace />} />
               <Route path="groups" element={<GroupsPage />} />
+              <Route path="groups/:groupId" element={<GroupDetailPage />} />
               <Route path="members" element={<MembersPage />} />
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />

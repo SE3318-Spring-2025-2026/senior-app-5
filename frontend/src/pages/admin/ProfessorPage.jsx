@@ -10,7 +10,7 @@ function ProfessorsPage() {
   const loadProfessors = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/users/search', { params: { role: 'Professor', limit: 100 } });
+      const res = await apiClient.get('/users/search', { params: { limit: 100 } });
       const data = res.data?.data ?? res.data ?? [];
       setProfessors(Array.isArray(data) ? data : []);
     } catch {
@@ -24,15 +24,15 @@ function ProfessorsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 p-1">
-      <PageHeader title="Professors" subtitle="Manage professor accounts" />
+      <PageHeader title="Users" subtitle="Create and manage user accounts" />
 
       <Card>
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Create Professor</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Create User</p>
         <ProfessorForm onSuccess={loadProfessors} />
       </Card>
 
       <Card>
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Professor List</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">User List</p>
         {loading ? (
           <p className="text-sm text-slate-500">Loading…</p>
         ) : professors.length === 0 ? (

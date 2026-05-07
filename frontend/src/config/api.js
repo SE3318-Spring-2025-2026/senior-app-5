@@ -17,6 +17,7 @@ export const apiConfig = {
       passwordResetConfirm: '/auth/password-reset/confirm',
     },
     groups: '/groups',
+    groupById: (groupId) => `/groups/${groupId}`,
     groupMembers: (groupId) => `/groups/${groupId}/members`,
     phases: '/phases',
     phaseById: (phaseId) => `/phases/${phaseId}`,

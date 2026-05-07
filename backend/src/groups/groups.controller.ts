@@ -59,6 +59,16 @@ export class GroupsController {
     return this.groupsService.findAll(query.page, query.limit, query.name);
   }
 
+  @ApiOperation({ summary: 'Get group details with leader, advisor and members' })
+  @ApiOkResponse({ description: 'Group details returned' })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  @Get(':groupId')
+  @Roles(Role.Admin, Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  async getGroupDetails(@Param('groupId') groupId: string) {
+    return this.groupsService.findGroupWithDetails(groupId);
+  }
+
   @ApiOperation({ summary: 'Create a new group' })
   @ApiCreatedResponse({ description: 'Group created successfully' })
   @Post()

@@ -1,25 +1,13 @@
-import React from 'react'
-import PropTypes from 'prop-types' // 1. REQUIRE YERİNE IMPORT EKLEDİK
-import styles from './SectionCard.module.css'
-
-/**
- * SectionCard - Reusable container for form sections and feature blocks.
- * Used across admin pages and student pages for consistent layout.
- */
 export function SectionCard({ title, description, children }) {
   return (
-    <section className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <h2>{title}</h2>
-        <p>{description}</p>
+    <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+      <div>
+        <h2 className="text-sm font-bold text-slate-200">{title}</h2>
+        {description && (
+          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+        )}
       </div>
-      <div className={styles.sectionBody}>{children}</div>
+      <div className="mt-4">{children}</div>
     </section>
   )
-}
-
-SectionCard.propTypes = {
-  title: PropTypes.string.isRequired,
-  description: PropTypes.string,
-  children: PropTypes.node,
 }

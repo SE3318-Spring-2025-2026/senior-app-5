@@ -50,6 +50,9 @@ function MembersPage() {
               placeholder="UUID of group"
               required
             />
+            <small className={styles.note}>
+              Group search is blocked until a backend group-search endpoint is available.
+            </small>
           </label>
           <EntitySearchSelect
             label="Member"

@@ -31,6 +31,7 @@ describe('AdvisorRequestsController', () => {
     submitRequest: jest.fn(),
     decideRequest: jest.fn(),
     withdrawRequest: jest.fn(),
+    listRequests: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -146,6 +147,66 @@ describe('AdvisorRequestsController', () => {
   });
 
   
+  it('should delegate list requests to service and forward caller identity', async () => {
+    const expected = {
+      data: [{ requestId: 'req-1', groupId: 'group-1', status: 'PENDING' }],
+      total: 1,
+      page: 1,
+      limit: 20,
+    };
+
+    mockAdvisorsService.listRequests.mockResolvedValue(expected);
+
+    const request = {
+      user: { role: Role.Coordinator, userId: 'coordinator-1' },
+    } as Parameters<AdvisorRequestsController['listRequests']>[0];
+
+    const query = { page: 1, limit: 20 } as Parameters<
+      AdvisorRequestsController['listRequests']
+    >[1];
+
+    const result = await controller.listRequests(request, query);
+
+    expect(mockAdvisorsService.listRequests).toHaveBeenCalledWith({
+      callerId: 'coordinator-1',
+      callerRole: Role.Coordinator,
+      requestedAdvisorId: undefined,
+      status: undefined,
+      page: 1,
+      limit: 20,
+    });
+    expect(result).toEqual(expected);
+  });
+
+  it('should pass status filter through to service for advisor role', async () => {
+    mockAdvisorsService.listRequests.mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+    });
+
+    const request = {
+      user: { role: Role.Professor, userId: 'advisor-1' },
+    } as Parameters<AdvisorRequestsController['listRequests']>[0];
+
+    const query = {
+      page: 1,
+      limit: 20,
+      status: 'PENDING',
+    } as Parameters<AdvisorRequestsController['listRequests']>[1];
+
+    await controller.listRequests(request, query);
+
+    expect(mockAdvisorsService.listRequests).toHaveBeenCalledWith(
+      expect.objectContaining({
+        callerId: 'advisor-1',
+        callerRole: Role.Professor,
+        status: 'PENDING',
+      }),
+    );
+  });
+
   describe('RBAC Matrix Validation', () => {
     it('should restrict submitRequest to TeamLeader', () => {
       const roles = Reflect.getMetadata('roles', controller.submitRequest);
@@ -160,6 +221,11 @@ describe('AdvisorRequestsController', () => {
     it('should restrict withdrawRequest to TeamLeader', () => {
       const roles = Reflect.getMetadata('roles', controller.withdrawRequest);
       expect(roles).toEqual([Role.TeamLeader]);
+    });
+
+    it('should restrict listRequests to Coordinator, Professor, and TeamLeader', () => {
+      const roles = Reflect.getMetadata('roles', controller.listRequests);
+      expect(roles).toEqual([Role.Coordinator, Role.Professor, Role.TeamLeader]);
     });
   });
 });

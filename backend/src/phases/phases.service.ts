@@ -6,6 +6,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Phase, PhaseDocument } from './phase.entity';
+import { CreatePhaseDto } from './dto/create-phase.dto';
 import { UpdatePhaseScheduleDto } from './dto/update-phase-schedule.dto';
 
 @Injectable()
@@ -13,6 +14,23 @@ export class PhasesService {
   constructor(
     @InjectModel(Phase.name) private phaseModel: Model<PhaseDocument>,
   ) {}
+
+  async listForScheduling(): Promise<Phase[]> {
+    return this.phaseModel
+      .find()
+      .select('phaseId name submissionStart submissionEnd -_id')
+      .sort({ phaseId: 1 })
+      .exec();
+  }
+
+  async createPhase(dto: CreatePhaseDto) {
+    const phase = new this.phaseModel({
+      name: dto.name,
+      requiredFields: [],
+    });
+
+    return phase.save();
+  }
 
   async findByPhaseId(phaseId: string): Promise<Phase> {
     const phase = await this.phaseModel.findOne({ phaseId }).exec();

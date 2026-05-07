@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -24,6 +25,7 @@ import {
   ApiUnauthorizedResponse,
   ApiConflictResponse,
   ApiUnprocessableEntityResponse,
+  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -37,6 +39,8 @@ import { ListGradeHistoryQueryDto } from './dto/list-grade-history-query.dto';
 import { PaginatedGradeHistoryDto } from './dto/paginated-grade-history.dto';
 import { CalculateGradeDto } from './dto/calculate-grade.dto';
 import { GradeCalculationResultDto } from './dto/grade-calculation-result.dto';
+import { CreateDeliverableEvaluationDto } from './dto/create-deliverable-evaluation.dto';
+import { DeliverableEvaluationResponseDto } from './dto/deliverable-evaluation-response.dto';
 
 interface RequestWithUser extends Request {
   user: { userId?: string; sub?: string; _id?: string; role: Role };
@@ -87,6 +91,60 @@ export class GradesController {
     );
 
     throw new ForbiddenException("Cannot access another student's grade.");
+  }
+
+  private getRequiredJwtUserId(req: RequestWithUser): string {
+    const userId = this.getJwtStudentId(req);
+    if (!userId) {
+      throw new BadRequestException('JWT does not include a user identifier.');
+    }
+    return userId;
+  }
+
+  @ApiOperation({
+    operationId: 'recordDeliverableEvaluation',
+    summary: 'Record final deliverable evaluation for a group',
+  })
+  @ApiOkResponse({ type: DeliverableEvaluationResponseDto })
+  @ApiBadRequestResponse({
+    description: 'Validation error, missing deliverable, or group not ASSIGNED',
+  })
+  @ApiConflictResponse({
+    description: 'Evaluation already exists for the same group and deliverable',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @Roles(Role.Professor, Role.Admin)
+  @HttpCode(HttpStatus.CREATED)
+  @Post('deliverable-evaluations')
+  async recordDeliverableEvaluation(
+    @Body() dto: CreateDeliverableEvaluationDto,
+    @Req() req: RequestWithUser,
+  ): Promise<DeliverableEvaluationResponseDto> {
+    const gradedBy = this.getRequiredJwtUserId(req);
+    return this.gradesService.recordDeliverableEvaluation(dto, gradedBy);
+  }
+
+  @ApiOperation({
+    operationId: 'getDeliverableEvaluation',
+    summary: 'Get deliverable evaluation by ID',
+  })
+  @ApiOkResponse({ type: DeliverableEvaluationResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Evaluation not found' })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
+  @Get('deliverable-evaluations/:evaluationId')
+  async getDeliverableEvaluation(
+    @Param('evaluationId', ParseUUIDPipe) evaluationId: string,
+  ): Promise<DeliverableEvaluationResponseDto> {
+    return this.gradesService.getDeliverableEvaluation(evaluationId);
   }
 
   @ApiOperation({

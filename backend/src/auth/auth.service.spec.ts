@@ -10,11 +10,13 @@ describe('AuthService', () => {
 
   const mockUsersService = {
     findByEmail: jest.fn(),
+    findById: jest.fn(),
     createUser: jest.fn(),
     createPasswordResetToken: jest.fn(),
     findByPasswordResetToken: jest.fn(),
     updatePasswordHash: jest.fn(),
     linkGithubAccount: jest.fn(),
+    unlinkGithubAccount: jest.fn(),
   } as any;
 
   const mockJwtService = {
@@ -89,7 +91,9 @@ describe('AuthService', () => {
     });
 
     it('should throw BadRequestException if code is empty', async () => {
-      await expect(service.linkGithubAccount(mockUserId, '')).rejects.toThrow(BadRequestException);
+      await expect(service.linkGithubAccount(mockUserId, '')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException if GitHub returns an error', async () => {
@@ -97,17 +101,22 @@ describe('AuthService', () => {
         json: async () => ({ error: 'bad_verification_code' }),
       });
 
-      await expect(service.linkGithubAccount(mockUserId, 'invalid_code')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.linkGithubAccount(mockUserId, 'invalid_code'),
+      ).rejects.toThrow(BadRequestException);
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
     it('should successfully link account when valid code is provided', async () => {
       (global.fetch as any).mockResolvedValueOnce({
-        json: async () => ({ access_token: 'valid_mock_token' }),
+        json: async () => ({
+          access_token: 'valid_mock_token',
+          scope: 'read:user,read:project,repo',
+        }),
       });
 
       (global.fetch as any).mockResolvedValueOnce({
-        json: async () => ({ id: 12345678 }),
+        json: async () => ({ id: 12345678, login: 'testuser' }),
       });
 
       mockUsersService.linkGithubAccount.mockResolvedValue(true);
@@ -115,7 +124,71 @@ describe('AuthService', () => {
       const result = await service.linkGithubAccount(mockUserId, 'valid_code');
 
       expect(result.isGithubConnected).toBe(true);
-      expect(mockUsersService.linkGithubAccount).toHaveBeenCalledWith(mockUserId, '12345678');
+      expect(result.scopes).toBe('read:user,read:project,repo');
+      expect(mockUsersService.linkGithubAccount).toHaveBeenCalledWith(
+        mockUserId,
+        '12345678',
+        'testuser',
+        'valid_mock_token',
+        'read:user,read:project,repo',
+      );
+    });
+  });
+
+  describe('unlinkGithubAccount', () => {
+    const mockUserId = '111111111111111111111111';
+
+    it('should throw NotFoundException when the user does not exist', async () => {
+      mockUsersService.findById.mockResolvedValue(null);
+      await expect(service.unlinkGithubAccount(mockUserId)).rejects.toThrow(
+        'User not found',
+      );
+    });
+
+    it('should unlink the account when the user exists', async () => {
+      mockUsersService.findById.mockResolvedValue({ _id: mockUserId } as any);
+      mockUsersService.unlinkGithubAccount.mockResolvedValue(true);
+
+      const result = await service.unlinkGithubAccount(mockUserId);
+
+      expect(mockUsersService.unlinkGithubAccount).toHaveBeenCalledWith(
+        mockUserId,
+      );
+      expect(result.isGithubConnected).toBe(false);
+    });
+  });
+
+  describe('getGithubStatus', () => {
+    const mockUserId = '111111111111111111111111';
+
+    it('should return connected=true when user has githubAccountId', async () => {
+      const linkedAt = new Date('2026-05-06T10:00:00Z');
+      mockUsersService.findById.mockResolvedValue({
+        _id: mockUserId,
+        githubAccountId: '99',
+        githubScopes: 'read:user,read:project,repo',
+        githubLinkedAt: linkedAt,
+      } as any);
+
+      const result = await service.getGithubStatus(mockUserId);
+      expect(result).toEqual({
+        isGithubConnected: true,
+        githubAccountId: '99',
+        scopes: 'read:user,read:project,repo',
+        linkedAt,
+      });
+    });
+
+    it('should return connected=false when user has no githubAccountId', async () => {
+      mockUsersService.findById.mockResolvedValue({ _id: mockUserId } as any);
+
+      const result = await service.getGithubStatus(mockUserId);
+      expect(result).toEqual({
+        isGithubConnected: false,
+        githubAccountId: null,
+        scopes: null,
+        linkedAt: null,
+      });
     });
   });
 });

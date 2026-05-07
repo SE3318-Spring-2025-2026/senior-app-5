@@ -218,7 +218,7 @@ export class GradesService {
         gradedBy,
       });
 
-      return this.toDeliverableEvaluationResponseDto(created.toObject());
+      return this.toDeliverableEvaluationResponseDto(created.toObject() as unknown as DeliverableEvaluation & { createdAt: Date; updatedAt: Date });
     } catch (error) {
       const isDuplicateKey =
         typeof error === 'object' &&
@@ -252,7 +252,7 @@ export class GradesService {
       );
     }
 
-    return this.toDeliverableEvaluationResponseDto(evaluation);
+    return this.toDeliverableEvaluationResponseDto(evaluation as unknown as DeliverableEvaluation & { createdAt: Date; updatedAt: Date });
   }
 
   // ────────────────────────────────────────────────────────────────

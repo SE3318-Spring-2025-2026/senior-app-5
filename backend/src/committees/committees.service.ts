@@ -66,6 +66,8 @@ export class CommitteesService {
     private readonly scheduleModel: Model<ScheduleDocument>,
     @InjectModel(Submission.name)
     private readonly submissionModel: Model<SubmissionDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   async deleteCommittee(
@@ -73,9 +75,37 @@ export class CommitteesService {
     coordinatorId: string,
     correlationId?: string,
   ): Promise<void> {
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
-  ) {}
+    try {
+      const deleteResult = await this.committeeModel
+        .deleteOne({ id: committeeId })
+        .exec();
+
+      if (deleteResult.deletedCount === 0) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      this.logger.log({
+        event: 'committee_deleted',
+        committeeId,
+        coordinatorId,
+        correlationId,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
+      this.logger.error({
+        event: 'committee_delete_failed',
+        committeeId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to delete committee due to an unexpected error.',
+      );
+    }
+  }
 
   async addJuryMember(
     committeeId: string,
@@ -94,46 +124,6 @@ export class CommitteesService {
         );
       }
 
-      const groupIds = ((committee.groups as Array<{ groupId?: string }>) ?? [])
-        .map((group) => group.groupId)
-        .filter((groupId): groupId is string => typeof groupId === 'string');
-
-      if (groupIds.length > 0) {
-        const activeGradingCount = await this.submissionModel
-          .countDocuments({
-            groupId: { $in: groupIds },
-            status: {
-              $in: CommitteesService.ACTIVE_GRADING_STATUSES,
-            },
-          })
-          .exec();
-
-        if (activeGradingCount > 0) {
-          throw new ConflictException(
-            'Committee has active grading in progress and cannot be deleted.',
-          );
-        }
-      }
-
-      const deleteResult = await this.committeeModel
-        .deleteOne({ id: committeeId })
-        .exec();
-
-      if (deleteResult.deletedCount === 0) {
-        throw new NotFoundException(
-          `Committee with ID '${committeeId}' not found.`,
-        );
-      }
-
-      this.logger.log({
-        event: 'committee_deleted',
-        committeeId,
-        coordinatorId,
-        cascadedJuryCount: ((committee.jury as unknown[]) ?? []).length,
-        cascadedAdvisorCount: ((committee.advisors as unknown[]) ?? []).length,
-        cascadedGroupCount: ((committee.groups as unknown[]) ?? []).length,
-        correlationId,
-      });
       const userFilter = Types.ObjectId.isValid(dto.userId)
         ? { _id: new Types.ObjectId(dto.userId) }
         : { id: dto.userId };
@@ -147,14 +137,14 @@ export class CommitteesService {
       const juryList = (committee.jury as Array<{ userId?: string }>) ?? [];
       const alreadyAssigned = juryList.some((jury) => jury.userId === dto.userId);
       if (alreadyAssigned) {
-        throw new ConflictException('User is already assigned as a jury member.');
+        throw new ConflictException(`User '${dto.userId}' is already a jury member on this committee.`);
       }
 
       const assignedAt = dto.assignedAt ? new Date(dto.assignedAt) : new Date();
 
-      const updateResult = await this.committeeModel
+      await this.committeeModel
         .updateOne(
-          { id: committeeId, 'jury.userId': { $ne: dto.userId } },
+          { id: committeeId },
           {
             $push: {
               jury: {
@@ -166,10 +156,6 @@ export class CommitteesService {
           },
         )
         .exec();
-
-      if (updateResult.modifiedCount === 0) {
-        throw new ConflictException('User is already assigned as a jury member.');
-      }
 
       this.logger.log({
         event: 'jury_member_added',
@@ -188,10 +174,7 @@ export class CommitteesService {
       if (error instanceof NotFoundException || error instanceof ConflictException) {
         throw error;
       }
-
       this.logger.error({
-        event: 'committee_delete_failed',
-        committeeId,
         event: 'jury_member_add_failed',
         committeeId,
         userId: dto.userId,
@@ -200,7 +183,6 @@ export class CommitteesService {
         error: (error as Error).message,
       });
       throw new InternalServerErrorException(
-        'Failed to delete committee due to an unexpected error.',
         'Failed to add jury member due to an unexpected error.',
       );
     }
@@ -819,24 +801,6 @@ export class CommitteesService {
     }
   }
 
-  async deleteCommittee(
-    committeeId: string,
-    coordinatorId: string,
-    correlationId?: string,
-  ): Promise<void> {
-    try {
-      const result = await this.committeeModel.deleteOne({ id: committeeId }).exec();
-      if (result.deletedCount === 0) {
-        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
-      }
-      this.logger.log({ event: 'committee_deleted', committeeId, coordinatorId, correlationId });
-    } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-      this.logger.error({ event: 'committee_delete_failed', committeeId, correlationId, error: (error as Error).message });
-      throw new InternalServerErrorException('Failed to delete committee due to an unexpected error.');
-    }
-  }
-
   async listJuryMembers(
     committeeId: string,
     query: ListCommitteeAdvisorsQueryDto,
@@ -866,39 +830,6 @@ export class CommitteesService {
       if (error instanceof NotFoundException) throw error;
       this.logger.error({ event: 'jury_members_list_failed', committeeId, correlationId, error: (error as Error).message });
       throw new InternalServerErrorException('Failed to list jury members due to an unexpected error.');
-    }
-  }
-
-  async addJuryMember(
-    committeeId: string,
-    dto: AddJuryMemberDto,
-    coordinatorId: string,
-    correlationId?: string,
-  ): Promise<JuryMemberResponseDto> {
-    try {
-      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
-      if (!committee) {
-        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
-      }
-
-      const alreadyMember = ((committee.jury as any[]) ?? []).some((j) => j.userId === dto.userId);
-      if (alreadyMember) {
-        throw new ConflictException(`User '${dto.userId}' is already a jury member on this committee.`);
-      }
-
-      const assignedAt = dto.assignedAt ? new Date(dto.assignedAt) : new Date();
-      const entry = { userId: dto.userId, assignedAt, assignedByUserId: coordinatorId };
-
-      await this.committeeModel
-        .updateOne({ id: committeeId }, { $push: { jury: entry } })
-        .exec();
-
-      this.logger.log({ event: 'jury_member_added', committeeId, userId: dto.userId, coordinatorId, correlationId });
-      return { userId: dto.userId, assignedAt, assignedByUserId: coordinatorId };
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
-      this.logger.error({ event: 'jury_member_add_failed', committeeId, userId: dto.userId, correlationId, error: (error as Error).message });
-      throw new InternalServerErrorException('Failed to add jury member due to an unexpected error.');
     }
   }
 

@@ -15,6 +15,8 @@ import { ListCommitteeAdvisorsQueryDto } from './dto/list-committee-advisors-que
 import { ListCommitteesQueryDto } from './dto/list-committees-query.dto';
 import { Schedule } from '../advisors/schemas/schedule.schema';
 import { AssignmentSource } from './dto/add-committee-advisor.dto';
+import { User } from '../users/data/user.schema';
+import { Submission } from '../submissions/schemas/submission.schema';
 
 describe('CommitteesService', () => {
   let service: CommitteesService;
@@ -50,8 +52,17 @@ describe('CommitteesService', () => {
     findOne: jest.fn(),
   };
 
+  const mockSubmissionModel = {
+    find: jest.fn(),
+  };
+
+  const mockUserModel = {
+    exists: jest.fn().mockResolvedValue({ _id: 'some-id' }),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockUserModel.exists.mockResolvedValue({ _id: 'some-id' });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -67,6 +78,14 @@ describe('CommitteesService', () => {
         {
           provide: getModelToken(Schedule.name),
           useValue: mockScheduleModel,
+        },
+        {
+          provide: getModelToken(Submission.name),
+          useValue: mockSubmissionModel,
+        },
+        {
+          provide: getModelToken(User.name),
+          useValue: mockUserModel,
         },
       ],
     }).compile();

@@ -19,16 +19,6 @@ export class AddJuryMemberDto {
 
   @ApiPropertyOptional({
     description: 'Optional assignment timestamp, defaults to current server time',
-import { IsDateString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
-
-export class AddJuryMemberDto {
-  @ApiProperty({ description: 'User ID of the jury member to add', format: 'uuid' })
-  @IsUUID()
-  @IsNotEmpty()
-  userId!: string;
-
-  @ApiPropertyOptional({
-    description: 'Optional assignment timestamp; defaults to current server time',
     format: 'date-time',
   })
   @IsOptional()

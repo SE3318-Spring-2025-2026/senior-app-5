@@ -1,0 +1,99 @@
+﻿/* -- Layout -- */
+.pageContainer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.headerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 16px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.description {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* -- States -- */
+.loading {
+  padding: 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.errorBox {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 0.875rem;
+}
+
+.infoBox {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 20px;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* -- Table -- */
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #1e293b;
+  background: #111827;
+}
+
+.customTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+.customTable th,
+.customTable td {
+  padding: 11px 16px;
+  text-align: left;
+  border-bottom: 1px solid #1e293b;
+}
+
+.customTable th {
+  background: #0f172a;
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.customTable tr:last-child td {
+  border-bottom: none;
+}
+
+.customTable tbody tr:hover td {
+  background: #1a2535;
+}

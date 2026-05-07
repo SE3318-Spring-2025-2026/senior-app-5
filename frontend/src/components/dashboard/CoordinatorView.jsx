@@ -32,9 +32,9 @@ const CoordinatorView = ({ user }) => {
 
       
       <div className={styles.infoBox}>
-        <h3 style={{ color: '#f8fafc' }}>Administrative Quick Actions</h3>
+        <h3>Administrative Quick Actions</h3>
         <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '10px 0' }}>
-          As a **Coordinator**, you have overarching authority. You can manage system-wide audit logs, 
+          As a <strong style={{ color: '#f1f5f9' }}>Coordinator</strong>, you have overarching authority. You can manage system-wide audit logs,
           adjust global configurations, and oversee all academic departments.
         </p>
         <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>

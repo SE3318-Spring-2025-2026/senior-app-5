@@ -846,6 +846,48 @@
       }
     },
     "/api/v1/committees/{committeeId}": {
+      "delete": {
+        "operationId": "deleteCommittee",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Committee and assignment links deleted successfully"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "409": {
+            "description": "Committee has active grading in progress and cannot be deleted"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete a committee (COORDINATOR only)",
+        "tags": [
+          "Committees"
+        ]
+      },
       "get": {
         "operationId": "getCommitteeById",
         "parameters": [
@@ -885,6 +927,65 @@
           }
         ],
         "summary": "Get a committee by its ID (any authenticated user)",
+        "tags": [
+          "Committees"
+        ]
+      },
+      "patch": {
+        "operationId": "updateCommittee",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCommitteeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committee updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitteeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No update fields provided"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update committee details (COORDINATOR only)",
         "tags": [
           "Committees"
         ]
@@ -952,6 +1053,65 @@
           }
         ],
         "summary": "List advisors assigned to a committee (COORDINATOR only)",
+        "tags": [
+          "Committees"
+        ]
+      },
+      "post": {
+        "operationId": "addCommitteeAdvisor",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCommitteeAdvisorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Advisor assigned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddCommitteeAdvisorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "409": {
+            "description": "Advisor is already linked to this committee"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Manually add an advisor to a committee (COORDINATOR only)",
         "tags": [
           "Committees"
         ]
@@ -1081,6 +1241,131 @@
           }
         ],
         "summary": "Assign a group to a committee (COORDINATOR only)",
+        "tags": [
+          "Committees"
+        ]
+      }
+    },
+    "/api/v1/committees/{committeeId}/jury-members": {
+      "post": {
+        "operationId": "addJuryMember",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddJuryMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Jury member assignment created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JuryMemberResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee or user not found"
+          },
+          "409": {
+            "description": "User is already assigned as jury member"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Add a jury member to a committee (COORDINATOR only)",
+        "tags": [
+          "Committees"
+        ]
+      },
+      "get": {
+        "operationId": "listJuryMembers",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page index",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jury members returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JuryMemberPageDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List jury members of a committee (COORDINATOR only)",
         "tags": [
           "Committees"
         ]
@@ -1233,6 +1518,81 @@
         ]
       }
     },
+    "/api/v1/committees/{committeeId}/advisors/{advisorUserId}/groups": {
+      "get": {
+        "description": "Returns all groups in the committee. isOwnGroup=true when the group is directly advised by this advisor; false for cross-grading assignments.",
+        "operationId": "listAdvisorGradingScope",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "advisorUserId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page index",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grading scope returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorGradingScopePageDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Valid token but insufficient permissions"
+          },
+          "404": {
+            "description": "Committee or advisor link not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List groups an advisor is responsible for grading in a committee (COORDINATOR, ADVISOR)",
+        "tags": [
+          "Committees"
+        ]
+      }
+    },
     "/api/v1/invites/deliver": {
       "post": {
         "operationId": "InvitesController_deliverInvites",
@@ -1299,6 +1659,18 @@
       }
     },
     "/api/v1/requests": {
+      "get": {
+        "operationId": "AdvisorRequestsController_listRequests",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdvisorRequests"
+        ]
+      },
       "post": {
         "operationId": "AdvisorRequestsController_submitRequest",
         "parameters": [],
@@ -1385,6 +1757,85 @@
         },
         "tags": [
           "AdvisorRequests"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/status": {
+      "get": {
+        "operationId": "GroupsAdvisorController_getGroupStatus",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "GroupsAdvisor"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/advisor": {
+      "patch": {
+        "operationId": "GroupsAdvisorController_transferAdvisor",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferAdvisorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "GroupsAdvisor"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}": {
+      "delete": {
+        "operationId": "GroupsAdvisorController_disbandGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "GroupsAdvisor"
         ]
       }
     },
@@ -1914,7 +2365,7 @@
         ]
       }
     },
-    "/api/v1/groups/{groupId}/sprints/{sprintId}/story-points/override": {
+    "/api/v1/groups/{groupId}/sprints/{sprintId}/story-points/{studentId}": {
       "patch": {
         "operationId": "overrideStoryPoints",
         "parameters": [
@@ -1928,6 +2379,14 @@
           },
           {
             "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "studentId",
             "required": true,
             "in": "path",
             "schema": {
@@ -1974,6 +2433,106 @@
         "summary": "Override story points for a student (COORDINATOR only)",
         "tags": [
           "Story Points"
+        ]
+      }
+    },
+    "/api/v1/deliverable-evaluations": {
+      "post": {
+        "operationId": "recordDeliverableEvaluation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliverableEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableEvaluationResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error, missing deliverable, or group not ASSIGNED"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "409": {
+            "description": "Evaluation already exists for the same group and deliverable"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Record final deliverable evaluation for a group",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/deliverable-evaluations/{evaluationId}": {
+      "get": {
+        "operationId": "getDeliverableEvaluation",
+        "parameters": [
+          {
+            "name": "evaluationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableEvaluationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Evaluation not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get deliverable evaluation by ID",
+        "tags": [
+          "Grades"
         ]
       }
     },
@@ -3331,6 +3890,48 @@
           "limit"
         ]
       },
+      "AddJuryMemberDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "ID of the user to assign as jury member",
+            "format": "uuid"
+          },
+          "assignedAt": {
+            "type": "string",
+            "description": "Optional assignment timestamp, defaults to current server time",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "JuryMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User ID of the jury member",
+            "format": "uuid"
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedByUserId": {
+            "type": "string",
+            "description": "User ID of the coordinator who made this assignment",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "assignedAt",
+          "assignedByUserId"
+        ]
+      },
       "AssignCommitteeGroupDto": {
         "type": "object",
         "properties": {
@@ -3374,6 +3975,154 @@
           "assignedByUserId"
         ]
       },
+      "UpdateCommitteeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New display name of the committee",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      },
+      "JuryMemberPageDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JuryMemberResponseDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total jury assignments for this committee"
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page index (1-based)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Page size"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "AddCommitteeAdvisorDto": {
+        "type": "object",
+        "properties": {
+          "advisorId": {
+            "type": "string",
+            "description": "User ID of the advisor to assign",
+            "format": "uuid"
+          },
+          "assignmentSource": {
+            "type": "string",
+            "enum": [
+              "PRIMARY_ADVISOR",
+              "JURY_MEMBER"
+            ],
+            "description": "Whether the advisor is a primary advisor or additional jury member",
+            "example": "JURY_MEMBER"
+          }
+        },
+        "required": [
+          "advisorId",
+          "assignmentSource"
+        ]
+      },
+      "AddCommitteeAdvisorResponseDto": {
+        "type": "object",
+        "properties": {
+          "advisorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignmentSource": {
+            "type": "string",
+            "enum": [
+              "PRIMARY_ADVISOR",
+              "JURY_MEMBER"
+            ]
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedByUserId": {
+            "type": "string",
+            "description": "User ID of the coordinator who made this assignment",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "advisorId",
+          "assignmentSource",
+          "assignedAt",
+          "assignedByUserId"
+        ]
+      },
+      "AdvisorGradingScopeItemDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "ID of the group this advisor must grade"
+          },
+          "assignedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the group was assigned to the committee"
+          },
+          "isOwnGroup": {
+            "type": "boolean",
+            "description": "True if this group is directly advised by this advisor"
+          },
+          "originalAdvisorUserId": {
+            "type": "object",
+            "description": "The primary advisor of this group; null when isOwnGroup is true",
+            "nullable": true
+          }
+        },
+        "required": [
+          "groupId",
+          "assignedAt",
+          "isOwnGroup"
+        ]
+      },
+      "AdvisorGradingScopePageDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorGradingScopeItemDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
       "DeliverInviteDto": {
         "type": "object",
         "properties": {
@@ -3402,6 +4151,10 @@
         "properties": {}
       },
       "UpdateRequestStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TransferAdvisorDto": {
         "type": "object",
         "properties": {}
       },
@@ -3574,10 +4327,6 @@
       "OverrideStoryPointsDto": {
         "type": "object",
         "properties": {
-          "studentId": {
-            "type": "string",
-            "description": "UUID of the student to override"
-          },
           "completedPoints": {
             "type": "number",
             "description": "Override completed story points (must be >= 0)",
@@ -3585,8 +4334,88 @@
           }
         },
         "required": [
-          "studentId",
           "completedPoints"
+        ]
+      },
+      "CreateDeliverableEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableGrade": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ]
+          },
+          "gradedBy": {
+            "type": "string",
+            "readOnly": true,
+            "description": "Must not be provided by client. It is extracted from JWT."
+          }
+        },
+        "required": [
+          "groupId",
+          "deliverableId",
+          "deliverableGrade"
+        ]
+      },
+      "DeliverableEvaluationResponseDto": {
+        "type": "object",
+        "properties": {
+          "evaluationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableGrade": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ]
+          },
+          "gradedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluationId",
+          "groupId",
+          "deliverableId",
+          "deliverableGrade",
+          "gradedBy",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "StudentFinalGradeDto": {

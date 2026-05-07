@@ -65,7 +65,7 @@ describe('SubmissionsController', () => {
 
   describe('create', () => {
     it('should authorize and create submission', async () => {
-      const req = { user: { userId: 'student-1', role: 'Student' } };
+      const req = { user: { userId: 'student-1', role: 'Student', groupId: 'group-123' } };
       const dto = {
         title: 'Proposal',
         groupId: 'group-123',
@@ -90,7 +90,7 @@ describe('SubmissionsController', () => {
     });
 
     it('should throw ForbiddenException when authorization fails', async () => {
-      const req = { user: { userId: 'student-1', role: 'Student' } };
+      const req = { user: { userId: 'student-1', role: 'Student', groupId: 'group-123' } };
       const dto = {
         title: 'Proposal',
         groupId: 'group-123',
@@ -109,6 +109,29 @@ describe('SubmissionsController', () => {
       );
       expect(service.createSubmission).not.toHaveBeenCalled();
     });
+    
+    it('should throw ForbiddenException when Student body groupId does not match JWT group', async () => {
+      const req = {
+        user: {
+          userId: 'student-1',
+          role: 'Student',
+          groupId: 'my-group',
+        },
+      };
+      const dto = {
+        title: 'Proposal',
+        groupId: 'other-group',
+        type: 'INITIAL',
+        phaseId: 'phase-1',
+      };
+
+      await expect(controller.create(req as any, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(service.assertAuthorizedGroupMember).not.toHaveBeenCalled();
+      expect(service.createSubmission).not.toHaveBeenCalled();
+    });
+    
   });
 
   describe('getCompleteness', () => {

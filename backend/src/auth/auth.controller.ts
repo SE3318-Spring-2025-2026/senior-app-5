@@ -37,6 +37,7 @@ interface JwtUser {
   userId: string;
   email: string;
   role: string;
+  groupId?: string | null;
 }
 
 interface RequestWithUser extends Request {
@@ -114,6 +115,8 @@ export class AuthController {
       id: req.user.userId,
       email: req.user.email,
       role: req.user.role,
+      groupId: req.user.groupId ?? null,
+      teamId: req.user.groupId ?? null,
     };
   }
 

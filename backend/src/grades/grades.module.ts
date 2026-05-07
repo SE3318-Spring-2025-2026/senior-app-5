@@ -27,6 +27,7 @@ import {
   StoryPointRecordSchema,
 } from '../story-points/schemas/story-point-record.schema';
 import { DeliverablesModule } from '../deliverables/deliverables.module';
+import { Group, GroupSchema } from '../groups/group.entity';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { DeliverablesModule } from '../deliverables/deliverables.module';
       { name: GroupFinalGrade.name, schema: GroupFinalGradeSchema },
       { name: GradeHistoryEntry.name, schema: GradeHistoryEntrySchema },
       { name: DeliverableEvaluation.name, schema: DeliverableEvaluationSchema },
+      { name: Group.name, schema: GroupSchema },
       { name: SprintEvaluation.name, schema: SprintEvaluationSchema },
       { name: SprintConfig.name, schema: SprintConfigSchema },
       { name: StoryPointRecord.name, schema: StoryPointRecordSchema },

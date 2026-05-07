@@ -69,3 +69,11 @@
 .tableWrapper { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; overflow-x: auto; }
 .secondaryButton { background: transparent; border: 1px solid #334155; color: #94a3b8; }
 .secondaryButton:hover { background: rgba(51, 65, 85, 0.4); color: #f8fafc; }
+.storyPointControls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.storyPointInput { background: #020617; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px; padding: 8px 10px; min-width: 230px; }
+.storyPointNumberInput { width: 90px; background: #020617; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px; padding: 6px 8px; }
+.overrideInlineForm { display: flex; gap: 8px; align-items: center; }
+.sourceBadge { padding: 4px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.2px; }
+.sourceSuccess { color: #14532d; background: #86efac; }
+.sourceWarning { color: #713f12; background: #facc15; }
+.sourceNeutral { color: #e2e8f0; background: #334155; }

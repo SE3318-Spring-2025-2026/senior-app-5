@@ -242,8 +242,11 @@ export class AdvisorsService {
   }
 
   async getActiveSchedule(
-    phase: SchedulePhase,
+    phase?: SchedulePhase,
   ): Promise<ActiveScheduleResponse> {
+    if (!phase) {
+      throw new NotFoundException('Phase query parameter is required.');
+    }
     const schedule = await this.getLatestScheduleByPhase(phase);
 
     if (!schedule) {

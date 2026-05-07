@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import apiClient from '../utils/apiClient'
 
+const toArray = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.items)) return payload.items
+  if (Array.isArray(payload?.results)) return payload.results
+  return []
+}
+
 function EntitySearchSelect({
   endpoint,
   searchField,
@@ -64,7 +72,7 @@ function EntitySearchSelect({
             [params.value]: query.trim(),
           },
         })
-        const data = Array.isArray(response.data) ? response.data : []
+        const data = toArray(response.data)
         setResults(data)
         setOpen(true)
         setError('')

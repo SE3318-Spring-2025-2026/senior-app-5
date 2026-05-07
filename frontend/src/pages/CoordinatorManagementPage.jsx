@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createSchedule, getActiveSchedule } from '../utils/scheduleService'
+import apiConfig from '../config/api'
 import {
   addAdvisor,
   addJuryMember,
@@ -18,6 +19,7 @@ import {
 } from '../utils/committeeService'
 import { useAuth } from '../context/AuthContext'
 import { CreateCoordinatorForm } from '../components/CreateCoordinatorForm'
+import EntitySearchSelect from '../components/EntitySearchSelect'
 import { SectionCard } from '../components/ui'
 
 const labelClass = 'block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5'
@@ -32,6 +34,7 @@ const btnDanger =
 
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
+const SCHEDULE_PHASE_OPTIONS = ['ADVISOR_SELECTION', 'COMMITTEE_ASSIGNMENT', 'SPRINT']
 
 const toList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -46,7 +49,10 @@ const toPagination = (payload) => ({
   limit: payload?.limit ?? payload?.meta?.limit ?? null,
 })
 
-const fromDateInput = (value) => new Date(value).toISOString()
+const fromDateInput = (value) => {
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString()
+}
 
 function StatusMessage({ status }) {
   if (!status.message && !status.error) return null
@@ -205,8 +211,13 @@ function CoordinatorManagementPage() {
     event.preventDefault()
     setScheduleStatus(emptyStatus())
 
-    if (!scheduleForm.phase.trim()) {
+    const normalizedPhase = String(scheduleForm.phase || '').trim()
+    if (!normalizedPhase) {
       setScheduleStatus({ message: '', error: 'Phase is required.' })
+      return
+    }
+    if (!SCHEDULE_PHASE_OPTIONS.includes(normalizedPhase)) {
+      setScheduleStatus({ message: '', error: 'Please select a valid schedule phase.' })
       return
     }
     if (!scheduleForm.startAt || !scheduleForm.endAt) {
@@ -218,12 +229,19 @@ function CoordinatorManagementPage() {
       return
     }
 
+    const startDatetime = fromDateInput(scheduleForm.startAt)
+    const endDatetime = fromDateInput(scheduleForm.endAt)
+    if (!startDatetime || !endDatetime) {
+      setScheduleStatus({ message: '', error: 'Please provide valid date/time values.' })
+      return
+    }
+
     setScheduleLoading(true)
     try {
       await createSchedule({
-        phase: scheduleForm.phase.trim(),
-        startAt: fromDateInput(scheduleForm.startAt),
-        endAt: fromDateInput(scheduleForm.endAt),
+        phase: normalizedPhase,
+        startDatetime,
+        endDatetime,
       })
       setScheduleStatus({ message: 'Schedule created successfully.', error: '' })
       await loadActiveSchedule()
@@ -384,16 +402,22 @@ function CoordinatorManagementPage() {
             <label htmlFor="phaseInput" className={labelClass}>
               Phase
             </label>
-            <input
+            <select
               id="phaseInput"
               className={inputClass}
               value={scheduleForm.phase}
               onChange={(event) =>
                 setScheduleForm((prev) => ({ ...prev, phase: event.target.value }))
               }
-              placeholder="e.g. COMMITTEE_ASSIGNMENT"
               required
-            />
+            >
+              <option value="">Select a phase</option>
+              {SCHEDULE_PHASE_OPTIONS.map((phase) => (
+                <option key={phase} value={phase}>
+                  {phase}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label htmlFor="startAtInput" className={labelClass}>
@@ -438,6 +462,9 @@ function CoordinatorManagementPage() {
               {scheduleLoading ? 'Loading...' : 'Refresh Active Window'}
             </button>
           </div>
+          <p className="text-xs text-slate-500">
+            Date/time values are converted to ISO 8601 UTC before sending to the backend.
+          </p>
         </form>
 
         <StatusMessage status={scheduleStatus} />
@@ -624,15 +651,16 @@ function CoordinatorManagementPage() {
       >
         <div className="flex flex-wrap gap-3 items-end mb-4">
           <div className="flex-1 min-w-[180px]">
-            <label htmlFor="committeeSelect" className={labelClass}>
-              Selected Committee
-            </label>
-            <input
-              id="committeeSelect"
-              className={inputClass}
+            <EntitySearchSelect
+              label="Selected Committee"
+              endpoint={apiConfig.endpoints.committees}
+              searchField="name"
+              returnField="id"
+              displayField="name"
               value={selectedCommitteeId}
-              onChange={(event) => setSelectedCommitteeId(event.target.value)}
-              placeholder="Committee ID"
+              onChange={setSelectedCommitteeId}
+              placeholder="Search committee by name"
+              required
             />
           </div>
           <button
@@ -685,43 +713,46 @@ function CoordinatorManagementPage() {
         <form onSubmit={onAddRelation} className="space-y-4">
           {activeTab === 'jury' && (
             <div>
-              <label htmlFor="juryInput" className={labelClass}>
-                Jury User ID
-              </label>
-              <input
-                id="juryInput"
-                className={inputClass}
+              <EntitySearchSelect
+                label="Jury User"
+                endpoint={apiConfig.endpoints.userSearch}
+                searchField="email"
+                returnField="_id"
+                displayField="email"
                 value={juryInput}
-                onChange={(event) => setJuryInput(event.target.value)}
-                placeholder="user id"
+                onChange={setJuryInput}
+                placeholder="Search user by email"
+                required
               />
             </div>
           )}
           {activeTab === 'advisors' && (
             <div>
-              <label htmlFor="advisorInput" className={labelClass}>
-                Advisor User ID
-              </label>
-              <input
-                id="advisorInput"
-                className={inputClass}
+              <EntitySearchSelect
+                label="Advisor User"
+                endpoint={apiConfig.endpoints.userSearch}
+                searchField="email"
+                returnField="_id"
+                displayField="email"
                 value={advisorInput}
-                onChange={(event) => setAdvisorInput(event.target.value)}
-                placeholder="advisor user id"
+                onChange={setAdvisorInput}
+                placeholder="Search advisor by email"
+                required
               />
             </div>
           )}
           {activeTab === 'groups' && (
             <div>
-              <label htmlFor="groupInput" className={labelClass}>
-                Group ID
-              </label>
-              <input
-                id="groupInput"
-                className={inputClass}
+              <EntitySearchSelect
+                label="Group"
+                endpoint={apiConfig.endpoints.groups}
+                searchField="groupName"
+                returnField="groupId"
+                displayField="groupName"
                 value={groupInput}
-                onChange={(event) => setGroupInput(event.target.value)}
-                placeholder="group id"
+                onChange={setGroupInput}
+                placeholder="Search group by name"
+                required
               />
             </div>
           )}

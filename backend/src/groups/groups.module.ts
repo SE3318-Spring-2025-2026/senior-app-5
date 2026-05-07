@@ -14,6 +14,7 @@ import {
 import { CommitteesModule } from '../committees/committees.module';
 import { User, UserSchema } from '../users/data/user.schema';
 import { Committee, CommitteeSchema } from '../committees/schemas/committee.schema';
+import { TeamInvite, TeamInviteSchema } from './schemas/team-invite.schema';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { Committee, CommitteeSchema } from '../committees/schemas/committee.sche
       { name: User.name, schema: UserSchema },
       { name: CommitteeEvaluation.name, schema: CommitteeEvaluationSchema },
       { name: Committee.name, schema: CommitteeSchema },
+      { name: TeamInvite.name, schema: TeamInviteSchema },
     ]),
   ],
   controllers: [GroupsController],

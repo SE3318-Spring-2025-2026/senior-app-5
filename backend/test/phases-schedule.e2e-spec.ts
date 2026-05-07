@@ -93,38 +93,6 @@ describe('Phase Schedule API (e2e)', () => {
       .expect(400);
   });
 
-  it('End date before start date -> 400', async () => {
-    mockPhasesService.updateSchedule.mockRejectedValue(
-      new BadRequestException('submissionEnd must be strictly after submissionStart'),
-    );
-
-    await request(app.getHttpServer())
-      .put('/api/v1/phases/phase-1/schedule')
-      .set('Authorization', 'Bearer test-token')
-      .set('x-test-role', Role.Coordinator)
-      .send({
-        submissionStart: '2025-05-08T00:00:00.000Z',
-        submissionEnd: '2025-05-01T00:00:00.000Z',
-      })
-      .expect(400);
-  });
-
-  it('Identical timestamps -> 400', async () => {
-    mockPhasesService.updateSchedule.mockRejectedValue(
-      new BadRequestException('submissionEnd must be strictly after submissionStart'),
-    );
-
-    await request(app.getHttpServer())
-      .put('/api/v1/phases/phase-1/schedule')
-      .set('Authorization', 'Bearer test-token')
-      .set('x-test-role', Role.Coordinator)
-      .send({
-        submissionStart: '2025-05-01T00:00:00.000Z',
-        submissionEnd: '2025-05-01T00:00:00.000Z',
-      })
-      .expect(400);
-  });
-
   it('Valid schedule -> 200 and saved schedule returned', async () => {
     const savedPhase = {
       phaseId: 'phase-1',

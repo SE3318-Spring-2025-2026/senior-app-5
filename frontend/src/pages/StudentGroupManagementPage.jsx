@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
 import EntitySearchSelect from '../components/EntitySearchSelect'
@@ -112,6 +112,22 @@ function StudentGroupManagementPage() {
   const [statusGroupId, setStatusGroupId] = useState('')
   const [groupStatusResult, setGroupStatusResult] = useState(null)
   const [groupStatusState, setGroupStatusState] = useState({ loading: false, message: '', error: '' })
+
+  // Team creation state (Student without a team)
+  const [newTeamName, setNewTeamName] = useState('')
+  const [createTeamState, setCreateTeamState] = useState({ loading: false, message: '', error: '' })
+
+  // Invite management state (TeamLeader)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [sendInviteState, setSendInviteState] = useState({ loading: false, message: '', error: '' })
+  const [groupInvites, setGroupInvites] = useState([])
+  const [groupInvitesState, setGroupInvitesState] = useState({ loading: false, message: '', error: '' })
+  const invitePollingRef = useRef(null)
+
+  // My invites state (Student without a team)
+  const [myInvites, setMyInvites] = useState([])
+  const [myInvitesState, setMyInvitesState] = useState({ loading: false, message: '', error: '' })
+  const [respondingInviteId, setRespondingInviteId] = useState('')
 
   // Tab state
   const [activeTab, setActiveTab] = useState('browse-advisors')
@@ -265,7 +281,108 @@ function StudentGroupManagementPage() {
     await fetchGroupStatusById(statusGroupId)
   }
 
-  // Auto-load on mount and on page change
+  // ─── Team creation ───────────────────────────────────────────────────────
+  const handleCreateTeam = async (event) => {
+    event.preventDefault()
+    if (!newTeamName.trim()) return
+    setCreateTeamState({ loading: true, message: '', error: '' })
+    try {
+      await apiClient.post(apiConfig.endpoints.groupMyTeam, { groupName: newTeamName.trim() })
+      setCreateTeamState({ loading: false, message: 'Team created! Your role has been updated to Team Leader.', error: '' })
+      setNewTeamName('')
+      // Refresh user context so role/teamId is reflected
+      try {
+        const me = await apiClient.get(apiConfig.endpoints.me)
+        if (me.data && setCurrentUser) setCurrentUser(me.data)
+      } catch { /* ignore */ }
+    } catch (error) {
+      const { status, message } = getApiError(error)
+      setCreateTeamState({
+        loading: false,
+        message: '',
+        error: lookupMessages[status] || message || 'Could not create team.',
+      })
+    }
+  }
+
+  // ─── TeamLeader invite management ─────────────────────────────────────────
+  const fetchGroupInvites = async () => {
+    if (!knownGroupId) return
+    setGroupInvitesState({ loading: true, message: '', error: '' })
+    try {
+      const response = await apiClient.get(apiConfig.endpoints.groupInvites(knownGroupId))
+      setGroupInvites(response.data || [])
+      setGroupInvitesState({ loading: false, message: '', error: '' })
+    } catch (error) {
+      const { status, message } = getApiError(error)
+      setGroupInvitesState({
+        loading: false,
+        message: '',
+        error: lookupMessages[status] || message || 'Could not fetch invites.',
+      })
+    }
+  }
+
+  const handleSendInvite = async (event) => {
+    event.preventDefault()
+    if (!inviteEmail.trim()) return
+    setSendInviteState({ loading: true, message: '', error: '' })
+    try {
+      await apiClient.post(apiConfig.endpoints.groupInvites(knownGroupId), { invitedUserEmail: inviteEmail.trim() })
+      setSendInviteState({ loading: false, message: `Invite sent to ${inviteEmail.trim()}!`, error: '' })
+      setInviteEmail('')
+      fetchGroupInvites()
+    } catch (error) {
+      const { status, message } = getApiError(error)
+      setSendInviteState({
+        loading: false,
+        message: '',
+        error: lookupMessages[status] || message || 'Could not send invite.',
+      })
+    }
+  }
+
+  // ─── Student pending invites ──────────────────────────────────────────────
+  const fetchMyInvites = async () => {
+    setMyInvitesState({ loading: true, message: '', error: '' })
+    try {
+      const response = await apiClient.get(apiConfig.endpoints.groupMyInvites)
+      setMyInvites(response.data || [])
+      setMyInvitesState({ loading: false, message: '', error: '' })
+    } catch (error) {
+      const { status, message } = getApiError(error)
+      setMyInvitesState({
+        loading: false,
+        message: '',
+        error: lookupMessages[status] || message || 'Could not fetch invites.',
+      })
+    }
+  }
+
+  const handleRespondToInvite = async (inviteId, accept) => {
+    setRespondingInviteId(inviteId)
+    try {
+      await apiClient.patch(apiConfig.endpoints.groupInviteRespond(inviteId), { accept })
+      if (accept) {
+        // Refresh user so teamId appears
+        try {
+          const me = await apiClient.get(apiConfig.endpoints.me)
+          if (me.data && setCurrentUser) setCurrentUser(me.data)
+        } catch { /* ignore */ }
+      }
+      fetchMyInvites()
+    } catch (error) {
+      const { status, message } = getApiError(error)
+      setMyInvitesState((prev) => ({
+        ...prev,
+        error: lookupMessages[status] || message || 'Could not respond to invite.',
+      }))
+    } finally {
+      setRespondingInviteId('')
+    }
+  }
+
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAdvisors(advisorPage) }, [advisorPage])
 
@@ -285,7 +402,20 @@ function StudentGroupManagementPage() {
         setStatusGroupId(gid)
         fetchGroupStatusById(gid)
       }
+    } else if (activeTab === 'team-invites') {
+      if (knownGroupId) fetchGroupInvites()
+    } else if (activeTab === 'my-invites') {
+      fetchMyInvites()
     }
+
+    // Start polling for team-invites tab
+    if (activeTab === 'team-invites' && knownGroupId) {
+      invitePollingRef.current = setInterval(() => fetchGroupInvites(), 10000)
+    } else {
+      clearInterval(invitePollingRef.current)
+    }
+
+    return () => clearInterval(invitePollingRef.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
@@ -326,6 +456,30 @@ function StudentGroupManagementPage() {
         >
           Group Status
         </button>
+        {currentUser?.role === 'Student' && !knownGroupId && (
+          <button
+            className={`${styles.tabButton} ${activeTab === 'create-team' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('create-team')}
+          >
+            Create Team
+          </button>
+        )}
+        {currentUser?.role === 'Student' && !knownGroupId && (
+          <button
+            className={`${styles.tabButton} ${activeTab === 'my-invites' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('my-invites')}
+          >
+            My Invites
+          </button>
+        )}
+        {isTeamLeader && (
+          <button
+            className={`${styles.tabButton} ${activeTab === 'team-invites' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('team-invites')}
+          >
+            Team Invites
+          </button>
+        )}
       </nav>
 
       <main className={styles.singleCardContainer}>
@@ -479,6 +633,125 @@ function StudentGroupManagementPage() {
                 </ul>
               </div>
             )}
+          </SectionCard>
+        )}
+
+        {activeTab === 'create-team' && (
+          <SectionCard title="Create a Team" description="Give your new team a name. You will automatically become the Team Leader.">
+            <StatusMessage state={createTeamState} />
+            <form onSubmit={handleCreateTeam} className={styles.form}>
+              <label htmlFor="new-team-name">Team Name</label>
+              <input
+                id="new-team-name"
+                type="text"
+                placeholder="e.g. Alpha Squad"
+                value={newTeamName}
+                maxLength={100}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                disabled={createTeamState.loading}
+              />
+              <button type="submit" disabled={createTeamState.loading || !newTeamName.trim()}>
+                {createTeamState.loading ? 'Creating…' : 'Create Team'}
+              </button>
+            </form>
+          </SectionCard>
+        )}
+
+        {activeTab === 'my-invites' && (
+          <SectionCard title="My Pending Invites" description="Accept or reject invitations to join a team.">
+            <StatusMessage state={myInvitesState} />
+            {myInvitesState.loading && <p className={styles.emptyState}>Loading invites…</p>}
+            {!myInvitesState.loading && myInvites.length === 0 && !myInvitesState.error && (
+              <p className={styles.emptyState}>No pending invites.</p>
+            )}
+            {myInvites.length > 0 && (
+              <ul className={styles.list}>
+                {myInvites.map((invite) => (
+                  <li key={invite.inviteId} className={styles.requestRow}>
+                    <div>
+                      <strong>{invite.groupName || invite.groupId}</strong>
+                      <p className={styles.requestMeta}>
+                        {invite.createdAt ? new Date(invite.createdAt).toLocaleDateString() : ''}
+                      </p>
+                    </div>
+                    <div className={styles.requestActions}>
+                      <button
+                        type="button"
+                        disabled={!!respondingInviteId}
+                        onClick={() => handleRespondToInvite(invite.inviteId, true)}
+                      >
+                        {respondingInviteId === invite.inviteId ? 'Processing…' : 'Accept'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!!respondingInviteId}
+                        onClick={() => handleRespondToInvite(invite.inviteId, false)}
+                      >
+                        {respondingInviteId === invite.inviteId ? 'Processing…' : 'Reject'}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+        )}
+
+        {activeTab === 'team-invites' && isTeamLeader && (
+          <SectionCard title="Team Invites" description="Invite students to your team by email address. Statuses refresh every 10 seconds.">
+            <form onSubmit={handleSendInvite} className={styles.form}>
+              <label htmlFor="invite-email">Student Email</label>
+              <input
+                id="invite-email"
+                type="email"
+                placeholder="student@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                disabled={sendInviteState.loading}
+              />
+              <button type="submit" disabled={sendInviteState.loading || !inviteEmail.trim()}>
+                {sendInviteState.loading ? 'Sending…' : 'Send Invite'}
+              </button>
+              <StatusMessage state={sendInviteState} />
+            </form>
+
+            <div style={{ marginTop: 24 }}>
+              <StatusMessage state={groupInvitesState} />
+              {groupInvitesState.loading && groupInvites.length === 0 && (
+                <p className={styles.emptyState}>Loading invites…</p>
+              )}
+              {!groupInvitesState.loading && groupInvites.length === 0 && !groupInvitesState.error && (
+                <p className={styles.emptyState}>No invites sent yet.</p>
+              )}
+              {groupInvites.length > 0 && (
+                <ul className={styles.list}>
+                  {groupInvites.map((invite) => (
+                    <li key={invite.inviteId} className={styles.requestRow}>
+                      <div>
+                        <strong>{invite.invitedUser?.name || invite.invitedUser?.email || invite.invitedUser?.id}</strong>
+                        {invite.invitedUser?.name && (
+                          <p className={styles.requestMeta}>{invite.invitedUser.email}</p>
+                        )}
+                        <p className={styles.requestMeta}>
+                          {invite.createdAt ? new Date(invite.createdAt).toLocaleDateString() : ''}
+                        </p>
+                      </div>
+                      <div className={styles.requestActions}>
+                        <span
+                          className={`${styles.badgeStatus} ${
+                            invite.status === 'PENDING'
+                              ? styles.pending
+                              : styles.nonPending
+                          }`}
+                        >
+                          {invite.status}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </SectionCard>
         )}
       </main>

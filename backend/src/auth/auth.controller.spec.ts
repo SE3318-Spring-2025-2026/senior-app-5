@@ -37,6 +37,44 @@ describe('AuthController', () => {
 
     controller = module.get<AuthController>(AuthController);
   });
+  
+  it('me returns id, email, role, groupId, and teamId from request user', () => {
+    const req = {
+      user: {
+        userId: 'user-1',
+        email: 'a@b.com',
+        role: 'Student',
+        groupId: 'group-uuid',
+      },
+    } as any;
+  
+    const result = controller.me(req);
+  
+    expect(result).toEqual({
+      id: 'user-1',
+      email: 'a@b.com',
+      role: 'Student',
+      groupId: 'group-uuid',
+      teamId: 'group-uuid',
+    });
+  });
+  
+  it('me returns null groupId and teamId when user has no group', () => {
+    const req = {
+      user: {
+        userId: 'user-1',
+        email: 'a@b.com',
+        role: 'Student',
+        groupId: null,
+      },
+    } as any;
+  
+    const result = controller.me(req);
+  
+    expect(result.groupId).toBeNull();
+    expect(result.teamId).toBeNull();
+  });
+
 
   it('should be defined', () => {
     expect(controller).toBeDefined();

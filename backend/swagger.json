@@ -1438,6 +1438,28 @@
         "tags": [
           "Phases"
         ]
+      },
+      "post": {
+        "operationId": "PhasesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePhaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Phases"
+        ]
       }
     },
     "/api/v1/phases/{phaseId}": {
@@ -2610,6 +2632,125 @@
           "Rubrics"
         ]
       }
+    },
+    "/api/v1/sprints": {
+      "post": {
+        "operationId": "createSprintConfig",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSprintConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sprint configuration created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintConfigResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed, invalid sprintId, or deliverableId not found in D1."
+          },
+          "401": {
+            "description": "Missing or invalid JWT."
+          },
+          "403": {
+            "description": "Requires COORDINATOR role."
+          },
+          "409": {
+            "description": "A config for this sprint already exists."
+          },
+          "422": {
+            "description": "Contribution percentage sum exceeds 100% for a deliverable."
+          },
+          "500": {
+            "description": "Unexpected server error."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a sprint configuration (Coordinator only)",
+        "tags": [
+          "Sprint Configs"
+        ]
+      }
+    },
+    "/api/v1/sprints/{sprintId}": {
+      "patch": {
+        "operationId": "updateSprintConfig",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSprintConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sprint configuration updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintConfigResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or deliverableId not found in D1."
+          },
+          "401": {
+            "description": "Missing or invalid JWT."
+          },
+          "403": {
+            "description": "Requires COORDINATOR role."
+          },
+          "404": {
+            "description": "Sprint config not found."
+          },
+          "422": {
+            "description": "Contribution percentage sum exceeds 100% for a deliverable."
+          },
+          "500": {
+            "description": "Unexpected server error."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update an existing sprint configuration (Coordinator only)",
+        "tags": [
+          "Sprint Configs"
+        ]
+      }
     }
   },
   "info": {
@@ -3267,6 +3408,19 @@
       "SetScheduleDto": {
         "type": "object",
         "properties": {}
+      },
+      "CreatePhaseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "name"
+        ]
       },
       "UpdatePhaseScheduleDto": {
         "type": "object",
@@ -4104,6 +4258,131 @@
           "name",
           "questions"
         ]
+      },
+      "DeliverableMappingDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Deliverable ID (must exist in D1)"
+          },
+          "contributionPercentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Contribution percentage (0–100)"
+          }
+        },
+        "required": [
+          "deliverableId",
+          "contributionPercentage"
+        ]
+      },
+      "CreateSprintConfigDto": {
+        "type": "object",
+        "properties": {
+          "sprintId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Sprint ID — must exist in the Schedule API"
+          },
+          "targetStoryPoints": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Target story points for this sprint"
+          },
+          "deliverableMappings": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliverableMappingDto"
+            }
+          }
+        },
+        "required": [
+          "sprintId",
+          "targetStoryPoints",
+          "deliverableMappings"
+        ]
+      },
+      "SprintDeliverableMappingResponseDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contributionPercentage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "deliverableId",
+          "contributionPercentage"
+        ]
+      },
+      "SprintConfigResponseDto": {
+        "type": "object",
+        "properties": {
+          "sprintId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetStoryPoints": {
+            "type": "number"
+          },
+          "deliverableMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintDeliverableMappingResponseDto"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sprintId",
+          "targetStoryPoints",
+          "deliverableMappings",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateDeliverableMappingDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contributionPercentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "UpdateSprintConfigDto": {
+        "type": "object",
+        "properties": {
+          "targetStoryPoints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "deliverableMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateDeliverableMappingDto"
+            }
+          }
+        }
       }
     }
   }

@@ -1,30 +1,10 @@
 import { useEffect, useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
+import EntitySearchSelect from '../../components/EntitySearchSelect'
+import { SectionCard, StatusBlock } from '../../components/ui'
 import styles from '../GroupLifecyclePage.module.css'
 import { useAdminGroup } from '../../context/AdminGroupContext'
-
-function SectionCard({ title, description, children }) {
-  return (
-    <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </div>
-  )
-}
-
-function StatusBlock({ title, message, type }) {
-  if (!message) return null
-  return (
-    <div className={`${styles.statusBlock} ${type === 'error' ? styles.error : styles.success}`}>
-      <strong>{title}</strong>
-      <span>{message}</span>
-    </div>
-  )
-}
 
 function InvitesPage() {
   const { currentGroupId } = useAdminGroup()
@@ -70,16 +50,21 @@ function InvitesPage() {
               placeholder="UUID of group"
               required
             />
+            <small className={styles.note}>
+              Group search is blocked until a backend group-search endpoint is available.
+            </small>
           </label>
-          <label>
-            Recipient User ID
-            <input
-              value={recipientUserId}
-              onChange={(e) => setRecipientUserId(e.target.value)}
-              placeholder="UUID of recipient"
-              required
-            />
-          </label>
+          <EntitySearchSelect
+            label="Recipient"
+            endpoint={apiConfig.endpoints.userSearch}
+            searchField="email"
+            returnField="_id"
+            displayField="email"
+            value={recipientUserId}
+            onChange={setRecipientUserId}
+            placeholder="Search recipient by email"
+            required
+          />
           <button type="submit" disabled={inviteStatus.loading}>
             {inviteStatus.loading ? 'Delivering…' : 'Deliver Invite'}
           </button>

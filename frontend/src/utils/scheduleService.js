@@ -19,3 +19,12 @@ export async function getActiveSchedule() {
     throw getHttpErrorDetails(error, 'Unable to fetch active schedule.')
   }
 }
+
+export async function getGradingWindow() {
+  try {
+    const response = await apiClient.get(apiConfig.endpoints.gradingWindow)
+    return response.data
+  } catch (error) {
+    throw getHttpErrorDetails(error, 'Unable to fetch grading window.')
+  }
+}

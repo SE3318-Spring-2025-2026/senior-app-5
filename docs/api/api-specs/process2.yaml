@@ -64,6 +64,62 @@ paths:
         '200':
           description: Password successfully updated
 
+  /auth/login:
+    post:
+      summary: 2.0 Login and receive access token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDto'
+      responses:
+        '200':
+          description: User logged in successfully; returns access token and sets HttpOnly refresh cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid login credentials
+
+  /auth/refresh:
+    post:
+      summary: 2.1 Rotate refresh token and return a new access token
+      tags:
+        - Authentication
+      description: |
+        This endpoint expects the refresh token as an HttpOnly cookie (set by `/auth/login`).
+        The server validates and rotates the refresh token, sets the rotated cookie, and returns a new short-lived access token in the JSON response.
+      responses:
+        '200':
+          description: New access token returned and refresh cookie rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid or expired refresh token
+
+  /auth/logout:
+    post:
+      summary: 2.2 Logout and clear refresh cookie
+      tags:
+        - Authentication
+      description: |
+        Invalidate the server-side refresh token (if found) and clear the HttpOnly refresh cookie. Clients should call this with a dedicated client that does not retry on 401 to avoid re-authentication loops.
+      responses:
+        '200':
+          description: Logged out and refresh cookie cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+        '401':
+          description: Invalid access token (if provided)
+
   # --- AUTHENTICATED USER ENDPOINTS ---
   /users/{userId}/integrations/github:
     post:
@@ -201,6 +257,34 @@ components:
         password:
           type: string
           format: password
+    LoginDto:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: Short-lived JWT access token
+      required:
+        - accessToken
+    LogoutResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Logged out
+      required:
+        - message
     
     ProfessorRegistration:
       type: object

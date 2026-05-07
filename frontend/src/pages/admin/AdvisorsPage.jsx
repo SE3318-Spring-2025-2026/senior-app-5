@@ -1,29 +1,7 @@
 import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
-import styles from '../GroupLifecyclePage.module.css'
-
-function SectionCard({ title, description, children }) {
-  return (
-    <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </div>
-  )
-}
-
-function StatusBlock({ title, message, type }) {
-  if (!message) return null
-  return (
-    <div className={`${styles.statusBlock} ${type === 'error' ? styles.error : styles.success}`}>
-      <strong>{title}</strong>
-      <span>{message}</span>
-    </div>
-  )
-}
+import { SectionCard, StatusBlock, Button, PageHeader } from '../../components/ui'
 
 function AdvisorsPage() {
   const [validationResults, setValidationResults] = useState([])
@@ -45,29 +23,39 @@ function AdvisorsPage() {
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className="max-w-4xl mx-auto space-y-5 p-1">
+      <PageHeader title="Advisor Validation" />
+
       <SectionCard title="Advisor Validation" description="Check all groups for missing advisor assignments.">
-        <div className={styles.controlRow}>
-          <button onClick={handleValidateAdvisors} disabled={adminStatus.loading}>
+        <div className="mb-4">
+          <Button variant="primary" onClick={handleValidateAdvisors} loading={adminStatus.loading} disabled={adminStatus.loading}>
             {adminStatus.loading ? 'Checking…' : 'Validate Advisors'}
-          </button>
+          </Button>
         </div>
         <StatusBlock title="Advisor Validation" message={adminStatus.message} type="success" />
         <StatusBlock title="Advisor Validation" message={adminStatus.error} type="error" />
         {validationResults.length > 0 && (
-          <div className={styles.resultBox}>
-            <strong>Validation Results</strong>
-            <ul className={styles.resultList}>
-              {validationResults.map((item) => (
-                <li key={item.groupId}>
-                  <span>{item.groupId}</span>
-                  <small>
-                    {item.advisorAssignmentStatus} — deadline{' '}
-                    {new Date(item.advisorDeadline).toLocaleString()}
-                  </small>
-                </li>
-              ))}
-            </ul>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-[#1e293b]">
+            <table className="w-full">
+              <thead className="bg-[#080f1f]">
+                <tr>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Group ID</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Assignment Status</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Deadline</th>
+                </tr>
+              </thead>
+              <tbody>
+                {validationResults.map((item) => (
+                  <tr key={item.groupId} className="border-t border-[#1e293b] hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-sm text-slate-300 font-mono">{item.groupId}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300">{item.advisorAssignmentStatus}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300">
+                      {new Date(item.advisorDeadline).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </SectionCard>

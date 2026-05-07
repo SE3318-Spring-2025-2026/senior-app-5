@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Role } from '../auth/enums/role.enum';
+import * as crypto from 'crypto';
 import { User, UserDocument } from './data/user.schema';
+import { Role } from '../auth/enums/role.enum';
 
 const USER_SEARCHABLE_FIELDS = ['email', 'role', '_id'] as const;
 export type UserSearchField = (typeof USER_SEARCHABLE_FIELDS)[number];
@@ -59,6 +60,63 @@ export class UsersService {
     });
   }
 
+  async createPasswordResetToken(email: string) {
+    const normalizedEmail = email?.toLowerCase().trim();
+    if (!normalizedEmail) return null;
+
+    const user = await this.findByEmail(normalizedEmail);
+    if (!user) return null;
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashPasswordResetToken(token);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+
+    await this.userModel
+      .findByIdAndUpdate(
+        user._id,
+        {
+          passwordResetTokenHash: tokenHash,
+          passwordResetTokenExpiresAt: expiresAt,
+        },
+        { new: true },
+      )
+      .exec();
+
+    return token;
+  }
+
+  findByPasswordResetToken(token: string) {
+    if (!token?.trim()) return null;
+
+    const tokenHash = this.hashPasswordResetToken(token);
+    return this.userModel
+      .findOne({
+        passwordResetTokenHash: tokenHash,
+        passwordResetTokenExpiresAt: { $gt: new Date() },
+      })
+      .exec();
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string) {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $set: { passwordHash },
+          $unset: {
+            passwordResetTokenHash: '',
+            passwordResetTokenExpiresAt: '',
+          },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  private hashPasswordResetToken(token: string) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
   async updateUserTeam(
     studentId: string,
     teamId: string,
@@ -71,11 +129,66 @@ export class UsersService {
   async linkGithubAccount(
     userId: string,
     githubAccountId: string,
+    githubUsername: string,
+    githubAccessToken?: string,
+    githubScopes?: string,
   ): Promise<UserDocument | null> {
     return this.userModel
       .findByIdAndUpdate(
         userId,
-        { githubAccountId },
+        {
+          githubAccountId,
+          githubUsername,
+          githubAccessToken,
+          githubScopes,
+          githubLinkedAt: new Date(),
+        },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
+
+  async unlinkGithubAccount(userId: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $unset: {
+            githubAccountId: '',
+            githubAccessToken: '',
+            githubScopes: '',
+            githubLinkedAt: '',
+          },
+        },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
+
+  async setRefreshToken(
+    userId: string,
+    refreshTokenHash: string,
+    expiresAt: Date,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          refreshTokenHash,
+          refreshTokenExpiresAt: expiresAt,
+        },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
+
+  async clearRefreshToken(userId: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $unset: { refreshTokenHash: '', refreshTokenExpiresAt: '' },
+        },
         { returnDocument: 'after' },
       )
       .exec();

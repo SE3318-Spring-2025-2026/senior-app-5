@@ -32,34 +32,101 @@ function StudentSubmissionPage() {
   const [windowStatus, setWindowStatus] = useState(() => getSubmissionWindowStatus(null, null));
   const [phaseFeedback, setPhaseFeedback] = useState(initialFeedback);
   const [submitFeedback, setSubmitFeedback] = useState(initialFeedback);
+  
+  // States from issue-221-frontend-search-select-fields
   const [submissions, setSubmissions] = useState([]);
   const [submissionsFeedback, setSubmissionsFeedback] = useState(initialFeedback);
+  
+  // State from main
+  const [membership, setMembership] = useState({
+    loading: true,
+    groupId: '',
+    message: '',
+    error: '',
+  });
 
   // Auto-load phase window when URL params are provided
+  useEffect(() => {
+    let cancelled = false;
+    const loadMembership = async () => {
+      setMembership({ loading: true, groupId: '', message: '', error: '' });
+      try {
+        const response = await apiClient.get(apiConfig.endpoints.auth.me);
+        const me = response.data || {};
+        const assignedGroupId = me.teamId || me.groupId || '';
+        if (cancelled) return;
+        if (!assignedGroupId) {
+          setMembership({
+            loading: false,
+            groupId: '',
+            message: '',
+            error:
+              'You are not assigned to any group yet. Please contact your coordinator.',
+          });
+          return;
+        }
+        setMembership({
+          loading: false,
+          groupId: assignedGroupId,
+          message: `Submitting on behalf of group: ${assignedGroupId}`,
+          error: '',
+        });
+      } catch (error) {
+        if (cancelled) return;
+        const details =
+          error.response?.data?.message ||
+          error.message ||
+          'Unable to load your group membership.';
+        setMembership({
+          loading: false,
+          groupId: '',
+          message: '',
+          error: Array.isArray(details) ? details.join(', ') : details,
+        });
+      }
+    };
+    loadMembership();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  
   useEffect(() => {
     if (urlPhaseId) {
       const loadWindow = async () => {
         setPhaseFeedback({ loading: true, message: '', error: '' });
         try {
-          const response = await apiClient.get(apiConfig.endpoints.phaseById(urlPhaseId.trim()));
+          const response = await apiClient.get(
+            apiConfig.endpoints.phaseById(urlPhaseId.trim()),
+          );
           const nextPhase = response.data;
-          const nextWindowStatus = getSubmissionWindowStatus(nextPhase?.submissionStart, nextPhase?.submissionEnd);
+          const nextWindowStatus = getSubmissionWindowStatus(
+            nextPhase?.submissionStart,
+            nextPhase?.submissionEnd,
+          );
           const phaseMessage =
-            nextWindowStatus.state === WINDOW_STATE.UNAVAILABLE ? '' : 'Phase schedule loaded successfully.';
-
+            nextWindowStatus.state === WINDOW_STATE.UNAVAILABLE
+              ? ''
+              : 'Phase schedule loaded successfully.';
           setPhase(nextPhase);
           setWindowStatus(nextWindowStatus);
           setPhaseFeedback({ loading: false, message: phaseMessage, error: '' });
         } catch (error) {
-          const details = error.response?.data?.message || error.message || 'Unable to load phase schedule.';
+          const details =
+            error.response?.data?.message ||
+            error.message ||
+            'Unable to load phase schedule.';
           setPhase(null);
           setWindowStatus(getSubmissionWindowStatus(null, null));
-          setPhaseFeedback({ loading: false, message: '', error: Array.isArray(details) ? details.join(', ') : details });
+          setPhaseFeedback({
+            loading: false,
+            message: '',
+            error: Array.isArray(details) ? details.join(', ') : details,
+          });
         }
       };
       loadWindow();
     } else {
-      // No phaseId in URL - show unavailable state
       setWindowStatus({
         state: WINDOW_STATE.UNAVAILABLE,
         message: 'Invalid Phase ID. Please navigate to this page using a valid link.',
@@ -68,6 +135,7 @@ function StudentSubmissionPage() {
     }
   }, [urlPhaseId]);
 
+  // Submissions fetch logic from issue-221-frontend-search-select-fields
   useEffect(() => {
     if (urlSubmissionId) return;
 
@@ -97,29 +165,23 @@ function StudentSubmissionPage() {
   }, [urlSubmissionId]);
 
   const isSubmissionDisabled = useMemo(
-    () => !windowStatus.isActive || submitFeedback.loading,
-    [windowStatus.isActive, submitFeedback.loading],
+    () =>
+      !windowStatus.isActive ||
+      submitFeedback.loading ||
+      membership.loading ||
+      !membership.groupId,
+    [windowStatus.isActive, submitFeedback.loading, membership.loading, membership.groupId],
   );
 
   const windowBannerClass = useMemo(() => {
-    if (windowStatus.state === WINDOW_STATE.OPEN) {
-      return styles.open;
-    }
-
-    if (windowStatus.state === WINDOW_STATE.UPCOMING) {
-      return styles.upcoming;
-    }
-
-    if (windowStatus.state === WINDOW_STATE.CLOSED) {
-      return styles.closed;
-    }
-
+    if (windowStatus.state === WINDOW_STATE.OPEN) return styles.open;
+    if (windowStatus.state === WINDOW_STATE.UPCOMING) return styles.upcoming;
+    if (windowStatus.state === WINDOW_STATE.CLOSED) return styles.closed;
     return styles.unavailable;
   }, [windowStatus.state]);
 
   const fetchPhaseWindow = async () => {
     const trimmedPhaseId = phaseId.trim();
-    
     if (!trimmedPhaseId) {
       setPhaseFeedback({
         loading: false,
@@ -128,68 +190,92 @@ function StudentSubmissionPage() {
       });
       return null;
     }
-
     setPhaseFeedback({ loading: true, message: '', error: '' });
-
     try {
-      const response = await apiClient.get(apiConfig.endpoints.phaseById(trimmedPhaseId));
+      const response = await apiClient.get(
+        apiConfig.endpoints.phaseById(trimmedPhaseId),
+      );
       const nextPhase = response.data;
-      const nextWindowStatus = getSubmissionWindowStatus(nextPhase?.submissionStart, nextPhase?.submissionEnd);
+      const nextWindowStatus = getSubmissionWindowStatus(
+        nextPhase?.submissionStart,
+        nextPhase?.submissionEnd,
+      );
       const phaseMessage =
-        nextWindowStatus.state === WINDOW_STATE.UNAVAILABLE ? '' : 'Phase schedule loaded successfully.';
-
+        nextWindowStatus.state === WINDOW_STATE.UNAVAILABLE
+          ? ''
+          : 'Phase schedule loaded successfully.';
       setPhase(nextPhase);
       setWindowStatus(nextWindowStatus);
       setPhaseFeedback({ loading: false, message: phaseMessage, error: '' });
       return nextWindowStatus;
     } catch (error) {
-      const details = error.response?.data?.message || error.message || 'Unable to load phase schedule.';
+      const details =
+        error.response?.data?.message ||
+        error.message ||
+        'Unable to load phase schedule.';
       setPhase(null);
       setWindowStatus(getSubmissionWindowStatus(null, null));
-      setPhaseFeedback({ loading: false, message: '', error: Array.isArray(details) ? details.join(', ') : details });
+      setPhaseFeedback({
+        loading: false,
+        message: '',
+        error: Array.isArray(details) ? details.join(', ') : details,
+      });
       return null;
     }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
+    if (!membership.groupId) {
+      setSubmitFeedback({
+        loading: false,
+        message: '',
+        error: 'Submission is blocked because you are not assigned to a group.',
+      });
+      return;
+    }
     const trimmedSubmissionId = submissionId.trim();
     if (!trimmedSubmissionId) {
-      setSubmitFeedback({ loading: false, message: '', error: 'Submission ID is required to upload a document.' });
+      setSubmitFeedback({
+        loading: false,
+        message: '',
+        error: 'Submission ID is required to upload a document.',
+      });
       return;
     }
-
     if (!file) {
-      setSubmitFeedback({ loading: false, message: '', error: 'Please choose a file to upload.' });
+      setSubmitFeedback({
+        loading: false,
+        message: '',
+        error: 'Please choose a file to upload.',
+      });
       return;
     }
-
     setSubmitFeedback({ loading: true, message: '', error: '' });
-
     const latestWindowStatus = await fetchPhaseWindow();
-    
     if (!latestWindowStatus) {
       setSubmitFeedback({
         loading: false,
         message: '',
-        error: !phaseId || !phaseId.trim() ? 'Please enter a valid Phase ID first.' : 'Failed to fetch phase status. Upload is blocked.',
+        error:
+          !phaseId || !phaseId.trim()
+            ? 'Please enter a valid Phase ID first.'
+            : 'Failed to fetch phase status. Upload is blocked.',
       });
       return;
     }
-
     if (!latestWindowStatus.isActive) {
       setSubmitFeedback({
         loading: false,
         message: '',
-        error: latestWindowStatus.message || 'Submission window is not active. Upload is blocked.',
+        error:
+          latestWindowStatus.message ||
+          'Submission window is not active. Upload is blocked.',
       });
       return;
     }
-
     const payload = new FormData();
     payload.append('file', file);
-
     try {
       const response = await apiClient.post(
         apiConfig.endpoints.submissionDocuments(trimmedSubmissionId),
@@ -200,20 +286,23 @@ function StudentSubmissionPage() {
           },
         },
       );
-
       const uploadedName = response.data?.document?.originalName || file.name;
-      setSubmitFeedback({ loading: false, message: `Uploaded ${uploadedName} successfully.`, error: '' });
+      setSubmitFeedback({
+        loading: false,
+        message: `Uploaded ${uploadedName} successfully.`,
+        error: '',
+      });
       setFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
       const details = error.response?.data?.message || error.message || 'File upload failed.';
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setFile(null);
-      setSubmitFeedback({ loading: false, message: '', error: Array.isArray(details) ? details.join(', ') : details });
+      setSubmitFeedback({
+        loading: false,
+        message: '',
+        error: Array.isArray(details) ? details.join(', ') : details,
+      });
     }
   };
 
@@ -221,11 +310,8 @@ function StudentSubmissionPage() {
     <div className={styles.pageContainer}>
       <header className={styles.hero}>
         <h1>Submission Window Enforcement</h1>
-        <p>
-          Load a phase schedule and submit documents only when the submission window is open.
-        </p>
+        <p>Load a phase schedule and submit documents only when the submission window is open.</p>
       </header>
-
       <section className={styles.card}>
         <h2>1. Load Phase Window</h2>
         {!urlPhaseId && (
@@ -242,25 +328,27 @@ function StudentSubmissionPage() {
                 Phase search is blocked until a student-visible phase list endpoint is available.
               </small>
             </div>
-            <button type="button" onClick={fetchPhaseWindow} disabled={phaseFeedback.loading} className={styles.primaryButton}>
+            <button
+              type="button"
+              onClick={fetchPhaseWindow}
+              disabled={phaseFeedback.loading}
+              className={styles.primaryButton}
+            >
               {phaseFeedback.loading ? 'Loading window...' : 'Load Window Status'}
             </button>
           </>
         )}
         {urlPhaseId && (
-          <p className={styles.infoText}>Phase loaded from URL: <strong>{urlPhaseId}</strong></p>
+          <p className={styles.infoText}>
+            Phase loaded from URL: <strong>{urlPhaseId}</strong>
+          </p>
         )}
-
         {phaseFeedback.message && <p className={styles.successText}>{phaseFeedback.message}</p>}
         {phaseFeedback.error && <p className={styles.errorText}>{phaseFeedback.error}</p>}
-
-        <div
-          className={`${styles.windowBanner} ${windowBannerClass}`}
-        >
+        <div className={`${styles.windowBanner} ${windowBannerClass}`}>
           <strong>Submission Window Status: {windowStatus.state}</strong>
           <span>{windowStatus.message}</span>
         </div>
-
         {phase && (
           <div className={styles.windowDetails}>
             <p>
@@ -272,10 +360,20 @@ function StudentSubmissionPage() {
           </div>
         )}
       </section>
-
       <section className={styles.card}>
         <h2>2. Upload Submission Document</h2>
         <form onSubmit={handleSubmit} className={styles.formGrid}>
+          <div className={styles.formRow}>
+            <label htmlFor="groupId">Group ID</label>
+            <input
+              id="groupId"
+              value={membership.groupId || 'Not assigned'}
+              readOnly
+              disabled
+            />
+            {membership.message && <p className={styles.infoText}>{membership.message}</p>}
+            {membership.error && <p className={styles.errorText}>{membership.error}</p>}
+          </div>
           <div className={styles.formRow}>
             <label htmlFor="submissionId">Submission ID</label>
             {urlSubmissionId ? (
@@ -309,7 +407,6 @@ function StudentSubmissionPage() {
               </>
             )}
           </div>
-
           <div className={styles.formRow}>
             <label htmlFor="submissionFile">Document</label>
             <input
@@ -321,18 +418,19 @@ function StudentSubmissionPage() {
               disabled={isSubmissionDisabled}
             />
           </div>
-
-          <button type="submit" className={styles.primaryButton} disabled={isSubmissionDisabled}>
+          <button
+            type="submit"
+            className={styles.primaryButton}
+            disabled={isSubmissionDisabled}
+          >
             {submitFeedback.loading ? 'Uploading...' : 'Submit Document'}
           </button>
         </form>
-
         {isSubmissionDisabled && (
           <p className={styles.infoText}>
-            Submission controls are disabled because the current window state is {windowStatus.state}.
+            Submission controls are disabled because the current window is not active or your group membership is unavailable.
           </p>
         )}
-
         {submitFeedback.message && <p className={styles.successText}>{submitFeedback.message}</p>}
         {submitFeedback.error && <p className={styles.errorText}>{submitFeedback.error}</p>}
       </section>

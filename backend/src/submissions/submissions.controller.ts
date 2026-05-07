@@ -104,6 +104,14 @@ export class SubmissionsController {
     @Req() req: Request & { user: any },
     @Body() createSubmissionDto: CreateSubmissionDto,
   ) {
+    if (
+      req.user.role === Role.Student &&
+      String(createSubmissionDto.groupId) !== String(req.user.groupId)
+    ) {
+      throw new ForbiddenException(
+        'You are not allowed to create submissions for another group.',
+      );
+    }
     await this.submissionsService.assertAuthorizedGroupMember(
       req.user,
       createSubmissionDto.groupId,

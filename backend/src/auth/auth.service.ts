@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
 import { Role } from './enums/role.enum';
 
@@ -74,8 +75,52 @@ export class AuthService {
       role: user.role,
     });
 
+    // Generate refresh token and persist its hash
+    const refreshToken = crypto.randomBytes(48).toString('hex');
+    const refreshHash = await bcrypt.hash(refreshToken, 12);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30); // 30 days
+
+    await this.usersService.setRefreshToken(user._id.toString(), refreshHash, expiresAt);
+
     this.logger.log(`User logged in successfully: ${email}`);
-    return { accessToken };
+    return { accessToken, refreshToken, refreshExpiresAt: expiresAt.toISOString(), userId: user._id.toString() };
+  }
+
+  async refreshAccessToken(refreshUserId: string, refreshToken: string) {
+    const user = await this.usersService.findById(refreshUserId);
+    if (!user || !user.refreshTokenHash || !user.refreshTokenExpiresAt) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (user.refreshTokenExpiresAt.getTime() < Date.now()) {
+      await this.usersService.clearRefreshToken(refreshUserId);
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    const ok = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    if (!ok) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    // Issue new access token and rotate refresh token
+    const accessToken = await this.jwt.signAsync({
+      sub: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    });
+
+    const newRefreshToken = crypto.randomBytes(48).toString('hex');
+    const newRefreshHash = await bcrypt.hash(newRefreshToken, 12);
+    const newExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
+
+    await this.usersService.setRefreshToken(user._id.toString(), newRefreshHash, newExpiresAt);
+
+    return { accessToken, refreshToken: newRefreshToken, refreshExpiresAt: newExpiresAt.toISOString(), userId: user._id.toString() };
+  }
+
+  async logout(userId: string) {
+    await this.usersService.clearRefreshToken(userId);
+    return { success: true };
   }
 
   async requestPasswordReset(email: string) {

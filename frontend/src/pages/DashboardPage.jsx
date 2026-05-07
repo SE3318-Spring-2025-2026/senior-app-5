@@ -15,12 +15,7 @@ const DashboardPage = () => {
   const token = localStorage.getItem('accessToken');
   const user = userStr ? JSON.parse(userStr) : null;
 
-  useEffect(() => {
-    
-    if (!token || !user) {
-      navigate('/login');
-    }
-  }, [token, user, navigate]);
+
 
   
   if (!user) return null;

@@ -29,7 +29,7 @@ describe('RubricsController', () => {
   });
 
   it('passes deliverableId, query, and correlation id to listRubrics', async () => {
-    const response = { data: [], total: 0, page: 1, limit: 20 };
+    const response = [{ rubricId: 'rubric-1', name: 'Rubric 1' }];
     mockService.listRubrics.mockResolvedValue(response);
 
     const req = {
@@ -125,6 +125,7 @@ describe('RubricsController', () => {
     );
 
     expect(mockService.deleteRubric).toHaveBeenCalledWith(
+      '33333333-3333-4333-8333-333333333333',
       'rubric-1',
       'req-789',
     );

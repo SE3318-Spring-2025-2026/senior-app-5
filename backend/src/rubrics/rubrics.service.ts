@@ -16,6 +16,14 @@ import {
   PaginatedRubricsDto,
 } from './dto/rubric-response.dto';
 import { Rubric, RubricDocument } from './schemas/rubric.schema';
+import {
+  Deliverable,
+  DeliverableDocument,
+} from '../deliverables/schemas/deliverable.schema';
+import {
+  SprintEvaluation,
+  SprintEvaluationDocument,
+} from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 
 @Injectable()
 export class RubricsService {
@@ -24,52 +32,59 @@ export class RubricsService {
   constructor(
     @InjectModel(Rubric.name)
     private readonly rubricModel: Model<RubricDocument>,
+    @InjectModel(Deliverable.name)
+    private readonly deliverableModel: Model<DeliverableDocument>,
+    @InjectModel(SprintEvaluation.name)
+    private readonly evaluationModel: Model<SprintEvaluationDocument>,
     @InjectConnection()
     private readonly connection: Connection,
   ) {}
 
   /**
-   * List all rubrics for a deliverable with pagination.
+   * List rubrics for a deliverable.
+   * If activeOnly=true, returns only the currently active rubric.
    */
   async listRubrics(
     deliverableId: string,
     query: ListRubricsQueryDto,
     correlationId?: string,
-  ): Promise<PaginatedRubricsDto> {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
-    const skip = (page - 1) * limit;
-
+  ): Promise<RubricResponseDto[]> {
     try {
-      const [data, total] = await Promise.all([
-        this.rubricModel
-          .find({ deliverableId })
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit)
-          .lean()
-          .exec(),
-        this.rubricModel.countDocuments({ deliverableId }).exec(),
-      ]);
+      const deliverableExists = await this.deliverableModel.exists({
+        deliverableId,
+      });
+      if (!deliverableExists) {
+        throw new NotFoundException(
+          `Deliverable with ID '${deliverableId}' not found.`,
+        );
+      }
+
+      const filter: any = { deliverableId };
+      if (query.activeOnly) {
+        filter.isActive = true;
+      }
+
+      const rubrics = await this.rubricModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
 
       this.logger.log(
         JSON.stringify({
           event: 'rubric.listed',
           deliverableId,
-          page,
-          limit,
-          resultCount: data.length,
+          activeOnly: query.activeOnly,
+          resultCount: rubrics.length,
           correlationId: correlationId ?? null,
         }),
       );
 
-      return {
-        data: data.map((rubric) => this.toResponseDto(rubric)),
-        total,
-        page,
-        limit,
-      };
+      return rubrics.map((rubric) => this.toResponseDto(rubric as Rubric));
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       this.logger.error(
         JSON.stringify({
           event: 'rubric.list_failed',
@@ -97,6 +112,15 @@ export class RubricsService {
     let session: ClientSession | null = null;
 
     try {
+      const deliverableExists = await this.deliverableModel.exists({
+        deliverableId: dto.deliverableId,
+      });
+      if (!deliverableExists) {
+        throw new NotFoundException(
+          `Deliverable with ID '${dto.deliverableId}' not found.`,
+        );
+      }
+
       // Validate question weights
       const weightSum = dto.questions.reduce(
         (sum, q) => sum + q.criteriaWeight,
@@ -203,11 +227,23 @@ export class RubricsService {
    * Rejects with 409 if the rubric is referenced in any SprintEvaluation.
    */
   async deleteRubric(
+    deliverableId: string,
     rubricId: string,
     correlationId?: string,
   ): Promise<void> {
     try {
-      const rubric = await this.rubricModel.findOne({ rubricId }).exec();
+      const deliverableExists = await this.deliverableModel.exists({
+        deliverableId,
+      });
+      if (!deliverableExists) {
+        throw new NotFoundException(
+          `Deliverable with ID '${deliverableId}' not found.`,
+        );
+      }
+
+      const rubric = await this.rubricModel
+        .findOne({ rubricId, deliverableId })
+        .exec();
 
       if (!rubric) {
         throw new NotFoundException(
@@ -215,9 +251,23 @@ export class RubricsService {
         );
       }
 
-      // Note: In a full implementation, we would check the SprintEvaluation collection
-      // to see if this rubricId is referenced. For now, we proceed with deletion.
-      // TODO: Implement SprintEvaluation check before deletion if needed.
+      // Check if rubric is used in any SprintEvaluation
+      const evaluationExists = await this.evaluationModel.exists({
+        rubricId,
+      });
+      if (evaluationExists) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'rubric.delete_conflict',
+            rubricId,
+            reason: 'Rubric is referenced in one or more sprint evaluations',
+            correlationId: correlationId ?? null,
+          }),
+        );
+        throw new ConflictException(
+          `Rubric with ID '${rubricId}' is used in evaluations and cannot be deleted.`,
+        );
+      }
 
       await this.rubricModel.deleteOne({ rubricId }).exec();
 

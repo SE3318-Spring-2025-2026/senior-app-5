@@ -65,4 +65,9 @@ export class ListRubricsQueryDto {
   @Min(1)
   @Max(100)
   limit = 20;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @Type(() => Boolean)
+  activeOnly? = false;
 }

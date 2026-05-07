@@ -640,6 +640,7 @@ describe('CommitteesService', () => {
       expect(mockCommitteeModel.countDocuments).toHaveBeenCalledWith({});
     });
   });
+
   // ─── removeJuryMember ─────────────────────────────────────────────────────
 
   describe('removeJuryMember', () => {

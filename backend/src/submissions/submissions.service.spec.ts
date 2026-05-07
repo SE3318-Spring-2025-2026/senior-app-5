@@ -417,4 +417,57 @@ describe('SubmissionsService', () => {
       await expect(service.assertJuryMember('prof-unknown', 'group-1')).rejects.toThrow(ForbiddenException);
     });
   });
+  
+  describe('validateSowEligibility (Process 6.6)', () => {
+    it('should return canProceed true for Group C (Approved Revised Proposal)', async () => {
+      mockGroupModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ groupId: 'group-C' }) });
+      
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue({ status: 'APPROVED', type: 'REVISED_PROPOSAL' }) })
+      }); // REVISED_PROPOSAL query
+      
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) })
+      }); // SOW query
+
+      const result = await service.validateSowEligibility('group-C');
+      expect(result).toEqual({ sowStatus: 'NOT_SUBMITTED', revisedProposalStatus: 'APPROVED', canProceed: true });
+    });
+
+    it('should return canProceed false for Group A (Missing Proposal)', async () => {
+      mockGroupModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ groupId: 'group-A' }) });
+      
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) })
+      }); // REVISED_PROPOSAL query
+      
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) })
+      }); // SOW query
+
+      const result = await service.validateSowEligibility('group-A');
+      expect(result).toEqual({ sowStatus: 'NOT_SUBMITTED', revisedProposalStatus: 'MISSING', canProceed: false });
+    });
+
+    it('should return canProceed false for Group B (Pending/Rejected)', async () => {
+      mockGroupModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ groupId: 'group-B' }) });
+      
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue({ status: 'REJECTED', type: 'REVISED_PROPOSAL' }) })
+      }); 
+      
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) })
+      }); 
+
+      const result = await service.validateSowEligibility('group-B');
+      expect(result).toEqual({ sowStatus: 'NOT_SUBMITTED', revisedProposalStatus: 'REJECTED', canProceed: false });
+    });
+
+    it('should throw NotFoundException for non-existent group ID', async () => {
+      mockGroupModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+
+      await expect(service.validateSowEligibility('invalid-uuid')).rejects.toThrow(NotFoundException);
+    });
+  });
 });

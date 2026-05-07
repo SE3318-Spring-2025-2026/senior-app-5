@@ -8,10 +8,12 @@ import { CommitteesService } from '../committees/committees.service';
 import { Role } from '../auth/enums/role.enum';
 import { CommitteeGradeStatus } from './dto/committee-grade-result.dto';
 import { EvaluationGrade } from './schemas/committee-evaluation.schema';
+import { SubmissionsService } from '../submissions/submissions.service';
 
 describe('GroupsController', () => {
   let controller: GroupsController;
   let service: GroupsService;
+  let mockSubmissionsService: any;
 
   const mockRequest = (role: string = Role.Coordinator) => ({
     user: { userId: 'user-uuid', role },
@@ -28,11 +30,17 @@ describe('GroupsController', () => {
       getCommitteeByGroupId: jest.fn(),
     };
 
+  
+    mockSubmissionsService = {
+      validateSowEligibility: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GroupsController],
       providers: [
         { provide: GroupsService, useValue: mockService },
         { provide: CommitteesService, useValue: mockCommitteesService },
+        { provide: SubmissionsService, useValue: mockSubmissionsService },
       ],
     }).compile();
 
@@ -165,4 +173,35 @@ describe('GroupsController', () => {
       expect(service.getCommitteeGrade).toHaveBeenCalledWith(groupId, deliverableId, 'corr-123');
     });
   });
+
+  describe('validateSow (Process 6.6)', () => {
+    it('should return SOW eligibility when Student queries their own group', async () => {
+      // Kendi grubu 'group-A' olan bir öğrenci isteği
+      const req = { user: { role: Role.Student, groupId: 'group-A' } };
+      const expectedResult = { sowStatus: 'NOT_SUBMITTED', revisedProposalStatus: 'MISSING', canProceed: false };
+      
+      // Servisin döneceği cevabı mockluyoruz
+      mockSubmissionsService.validateSowEligibility.mockResolvedValue(expectedResult);
+
+      const result = await controller.validateSow('group-A', req as any);
+      
+      expect(result).toEqual(expectedResult);
+      expect(mockSubmissionsService.validateSowEligibility).toHaveBeenCalledWith('group-A');
+    });
+
+    it('should throw ForbiddenException if Student tries to validate another group (Cross-Group Snooping)', async () => {
+      const req = { user: { role: Role.Student, groupId: 'group-A' } };
+      await expect(controller.validateSow('group-B', req as any)).rejects.toThrow(ForbiddenException);
+      expect(mockSubmissionsService.validateSowEligibility).not.toHaveBeenCalled();
+    });
+
+    it('should allow Coordinator to validate any group', async () => {
+      const req = { user: { role: Role.Coordinator } }; 
+      const expectedResult = { sowStatus: 'NOT_SUBMITTED', revisedProposalStatus: 'APPROVED', canProceed: true };
+      mockSubmissionsService.validateSowEligibility.mockResolvedValue(expectedResult);
+      const result = await controller.validateSow('group-C', req as any);
+      expect(result).toEqual(expectedResult);
+      expect(mockSubmissionsService.validateSowEligibility).toHaveBeenCalledWith('group-C');
+    });
+  }); 
 });

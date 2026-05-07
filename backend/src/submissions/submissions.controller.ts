@@ -85,8 +85,8 @@ export class SubmissionsController {
   }
 
   @Get('me')
-  @Roles(Role.Student)
-  @ApiOperation({ summary: 'Get submissions for current student user' })
+  @Roles(Role.Student, Role.TeamLeader)
+  @ApiOperation({ summary: 'Get submissions for current student or team leader user' })
   async getMySubmissions(@Req() req: Request & { user: any }) {
     const userGroupId = req.user.groupId;
 

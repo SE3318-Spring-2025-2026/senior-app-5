@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
 import EntitySearchSelect from '../components/EntitySearchSelect'
@@ -17,7 +17,6 @@ const getApiError = (error) => {
 const submitMessages = {
   400: 'Submit request validation failed. Please check your inputs.',
   401: 'Your session has expired. Please login again.',
-  403: 'You are not authorized to submit advisor requests.',
   409: 'A conflicting advisor request already exists for this group.',
   423: 'This group is currently blocked from submitting advisor requests.',
   500: 'Server error while submitting advisor request. Please try again later.',
@@ -60,17 +59,39 @@ function StatusMessage({ state }) {
 }
 
 function StudentGroupManagementPage() {
-  const userStr = localStorage.getItem('user')
-  const user = userStr ? JSON.parse(userStr) : null
-  const isTeamLeader = TEAM_LEADER_ROLES.has(user?.role)
-  const knownGroupId = user?.teamId || user?.groupId || ''
+  const [currentUser, setCurrentUser] = useState(null)
+  const [userLoaded, setUserLoaded] = useState(false)
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await apiClient.get(apiConfig.endpoints.auth.me)
+        const fresh = res.data
+        if (fresh) {
+          const updated = { ...fresh, teamId: fresh.teamId ?? fresh.groupId ?? null }
+          localStorage.setItem('user', JSON.stringify(updated))
+          setCurrentUser(updated)
+        }
+      } catch {
+        const userStr = localStorage.getItem('user')
+        setCurrentUser(userStr ? JSON.parse(userStr) : null)
+      } finally {
+        setUserLoaded(true)
+      }
+    }
+    fetchMe()
+  }, [])
+
+  const isTeamLeader = TEAM_LEADER_ROLES.has(currentUser?.role)
+  const knownGroupId = currentUser?.teamId || currentUser?.groupId || ''
 
   // Advisor flow state
   const [advisors, setAdvisors] = useState([])
   const [advisorState, setAdvisorState] = useState({ loading: false, message: '', error: '' })
   const [selectedAdvisorId, setSelectedAdvisorId] = useState('')
   const [advisorPage, setAdvisorPage] = useState(1)
-  const [advisorLimit, setAdvisorLimit] = useState(10)
+  const [advisorLimit] = useState(10)
+  const [advisorTotalPages, setAdvisorTotalPages] = useState(1)
 
   // Submit advisor request state
   const [submitState, setSubmitState] = useState({ loading: false, message: '', error: '' })
@@ -100,16 +121,36 @@ function StudentGroupManagementPage() {
     [advisors, selectedAdvisorId],
   )
 
+  const advisorMap = useMemo(
+    () => Object.fromEntries(
+      advisors.map((a) => [String(a.advisorId || a.id), a.name || a.fullName || a.email || ''])
+    ),
+    [advisors],
+  )
+
+  const getAdvisorName = (id) => {
+    if (!id) return '—'
+    const found = advisorMap[String(id)]
+    return found || `…${String(id).slice(-8)}`
+  }
+
   // Advisor flow handlers
-  const fetchAdvisors = async () => {
+  const fetchAdvisors = async (page = advisorPage) => {
     setAdvisorState({ loading: true, message: '', error: '' })
     try {
       const response = await apiClient.get(apiConfig.endpoints.advisors, {
-        params: { page: advisorPage, limit: advisorLimit },
+        params: { page, limit: advisorLimit },
       })
-      const list = response.data?.data || response.data?.items || response.data || []
+      const data = response.data
+      const list = data?.data || data?.items || (Array.isArray(data) ? data : [])
+      const totalPages =
+        data?.totalPages ??
+        (data?.total ? Math.ceil(data.total / advisorLimit) : null) ??
+        (data?.totalCount ? Math.ceil(data.totalCount / advisorLimit) : null) ??
+        1
       setAdvisors(Array.isArray(list) ? list : [])
-      setAdvisorState({ loading: false, message: 'Advisor list loaded.', error: '' })
+      setAdvisorTotalPages(Math.max(1, totalPages))
+      setAdvisorState({ loading: false, message: '', error: '' })
     } catch (error) {
       const { message } = getApiError(error)
       setAdvisors([])
@@ -117,21 +158,15 @@ function StudentGroupManagementPage() {
     }
   }
 
-  const handleSubmitRequest = async (event) => {
-    event.preventDefault()
-    setSubmitState({ loading: true, message: '', error: '' })
-    if (!knownGroupId) {
-      setSubmitState({
-        loading: false,
-        message: '',
-        error: 'Your group is not available in the current session. Please contact your coordinator.',
-      })
+  const handleSubmitRequest = async () => {
+    if (!selectedAdvisorId) {
+      setSubmitState({ loading: false, message: '', error: 'Please select an advisor first.' })
       return
     }
+    setSubmitState({ loading: true, message: '', error: '' })
     try {
       await apiClient.post(apiConfig.endpoints.requests, {
-        groupId: knownGroupId,
-        advisorId: selectedAdvisorId,
+        requestedAdvisorId: selectedAdvisorId,
       })
       setSubmitState({ loading: false, message: 'Advisor request submitted successfully.', error: '' })
       await fetchRequests()
@@ -184,14 +219,14 @@ function StudentGroupManagementPage() {
     }
   }
 
-  const handleCommitteeLookup = async (event) => {
-    event.preventDefault()
+  const fetchCommitteeById = async (groupId) => {
+    if (!groupId) return
     setCommitteeState({ loading: true, message: '', error: '' })
     setCommitteeResult(null)
     try {
-      const response = await apiClient.get(apiConfig.endpoints.groupCommittee(committeeGroupId))
+      const response = await apiClient.get(apiConfig.endpoints.groupCommittee(groupId))
       setCommitteeResult(response.data || null)
-      setCommitteeState({ loading: false, message: 'Committee information loaded.', error: '' })
+      setCommitteeState({ loading: false, message: '', error: '' })
     } catch (error) {
       const { status, message } = getApiError(error)
       setCommitteeState({
@@ -202,14 +237,19 @@ function StudentGroupManagementPage() {
     }
   }
 
-  const handleGroupStatusLookup = async (event) => {
+  const handleCommitteeLookup = async (event) => {
     event.preventDefault()
+    await fetchCommitteeById(committeeGroupId)
+  }
+
+  const fetchGroupStatusById = async (groupId) => {
+    if (!groupId) return
     setGroupStatusState({ loading: true, message: '', error: '' })
     setGroupStatusResult(null)
     try {
-      const response = await apiClient.get(apiConfig.endpoints.groupStatus(statusGroupId))
+      const response = await apiClient.get(apiConfig.endpoints.groupStatus(groupId))
       setGroupStatusResult(response.data || null)
-      setGroupStatusState({ loading: false, message: 'Group assignment status loaded.', error: '' })
+      setGroupStatusState({ loading: false, message: '', error: '' })
     } catch (error) {
       const { status, message } = getApiError(error)
       setGroupStatusState({
@@ -219,6 +259,35 @@ function StudentGroupManagementPage() {
       })
     }
   }
+
+  const handleGroupStatusLookup = async (event) => {
+    event.preventDefault()
+    await fetchGroupStatusById(statusGroupId)
+  }
+
+  // Auto-load on mount and on page change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchAdvisors(advisorPage) }, [advisorPage])
+
+  // Auto-load on tab change
+  useEffect(() => {
+    if (activeTab === 'my-requests') {
+      fetchRequests()
+    } else if (activeTab === 'committee-details') {
+      const gid = knownGroupId
+      if (gid) {
+        setCommitteeGroupId(gid)
+        fetchCommitteeById(gid)
+      }
+    } else if (activeTab === 'group-status') {
+      const gid = knownGroupId
+      if (gid) {
+        setStatusGroupId(gid)
+        fetchGroupStatusById(gid)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
 
   return (
     <div className={styles.pageContainer}>
@@ -259,92 +328,72 @@ function StudentGroupManagementPage() {
         </button>
       </nav>
 
-      <main className={activeTab === 'browse-advisors' ? styles.grid : styles.singleCardContainer}>
+      <main className={styles.singleCardContainer}>
         {activeTab === 'browse-advisors' && (
-          <>
-            <SectionCard title="Advisor List" description="Browse advisors with pagination and choose one for request submission.">
-              <div className={styles.inlineControls}>
-                <label>
-                  Page
-                  <input
-                    type="number"
-                    min="1"
-                    value={advisorPage}
-                    onChange={(e) => setAdvisorPage(Number(e.target.value) || 1)}
-                  />
-                </label>
-                <label>
-                  Limit
-                  <input
-                    type="number"
-                    min="1"
-                    value={advisorLimit}
-                    onChange={(e) => setAdvisorLimit(Number(e.target.value) || 10)}
-                  />
-                </label>
-                <button type="button" onClick={fetchAdvisors} disabled={advisorState.loading}>
-                  {advisorState.loading ? 'Loading…' : 'Load Advisors'}
-                </button>
+          <SectionCard title="Browse Advisors" description="Select an advisor from the list below and submit your request.">
+            <StatusMessage state={advisorState} />
+            {advisorState.loading ? (
+              <p className={styles.emptyState}>Loading advisors…</p>
+            ) : advisors.length === 0 ? (
+              <p className={styles.emptyState}>No advisors found.</p>
+            ) : (
+              <ul className={styles.list}>
+                {advisors.map((advisor) => {
+                  const advisorId = String(advisor.advisorId || advisor.id)
+                  const advisorName = advisor.name || advisor.fullName || advisor.email || `Advisor ${advisorId.slice(-8)}`
+                  return (
+                    <li key={advisorId} className={styles.listItem}>
+                      <label className={styles.radioRow}>
+                        <input
+                          type="radio"
+                          name="advisor"
+                          checked={selectedAdvisorId === advisorId}
+                          onChange={() => setSelectedAdvisorId(advisorId)}
+                        />
+                        <span>{advisorName}</span>
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {advisorTotalPages > 1 && (
+              <div className={styles.pagination}>
+                {Array.from({ length: advisorTotalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`${styles.pageBtn} ${p === advisorPage ? styles.pageBtnActive : ''}`}
+                    onClick={() => setAdvisorPage(p)}
+                    disabled={advisorState.loading}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
-              <StatusMessage state={advisorState} />
-              {advisors.length === 0 ? (
-                <p className={styles.emptyState}>No advisors loaded yet.</p>
-              ) : (
-                <ul className={styles.list}>
-                  {advisors.map((advisor) => {
-                    const advisorId = String(advisor.advisorId || advisor.id)
-                    const advisorName = advisor.name || advisor.fullName || advisor.email || `Advisor ${advisorId}`
-                    return (
-                      <li key={advisorId} className={styles.listItem}>
-                        <label className={styles.radioRow}>
-                          <input
-                            type="radio"
-                            name="advisor"
-                            checked={selectedAdvisorId === advisorId}
-                            onChange={() => setSelectedAdvisorId(advisorId)}
-                          />
-                          <span>{advisorName}</span>
-                        </label>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </SectionCard>
-
-            <SectionCard title="Submit Advisor Request" description="Finalize your selection and submit a request to the advisor.">
-              <form className={styles.form} onSubmit={handleSubmitRequest}>
+            )}
+            {isTeamLeader && (
+              <div className={styles.form} style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
                 <div className={styles.resultBox}>
-                  <strong>Group</strong>
-                  <p>{knownGroupId || 'No group found in the current session.'}</p>
+                  <ul className={styles.resultList}>
+                    <li><strong>Selected Advisor</strong><span>{selectedAdvisor ? (selectedAdvisor.name || selectedAdvisor.fullName || selectedAdvisor.email || '—') : 'None selected'}</span></li>
+                  </ul>
                 </div>
-                <label>
-                  Selected Advisor
-                  <input
-                    value={selectedAdvisor ? selectedAdvisor.name || selectedAdvisor.fullName || selectedAdvisorId : ''}
-                    disabled
-                  />
-                </label>
                 <button
-                  type="submit"
-                  disabled={!isTeamLeader || !knownGroupId || !selectedAdvisorId || submitState.loading}
+                  type="button"
+                  onClick={handleSubmitRequest}
+                  disabled={!selectedAdvisorId || submitState.loading}
                 >
                   {submitState.loading ? 'Submitting…' : 'Submit Request'}
                 </button>
-              </form>
-              {!isTeamLeader && <p className={styles.note}>Please note: Only the Team Leader can submit this request..</p>}
-              <StatusMessage state={submitState} />
-            </SectionCard>
-          </>
+                <StatusMessage state={submitState} />
+              </div>
+            )}
+          </SectionCard>
         )}
 
         {activeTab === 'my-requests' && (
           <SectionCard title="Advisor Requests" description="View statuses and withdraw only pending requests.">
-            <div className={styles.inlineControls}>
-              <button type="button" onClick={fetchRequests} disabled={requestState.loading}>
-                {requestState.loading ? 'Refreshing…' : 'Refresh Requests'}
-              </button>
-            </div>
             <StatusMessage state={requestState} />
             <StatusMessage state={withdrawState} />
             {requests.length === 0 ? (
@@ -354,12 +403,13 @@ function StudentGroupManagementPage() {
                 {requests.map((request) => {
                   const requestId = getRequestId(request)
                   const pending = isPending(request)
+                  const advisorDisplay = request.advisorName || request.advisor?.name || getAdvisorName(request.advisorId)
                   return (
                     <li key={requestId} className={styles.requestRow}>
                       <div>
-                        <strong>{requestId}</strong>
+                        <strong>{advisorDisplay}</strong>
                         <p className={styles.requestMeta}>
-                          Group: {request.groupId || '-'} | Advisor: {request.advisorId || '-'}
+                          {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : ''}
                         </p>
                       </div>
                       <div className={styles.requestActions}>
@@ -385,44 +435,47 @@ function StudentGroupManagementPage() {
         )}
 
         {activeTab === 'committee-details' && (
-          <SectionCard title="Group Committee Lookup" description="Retrieve committee assignment for a group.">
-            <form className={styles.form} onSubmit={handleCommitteeLookup}>
-              <label>
-                Group ID
-                <input value={committeeGroupId} onChange={(e) => setCommitteeGroupId(e.target.value)} required />
-              </label>
-              <button type="submit" disabled={committeeState.loading}>
-                {committeeState.loading ? 'Loading…' : 'Get Committee'}
-              </button>
-            </form>
+          <SectionCard title="Committee Details" description="Committee assigned to your group.">
             <StatusMessage state={committeeState} />
+            {committeeState.loading && <p className={styles.emptyState}>Loading committee info…</p>}
+            {!committeeState.loading && !committeeResult && !committeeState.error && (
+              <p className={styles.emptyState}>No committee assigned to your group yet.</p>
+            )}
             {committeeResult && (
               <div className={styles.resultBox}>
-                <pre>{JSON.stringify(committeeResult, null, 2)}</pre>
+                <ul className={styles.resultList}>
+                  <li><strong>Committee ID</strong><span>{committeeResult.id || '—'}</span></li>
+                  <li><strong>Committee Name</strong><span>{committeeResult.name || '—'}</span></li>
+                  <li><strong>Group ID</strong><span>{committeeGroupId || '—'}</span></li>
+                  <li>
+                    <strong>Jury Members</strong>
+                    <span>{committeeResult.jury?.length ? committeeResult.jury.map((j) => j.name || j.userId).join(', ') : 'None'}</span>
+                  </li>
+                  <li>
+                    <strong>Advisors</strong>
+                    <span>{committeeResult.advisors?.length ? committeeResult.advisors.map((a) => a.name || a.userId).join(', ') : 'None'}</span>
+                  </li>
+                  <li><strong>Created At</strong><span>{committeeResult.createdAt ? new Date(committeeResult.createdAt).toLocaleDateString() : '—'}</span></li>
+                </ul>
               </div>
             )}
           </SectionCard>
         )}
 
         {activeTab === 'group-status' && (
-          <SectionCard title="Check your group's assignment status, advisor information, and any restrictions on submitting requests.">
-            <form className={styles.form} onSubmit={handleGroupStatusLookup}>
-              <label>
-                Group ID
-                <input value={statusGroupId} onChange={(e) => setStatusGroupId(e.target.value)} required />
-              </label>
-              <button type="submit" disabled={groupStatusState.loading}>
-                {groupStatusState.loading ? 'Loading…' : 'Get Status'}
-              </button>
-            </form>
+          <SectionCard title="Group Status" description="Your group's current assignment status and restrictions.">
             <StatusMessage state={groupStatusState} />
+            {groupStatusState.loading && <p className={styles.emptyState}>Loading group status…</p>}
+            {!groupStatusState.loading && !groupStatusResult && !groupStatusState.error && (
+              <p className={styles.emptyState}>No status information available for your group.</p>
+            )}
             {groupStatusResult && (
               <div className={styles.resultBox}>
                 <ul className={styles.resultList}>
-                  <li>Status: {groupStatusResult.status || '-'}</li>
-                  <li>Advisor: {groupStatusResult.advisorId || groupStatusResult.advisorName || '-'}</li>
-                  <li>canSubmitRequest: {String(groupStatusResult.canSubmitRequest)}</li>
-                  <li>blockedReason: {groupStatusResult.blockedReason || '-'}</li>
+                  <li><strong>Status</strong><span>{groupStatusResult.status || '—'}</span></li>
+                  <li><strong>Advisor</strong><span>{groupStatusResult.advisorName || getAdvisorName(groupStatusResult.advisorId)}</span></li>
+                  <li><strong>Can Submit Request</strong><span>{groupStatusResult.canSubmitRequest ? 'Yes' : 'No'}</span></li>
+                  <li><strong>Blocked Reason</strong><span>{groupStatusResult.blockedReason || '—'}</span></li>
                 </ul>
               </div>
             )}
@@ -435,7 +488,7 @@ function StudentGroupManagementPage() {
           <div className={styles.modal}>
             <h3 id="withdraw-modal-title">Withdraw Request</h3>
             <p>
-              Are you sure you want to withdraw request <strong>{getRequestId(withdrawModalTarget)}</strong>?
+              Are you sure you want to withdraw your request for advisor <strong>{withdrawModalTarget.advisorName || withdrawModalTarget.advisor?.name || getAdvisorName(withdrawModalTarget.advisorId)}</strong>?
             </p>
             <div className={styles.modalActions}>
               <button type="button" onClick={() => setWithdrawModalTarget(null)} disabled={withdrawState.loading}>

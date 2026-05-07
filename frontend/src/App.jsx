@@ -82,7 +82,11 @@ function App() {
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
             <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
-            <Route path="/coordinator/advisor-schedule" element={<AdvisorSchedulePage />} />
+            <Route path="/coordinator/advisor-schedule" element={
+              <ProtectedRoute requiredRole="Coordinator">
+                <AdvisorSchedulePage />
+              </ProtectedRoute>
+            } />
             <Route
               path="/coordinator/rubrics"
               element={

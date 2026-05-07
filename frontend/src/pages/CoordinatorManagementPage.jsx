@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext'
 import { CreateCoordinatorForm } from '../components/CreateCoordinatorForm'
 import EntitySearchSelect from '../components/EntitySearchSelect'
 import apiConfig from '../config/api'
+import apiClient from '../utils/apiClient'
 
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
@@ -119,6 +120,12 @@ function CoordinatorManagementPage() {
   const [juryInput, setJuryInput] = useState('')
   const [advisorInput, setAdvisorInput] = useState('')
   const [groupInput, setGroupInput] = useState('')
+
+  // Assign student to group state
+  const [assignStudentId, setAssignStudentId] = useState('')
+  const [assignGroupId, setAssignGroupId] = useState('')
+  const [assignStatus, setAssignStatus] = useState(emptyStatus())
+  const [assignLoading, setAssignLoading] = useState(false)
 
   const loadActiveSchedule = useCallback(async (phase) => {
     if (!phase) {
@@ -348,6 +355,35 @@ function CoordinatorManagementPage() {
     }
   }
 
+  const onAssignStudentToGroup = async (event) => {
+    event.preventDefault()
+    if (!assignStudentId.trim()) {
+      setAssignStatus({ message: '', error: 'Student is required.' })
+      return
+    }
+    if (!assignGroupId.trim()) {
+      setAssignStatus({ message: '', error: 'Group is required.' })
+      return
+    }
+    setAssignStatus(emptyStatus())
+    setAssignLoading(true)
+    try {
+      await apiClient.patch(apiConfig.endpoints.adminAssignStudentGroup(assignStudentId.trim()), {
+        groupId: assignGroupId.trim(),
+      })
+      setAssignStatus({ message: `Student successfully assigned to group "${assignGroupId}".`, error: '' })
+      setAssignStudentId('')
+      setAssignGroupId('')
+    } catch (error) {
+      const status = error?.response?.status
+      const msg = error?.response?.data?.message
+      const normalized = Array.isArray(msg) ? msg.join(', ') : msg
+      setAssignStatus({ message: '', error: `(${status ?? 'N/A'}) ${normalized || error.message}` })
+    } finally {
+      setAssignLoading(false)
+    }
+  }
+
   const activeCollection = useMemo(() => {
     if (activeTab === 'jury') return juryMembers
     if (activeTab === 'advisors') return advisors
@@ -551,6 +587,39 @@ function CoordinatorManagementPage() {
           </div>
         </SectionCard>
       </div>
+
+      <SectionCard title="Assign Student to Group" subtitle="Search for a student by email and assign them to a group.">
+        <form className={styles.form} onSubmit={onAssignStudentToGroup}>
+          <EntitySearchSelect
+            label="Student"
+            endpoint={apiConfig.endpoints.userSearch}
+            buildParams={(q) => ({ field: 'email', value: q, limit: 10 })}
+            getItems={(res) => (Array.isArray(res) ? res : res?.data ?? [])}
+            returnField="_id"
+            displayField="email"
+            value={assignStudentId}
+            onChange={setAssignStudentId}
+            placeholder="Search student by email"
+          />
+          <EntitySearchSelect
+            label="Group"
+            endpoint={apiConfig.endpoints.groups}
+            buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+            getItems={(res) => res?.data ?? []}
+            returnField="groupId"
+            displayField="groupName"
+            value={assignGroupId}
+            onChange={setAssignGroupId}
+            placeholder="Search group by name"
+          />
+          <div className={styles.inlineActions}>
+            <button type="submit" disabled={assignLoading}>
+              {assignLoading ? 'Assigning...' : 'Assign Student'}
+            </button>
+          </div>
+        </form>
+        <StatusMessage status={assignStatus} />
+      </SectionCard>
 
       <SectionCard title="Committee Details" subtitle="Jury, advisors and groups management tabs.">
         <div className={styles.selectRow}>

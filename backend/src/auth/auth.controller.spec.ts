@@ -38,7 +38,8 @@ describe('AuthController', () => {
     controller = module.get<AuthController>(AuthController);
   });
   
-  it('me returns id, email, role, groupId, and teamId from request user', () => {
+  it('me returns id, email, role, groupId, and teamId from request user', async () => {
+    mockUsersService.findById.mockResolvedValue({ githubAccountId: null });
     const req = {
       user: {
         userId: 'user-1',
@@ -48,7 +49,7 @@ describe('AuthController', () => {
       },
     } as any;
   
-    const result = controller.me(req);
+    const result = await controller.me(req);
   
     expect(result).toEqual({
       id: 'user-1',
@@ -56,10 +57,12 @@ describe('AuthController', () => {
       role: 'Student',
       groupId: 'group-uuid',
       teamId: 'group-uuid',
+      isGithubConnected: false,
     });
   });
   
-  it('me returns null groupId and teamId when user has no group', () => {
+  it('me returns null groupId and teamId when user has no group', async () => {
+    mockUsersService.findById.mockResolvedValue(null);
     const req = {
       user: {
         userId: 'user-1',
@@ -69,7 +72,7 @@ describe('AuthController', () => {
       },
     } as any;
   
-    const result = controller.me(req);
+    const result = await controller.me(req);
   
     expect(result.groupId).toBeNull();
     expect(result.teamId).toBeNull();

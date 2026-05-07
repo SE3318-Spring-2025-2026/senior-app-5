@@ -15,12 +15,7 @@ const DashboardPage = () => {
   const token = localStorage.getItem('accessToken');
   const user = userStr ? JSON.parse(userStr) : null;
 
-  useEffect(() => {
-    
-    if (!token || !user) {
-      navigate('/login');
-    }
-  }, [token, user, navigate]);
+
 
   
   if (!user) return null;
@@ -29,6 +24,8 @@ const DashboardPage = () => {
   const renderContent = () => {
     switch (user.role) {
       case 'Student':
+      case 'TeamLeader':
+        return <StudentView user={user} />;
       case 'TeamLeader':
         return <StudentView user={user} />;
       case 'Professor':

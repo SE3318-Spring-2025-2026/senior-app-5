@@ -5,6 +5,7 @@ import {
   Get,
   Post,
   Req,
+  Res,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -13,7 +14,7 @@ import {
 } from '@nestjs/common';
 
 import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from '../users/data/dto/register.dto';
@@ -70,8 +71,85 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid login credentials' })
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto.email, dto.password);
+
+    // Set refresh token as HttpOnly cookie
+    if (result.refreshToken && result.userId) {
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      };
+      res.cookie('refreshToken', result.refreshToken, cookieOptions);
+      res.cookie('refreshUserId', result.userId, cookieOptions);
+    }
+
+    return { accessToken: result.accessToken };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate refresh token and return a new access token' })
+  @ApiOkResponse({ description: 'Returns new access token and sets rotated refresh cookie' })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const cookies = (req as any).cookies;
+    const refreshToken = cookies?.refreshToken;
+    const refreshUserId = cookies?.refreshUserId;
+    if (!refreshToken || !refreshUserId) {
+      throw new ForbiddenException('Refresh token not found');
+    }
+
+    const result = await this.authService.refreshAccessToken(refreshUserId, refreshToken);
+
+    // Rotate refresh token cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    };
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+    res.cookie('refreshUserId', result.userId, cookieOptions);
+
+    return { accessToken: result.accessToken };
+  }
+
+  @ApiOperation({ summary: 'Logout and clear refresh token cookie. Can be called with access token or refresh cookie.' })
+  @ApiOkResponse({ description: 'Logged out and refresh cookie cleared' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid token (if access token provided)' })
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    // Attempt to derive userId from access token (if provided) or from refresh cookie
+    let userId: string | undefined;
+    try {
+      if ((req as any).user) {
+        userId = (req as any).user.userId;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const cookies = (req as any).cookies;
+    if (!userId && cookies?.refreshUserId) {
+      userId = cookies.refreshUserId;
+    }
+
+    if (userId) {
+      await this.authService.logout(userId);
+    }
+
+    // Clear cookies unconditionally
+    res.clearCookie('refreshToken', { path: '/' });
+    res.clearCookie('refreshUserId', { path: '/' });
+
+    return { message: 'Logged out' };
   }
 
   @ApiOperation({ summary: 'Request a password reset link' })

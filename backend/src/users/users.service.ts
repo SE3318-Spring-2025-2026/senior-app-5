@@ -164,4 +164,33 @@ export class UsersService {
       )
       .exec();
   }
+
+  async setRefreshToken(
+    userId: string,
+    refreshTokenHash: string,
+    expiresAt: Date,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          refreshTokenHash,
+          refreshTokenExpiresAt: expiresAt,
+        },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
+
+  async clearRefreshToken(userId: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $unset: { refreshTokenHash: '', refreshTokenExpiresAt: '' },
+        },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
 }

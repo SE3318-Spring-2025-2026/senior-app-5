@@ -44,6 +44,18 @@ export const Sidebar = () => {
           </>
         )}
 
+        {role === 'Professor' && (
+          <>
+            <div style={styles.sectionHeader}>PROFESSOR MENU</div>
+            <NavLink
+              to="/review"
+              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+            >
+              <span>Review</span>
+            </NavLink>
+          </>
+        )}
+
         
         {(role === 'Professor' || role === 'Advisor') && (
           <>

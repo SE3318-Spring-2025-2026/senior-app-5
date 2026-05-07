@@ -7,15 +7,7 @@ export const Layout = () => {
   const navigate = useNavigate();
 
   
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    const user = localStorage.getItem('user');
 
-    if (!token || !user) {
-      console.log("Unauthorized access attempt. Redirecting to login...");
-      navigate('/login');
-    }
-  }, [navigate]);
 
   return (
     <div style={styles.container}>

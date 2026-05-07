@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient, { refreshClient } from './apiClient';
 import apiConfig from '../config/api';
 
 export const authService = {
@@ -101,9 +101,15 @@ export const authService = {
   /**
    * Logout user (clears local storage)
    */
-  logout() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userEmail');
+  async logout() {
+    try {
+      // Use refreshClient (no interceptors) so logout cannot trigger a token refresh
+      await refreshClient.post(apiConfig.endpoints.auth.logout).catch(() => {});
+    } finally {
+      // Clear client state regardless of remote result
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userEmail');
+    }
   },
 
   /**
@@ -138,6 +144,23 @@ export const authService = {
   async unlinkGithub(userId) {
     const response = await apiClient.delete(apiConfig.endpoints.githubIntegration(userId));
     return response.data;
+  },
+
+  /**
+   * Silent re-authentication using refresh cookie
+   * @returns {Promise<boolean>} - True if refresh was successful
+   */
+  async refresh() {
+    try {
+      const response = await refreshClient.post(apiConfig.endpoints.auth.refresh);
+      if (response.data?.accessToken) {
+        localStorage.setItem('accessToken', response.data.accessToken);
+        return true;
+      }
+    } catch (error) {
+      // Silent fail - cookie likely missing or expired
+    }
+    return false;
   },
 };
 

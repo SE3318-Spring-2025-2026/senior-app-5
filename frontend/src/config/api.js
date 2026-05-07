@@ -35,6 +35,7 @@ export const apiConfig = {
     phaseSchedule: (phaseId) => `/phases/${phaseId}/schedule`,
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
+    adminAssignStudentGroup: (studentId) => `/admin/students/${studentId}/group`,
     submissions: {
       list: '/submissions',
       byGroup: (groupId) => `/submissions?groupId=${groupId}`,

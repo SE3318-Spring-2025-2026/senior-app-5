@@ -456,6 +456,7 @@ describe('CommitteesController', () => {
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
+  });
 
     it('ADVISOR role via RolesGuard → throws ForbiddenException (403)', () => {
       const reflector = new Reflector();
@@ -490,7 +491,6 @@ describe('CommitteesController', () => {
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
-  });
 
   // ─── GET /committees/:committeeId/groups ──────────────────────────────────
 
@@ -743,8 +743,7 @@ describe('CommitteesController', () => {
 
       expect(() => rolesGuard.canActivate(ctx)).toThrow(ForbiddenException);
     });
-
-    it('TEAM_LEADER role via RolesGuard → throws ForbiddenException (403)', () => {
+    it('TEAM_LEADER role via RolesGuard -> throws ForbiddenException (403)', () => {
       const reflector = new Reflector();
       const rolesGuard = new RolesGuard(reflector);
 

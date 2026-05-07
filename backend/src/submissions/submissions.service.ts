@@ -14,7 +14,7 @@ import { PhasesService } from '../phases/phases.service';
 import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument } from './schemas/submission.schema';
-
+import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
 type SubmissionActor = { userId?: string; role?: string; groupId?: string };
 type UploadedSubmissionFile = {
   originalname: string;
@@ -32,6 +32,7 @@ export class SubmissionsService {
     private submissionModel: Model<SubmissionDocument>,
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Committee.name) private committeeModel: Model<CommitteeDocument>,
     private readonly phasesService: PhasesService,
   ) {}
 
@@ -314,6 +315,8 @@ export class SubmissionsService {
       }
     }
 
+    
+
     return {
       submissionId,
       isComplete: missingFields.length === 0,
@@ -321,5 +324,47 @@ export class SubmissionsService {
       requiredFields,
       phaseId: submission.phaseId,
     };
+  }
+
+  async assertJuryMember(userId: string, groupId: string): Promise<void> {
+    const committee = await this.committeeModel.findOne({ 'groups.groupId': groupId }).exec();
+    
+    if (!committee) {
+      throw new NotFoundException('No committee assigned to this group.');
+    }
+
+    const isJury = committee.jury?.some((member: any) => String(member.userId) === String(userId));
+    if (!isJury) {
+      throw new ForbiddenException('You are not a jury member for this group.');
+    }
+  }
+
+
+  async listSubmissionsForJury(userId: string, groupId: string) {
+    await this.assertJuryMember(userId, groupId);
+
+    // Mongoose projection ({ 'documents.storagePath': 0 })  with this we delete storage path safely from response
+    return this.submissionModel
+      .find({ groupId }, { 'documents.storagePath': 0 })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+
+   async getSubmissionForJury(userId: string, submissionId: string) {
+    if (!isValidObjectId(submissionId)) {
+      throw new BadRequestException('Invalid Submission ID format.');
+    }
+
+    const submission = await this.submissionModel
+      .findById(submissionId, { 'documents.storagePath': 0 })
+      .exec();
+
+    if (!submission) {
+      throw new NotFoundException('Submission not found.');
+    }
+
+    await this.assertJuryMember(userId, submission.groupId);
+    return submission;
   }
 }

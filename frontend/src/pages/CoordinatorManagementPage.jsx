@@ -20,6 +20,8 @@ import {
 
 import { useAuth } from '../context/AuthContext'
 import { CreateCoordinatorForm } from '../components/CreateCoordinatorForm'
+import EntitySearchSelect from '../components/EntitySearchSelect'
+import apiConfig from '../config/api'
 
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
@@ -38,6 +40,8 @@ const toPagination = (payload) => ({
 })
 
 const fromDateInput = (value) => new Date(value).toISOString()
+const getListItems = (payload) => toList(payload)
+const buildCommitteeSearchParams = (query) => ({ page: 1, limit: 10, name: query })
 
 function StatusMessage({ status }) {
   if (!status.message && !status.error) return null
@@ -542,15 +546,21 @@ function CoordinatorManagementPage() {
 
       <SectionCard title="Committee Details" subtitle="Jury, advisors and groups management tabs.">
         <div className={styles.selectRow}>
-          <label htmlFor="committeeSelect">
-            Selected Committee
-            <input
-              id="committeeSelect"
+          <div className={styles.searchControl}>
+            <EntitySearchSelect
+              label="Selected Committee"
+              endpoint={apiConfig.endpoints.committees}
+              searchField="name"
+              returnField="id"
+              displayField="name"
               value={selectedCommitteeId}
-              onChange={(event) => setSelectedCommitteeId(event.target.value)}
-              placeholder="Committee ID"
+              onChange={setSelectedCommitteeId}
+              onSelect={(committee) => setSelectedCommittee(committee)}
+              placeholder="Search committee by name"
+              buildParams={buildCommitteeSearchParams}
+              getItems={getListItems}
             />
-          </label>
+          </div>
           <button type="button" onClick={() => loadCommitteeDetails(selectedCommitteeId)} disabled={detailLoading || !selectedCommitteeId}>
             {detailLoading ? 'Loading...' : 'Load Details'}
           </button>
@@ -582,21 +592,36 @@ function CoordinatorManagementPage() {
 
         <form className={styles.form} onSubmit={onAddRelation}>
           {activeTab === 'jury' ? (
-            <label htmlFor="juryInput">
-              Jury User ID
-              <input id="juryInput" value={juryInput} onChange={(event) => setJuryInput(event.target.value)} placeholder="user id" />
-            </label>
+            <EntitySearchSelect
+              label="Jury User"
+              endpoint={apiConfig.endpoints.userSearch}
+              searchField="email"
+              returnField="_id"
+              displayField="email"
+              value={juryInput}
+              onChange={setJuryInput}
+              placeholder="Search jury user by email"
+            />
           ) : null}
           {activeTab === 'advisors' ? (
-            <label htmlFor="advisorInput">
-              Advisor User ID
-              <input id="advisorInput" value={advisorInput} onChange={(event) => setAdvisorInput(event.target.value)} placeholder="advisor user id" />
-            </label>
+            <EntitySearchSelect
+              label="Advisor User"
+              endpoint={apiConfig.endpoints.userSearch}
+              searchField="email"
+              returnField="_id"
+              displayField="email"
+              value={advisorInput}
+              onChange={setAdvisorInput}
+              placeholder="Search advisor by email"
+            />
           ) : null}
           {activeTab === 'groups' ? (
             <label htmlFor="groupInput">
               Group ID
               <input id="groupInput" value={groupInput} onChange={(event) => setGroupInput(event.target.value)} placeholder="group id" />
+              <small className={styles.note}>
+                Group search is blocked until a backend group-search endpoint is available.
+              </small>
             </label>
           ) : null}
 

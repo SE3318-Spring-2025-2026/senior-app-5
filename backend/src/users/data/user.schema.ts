@@ -23,10 +23,31 @@ export class User {
   githubAccountId?: string;
 
   @Prop()
+  githubUsername?: string;
+
+  // SECURITY: stored in plaintext for now. Encrypt at rest before exposing
+  // production data — anyone with DB access can act as the user on GitHub.
+  @Prop()
+  githubAccessToken?: string;
+
+  @Prop()
+  githubScopes?: string;
+
+  @Prop()
+  githubLinkedAt?: Date;
+
+  @Prop()
   passwordResetTokenHash?: string;
 
   @Prop()
   passwordResetTokenExpiresAt?: Date;
+  
+  @Prop()
+  refreshTokenHash?: string;
+
+  @Prop()
+  refreshTokenExpiresAt?: Date;
+
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

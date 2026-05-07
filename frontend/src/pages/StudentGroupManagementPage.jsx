@@ -63,6 +63,7 @@ function StudentGroupManagementPage() {
   const userStr = localStorage.getItem('user')
   const user = userStr ? JSON.parse(userStr) : null
   const isTeamLeader = TEAM_LEADER_ROLES.has(user?.role)
+  const knownGroupId = user?.teamId || user?.groupId || ''
 
   // Advisor flow state
   const [advisors, setAdvisors] = useState([])
@@ -72,7 +73,6 @@ function StudentGroupManagementPage() {
   const [advisorLimit, setAdvisorLimit] = useState(10)
 
   // Submit advisor request state
-  const [groupId, setGroupId] = useState('')
   const [submitState, setSubmitState] = useState({ loading: false, message: '', error: '' })
 
   // View/withdraw requests state
@@ -120,9 +120,17 @@ function StudentGroupManagementPage() {
   const handleSubmitRequest = async (event) => {
     event.preventDefault()
     setSubmitState({ loading: true, message: '', error: '' })
+    if (!knownGroupId) {
+      setSubmitState({
+        loading: false,
+        message: '',
+        error: 'Your group is not available in the current session. Please contact your coordinator.',
+      })
+      return
+    }
     try {
       await apiClient.post(apiConfig.endpoints.requests, {
-        groupId,
+        groupId: knownGroupId,
         advisorId: selectedAdvisorId,
       })
       setSubmitState({ loading: false, message: 'Advisor request submitted successfully.', error: '' })
@@ -306,10 +314,10 @@ function StudentGroupManagementPage() {
 
             <SectionCard title="Submit Advisor Request" description="Finalize your selection and submit a request to the advisor.">
               <form className={styles.form} onSubmit={handleSubmitRequest}>
-                <label>
-                  Group ID
-                  <input value={groupId} onChange={(e) => setGroupId(e.target.value)} required />
-                </label>
+                <div className={styles.resultBox}>
+                  <strong>Group</strong>
+                  <p>{knownGroupId || 'No group found in the current session.'}</p>
+                </div>
                 <label>
                   Selected Advisor
                   <input
@@ -319,7 +327,7 @@ function StudentGroupManagementPage() {
                 </label>
                 <button
                   type="submit"
-                  disabled={!isTeamLeader || !groupId || !selectedAdvisorId || submitState.loading}
+                  disabled={!isTeamLeader || !knownGroupId || !selectedAdvisorId || submitState.loading}
                 >
                   {submitState.loading ? 'Submitting…' : 'Submit Request'}
                 </button>

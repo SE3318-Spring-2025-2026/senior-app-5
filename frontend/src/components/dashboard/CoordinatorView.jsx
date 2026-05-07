@@ -1,59 +1,48 @@
-import React from 'react';
-import styles from '../../pages/DashboardPage.module.css';
+import { useNavigate } from 'react-router-dom';
+import { Users, BookOpen, Inbox, Activity } from 'lucide-react';
+import { Card, Button } from '../ui';
+
+const metrics = [
+  { icon: Users,    label: 'Global Students',  value: '254', sub: '+12% this semester', iconColor: 'text-blue-400' },
+  { icon: BookOpen, label: 'Active Projects',   value: '42',  sub: 'Stable',             iconColor: 'text-green-400' },
+  { icon: Inbox,    label: 'System Requests',   value: '18',  sub: 'High volume',        iconColor: 'text-yellow-400' },
+  { icon: Activity, label: 'Platform Health',   value: '99.9%', sub: 'Optimal',          iconColor: 'text-slate-300' },
+];
 
 const CoordinatorView = ({ user }) => {
-  
-  const systemMetrics = [
-    { id: 1, label: 'Global Students', value: '254', trend: '+12%', color: '#38bdf8' },
-    { id: 2, label: 'Active Projects', value: '42', trend: 'Stable', color: '#10b981' },
-    { id: 3, label: 'System Requests', value: '18', trend: 'High', color: '#fbbf24' },
-    { id: 4, label: 'Platform Health', value: '99.9%', trend: 'Optimal', color: '#f8fafc' }
-  ];
+  const navigate = useNavigate();
 
   return (
-    <div className={styles.roleContainer}>
-      <h2 className={styles.sectionTitle}>Global System Metrics</h2>
-      
-      
-      <div className={styles.statsGrid}>
-        {systemMetrics.map((metric) => (
-          <div key={metric.id} className={styles.statCard}>
-            <div className={styles.cardTitle}>{metric.label}</div>
-            <div className={styles.cardValue} style={{ color: metric.color }}>
-              {metric.value}
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metrics.map((m) => (
+          <Card key={m.label} className="flex items-center gap-4">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 ${m.iconColor}`}>
+              <m.icon size={20} />
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '5px' }}>
-              Status: {metric.trend}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{m.label}</p>
+              <p className="mt-0.5 text-lg font-bold text-slate-100">{m.value}</p>
+              <p className="text-[11px] text-slate-600">{m.sub}</p>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
-      
-      <div className={styles.infoBox}>
-        <h3 style={{ color: '#f8fafc' }}>Administrative Quick Actions</h3>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '10px 0' }}>
-          As a **Coordinator**, you have overarching authority. You can manage system-wide audit logs, 
-          adjust global configurations, and oversee all academic departments.
+      <Card>
+        <p className="mb-1 text-sm font-bold text-slate-200">Administrative Quick Actions</p>
+        <p className="mb-4 text-sm text-slate-500">
+          Manage system-wide audit logs, adjust global configurations, and oversee all academic departments.
         </p>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-          <button className={styles.actionButton}>Download Reports</button>
-          <button className={`${styles.actionButton} ${styles.secondaryButton}`}>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="primary" size="md">Download Reports</Button>
+          <Button variant="ghost" size="md" onClick={() => navigate('/admin/activity')}>
             System Logs
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
-};
-
-
-const extraStyles = {
-  secondaryButton: {
-    background: 'transparent',
-    border: '1px solid #334155',
-    color: '#94a3b8'
-  }
 };
 
 export default CoordinatorView;

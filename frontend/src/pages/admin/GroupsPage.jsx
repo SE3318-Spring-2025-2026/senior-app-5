@@ -2,8 +2,7 @@ import { useState, useCallback } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import EntitySearchSelect from '../../components/EntitySearchSelect'
-import { SectionCard, StatusBlock } from '../../components/ui'
-import styles from '../GroupLifecyclePage.module.css'
+import { SectionCard, StatusBlock, Badge, Button, PageHeader } from '../../components/ui'
 import { useAdminGroup } from '../../context/AdminGroupContext'
 
 const getApiError = (error) => {
@@ -13,47 +12,26 @@ const getApiError = (error) => {
 
 function StatusBadge({ status }) {
   const upper = String(status || '').toUpperCase()
-  const colorMap = {
-    ASSIGNED: { background: 'rgba(34,197,94,0.2)', color: '#4ade80' },
-    UNASSIGNED: { background: 'rgba(245,158,11,0.2)', color: '#fbbf24' },
-    DISBANDED: { background: 'rgba(239,68,68,0.2)', color: '#f87171' },
-  }
-  const style = colorMap[upper] || { background: 'rgba(100,116,139,0.2)', color: '#94a3b8' }
-  return (
-    <span
-      style={{
-        padding: '3px 9px',
-        borderRadius: '999px',
-        fontSize: '11px',
-        fontWeight: 700,
-        whiteSpace: 'nowrap',
-        ...style,
-      }}
-    >
-      {upper || 'Unknown'}
-    </span>
-  )
+  const colorMap = { ASSIGNED: 'green', UNASSIGNED: 'yellow', DISBANDED: 'red' }
+  const color = colorMap[upper] || 'slate'
+  return <Badge color={color}>{upper || 'Unknown'}</Badge>
 }
 
 function GroupsPage() {
   const { setCurrentGroupId } = useAdminGroup()
 
-  // Create group
   const [groupName, setGroupName] = useState('')
   const [leaderUserId, setLeaderUserId] = useState('')
   const [createdGroup, setCreatedGroup] = useState(null)
   const [groupStatus, setGroupStatus] = useState({ loading: false, message: '', error: '' })
 
-  // Group list
   const [groups, setGroups] = useState([])
   const [listState, setListState] = useState({ loading: false, message: '', error: '' })
 
-  // Transfer modal
   const [transferModal, setTransferModal] = useState(null)
   const [newAdvisorId, setNewAdvisorId] = useState('')
   const [transferState, setTransferState] = useState({ loading: false, message: '', error: '' })
 
-  // Disband modal
   const [disbandModal, setDisbandModal] = useState(null)
   const [disbandState, setDisbandState] = useState({ loading: false, message: '', error: '' })
 
@@ -134,18 +112,23 @@ function GroupsPage() {
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className="max-w-4xl mx-auto space-y-5 p-1">
+      <PageHeader title="Groups" />
+
       <SectionCard title="Create a Group" description="Register a new group and capture the generated ID.">
-        <form className={styles.form} onSubmit={handleCreateGroup}>
-          <label>
-            Group Name
+        <form className="space-y-4" onSubmit={handleCreateGroup}>
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Group Name
+            </label>
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Student project group"
               required
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
-          </label>
+          </div>
           <EntitySearchSelect
             label="Leader"
             endpoint={apiConfig.endpoints.userSearch}
@@ -157,16 +140,16 @@ function GroupsPage() {
             placeholder="Search a user by email"
             required
           />
-          <button type="submit" disabled={groupStatus.loading}>
+          <Button type="submit" variant="primary" loading={groupStatus.loading} disabled={groupStatus.loading}>
             {groupStatus.loading ? 'Creating…' : 'Create Group'}
-          </button>
+          </Button>
         </form>
         <StatusBlock title="Create Group" message={groupStatus.message} type="success" />
         <StatusBlock title="Create Group" message={groupStatus.error} type="error" />
         {createdGroup && (
-          <div className={styles.resultBox}>
-            <strong>Created Group</strong>
-            <pre>{JSON.stringify(createdGroup, null, 2)}</pre>
+          <div className="mt-3 rounded-xl border border-[#1e293b] bg-[#080f1f] p-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Created Group</p>
+            <pre className="text-xs text-slate-300 overflow-x-auto">{JSON.stringify(createdGroup, null, 2)}</pre>
           </div>
         )}
       </SectionCard>
@@ -175,117 +158,112 @@ function GroupsPage() {
         title="Group Management"
         description="List all groups. Transfer their advisor or disband unassigned groups."
       >
-        <div className={styles.inlineControls} style={{ marginBottom: '16px' }}>
-          <button type="button" onClick={fetchGroups} disabled={listState.loading}>
+        <div className="mb-4">
+          <Button type="button" variant="ghost" loading={listState.loading} disabled={listState.loading} onClick={fetchGroups}>
             {listState.loading ? 'Loading…' : 'Load Groups'}
-          </button>
+          </Button>
         </div>
 
         {listState.error && (
-          <div className={`${styles.statusBlock} ${styles.error}`} role="status">
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3" role="status">
             {listState.error}
           </div>
         )}
 
         {groups.length === 0 && !listState.loading ? (
-          <p className={styles.emptyState}>No groups loaded. Click "Load Groups" to fetch.</p>
+          <p className="py-12 text-center text-sm text-slate-500">No groups loaded. Click "Load Groups" to fetch.</p>
         ) : (
-          <ul className={styles.list}>
-            {groups.map((group) => {
-              const groupId = group.groupId || group.id
-              const name = group.groupName || group.name || `Group ${groupId}`
-              const status = String(group.status || '').toUpperCase()
-              const isAssigned = status === 'ASSIGNED'
-              const isUnassigned = status === 'UNASSIGNED'
+          <div className="overflow-hidden rounded-2xl border border-[#1e293b]">
+            <table className="w-full">
+              <thead className="bg-[#080f1f]">
+                <tr>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Name / ID</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((group) => {
+                  const groupId = group.groupId || group.id
+                  const name = group.groupName || group.name || `Group ${groupId}`
+                  const status = String(group.status || '').toUpperCase()
+                  const isAssigned = status === 'ASSIGNED'
+                  const isUnassigned = status === 'UNASSIGNED'
 
-              return (
-                <li key={groupId} className={styles.requestRow}>
-                  <div>
-                    <strong style={{ color: '#f8fafc' }}>{name}</strong>
-                    <p className={styles.requestMeta}>
-                      ID: {groupId}
-                      {group.advisorUserId || group.advisorId
-                        ? ` · Advisor: ${group.advisorUserId || group.advisorId}`
-                        : ''}
-                    </p>
-                  </div>
-                  <div className={styles.requestActions}>
-                    <StatusBadge status={group.status} />
-                    <button
-                      type="button"
-                      disabled={!isAssigned}
-                      title={isAssigned ? 'Transfer to another advisor' : 'Group must be ASSIGNED to transfer'}
-                      onClick={() => openTransferModal(group)}
-                      style={{
-                        padding: '7px 12px',
-                        border: 'none',
-                        borderRadius: '9px',
-                        background: isAssigned ? '#1e40af' : '#334155',
-                        color: isAssigned ? '#fff' : '#64748b',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        cursor: isAssigned ? 'pointer' : 'not-allowed',
-                      }}
-                    >
-                      Transfer
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!isUnassigned}
-                      title={isUnassigned ? 'Disband this group' : 'Only UNASSIGNED groups can be disbanded'}
-                      onClick={() => openDisbandModal(group)}
-                      style={{
-                        padding: '7px 12px',
-                        border: 'none',
-                        borderRadius: '9px',
-                        background: isUnassigned ? 'rgba(239,68,68,0.15)' : '#334155',
-                        color: isUnassigned ? '#f87171' : '#64748b',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        cursor: isUnassigned ? 'pointer' : 'not-allowed',
-                      }}
-                    >
-                      Disband
-                    </button>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+                  return (
+                    <tr key={groupId} className="border-t border-[#1e293b] hover:bg-white/[0.02]">
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-slate-200">{name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {groupId}
+                          {group.advisorUserId || group.advisorId
+                            ? ` · Advisor: ${group.advisorUserId || group.advisorId}`
+                            : ''}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <StatusBadge status={group.status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            disabled={!isAssigned}
+                            title={isAssigned ? 'Transfer to another advisor' : 'Group must be ASSIGNED to transfer'}
+                            onClick={() => openTransferModal(group)}
+                          >
+                            Transfer
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            disabled={!isUnassigned}
+                            title={isUnassigned ? 'Disband this group' : 'Only UNASSIGNED groups can be disbanded'}
+                            onClick={() => openDisbandModal(group)}
+                          >
+                            Disband
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </SectionCard>
 
       {transferModal && (
         <div
-          className={styles.modalBackdrop}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="transfer-modal-title"
         >
-          <div className={styles.modal}>
-            <h3 id="transfer-modal-title">Transfer Advisor</h3>
-            <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 16px' }}>
-              Group: <strong style={{ color: '#f8fafc' }}>
+          <div className="w-full max-w-sm rounded-2xl border border-[#1e293b] bg-[#0d1729] p-6 shadow-2xl">
+            <h3 id="transfer-modal-title" className="text-base font-bold text-slate-200 mb-1">
+              Transfer Advisor
+            </h3>
+            <p className="text-sm text-slate-500 mb-5">
+              Group:{' '}
+              <strong className="text-slate-200">
                 {transferModal.groupName || transferModal.name || transferModal.groupId || transferModal.id}
               </strong>
             </p>
 
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <label style={{ display: 'grid', gap: '6px', fontSize: '14px', color: '#f8fafc' }}>
-                Current Advisor ID
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                  Current Advisor ID
+                </label>
                 <input
                   disabled
                   value={transferModal.advisorUserId || transferModal.advisorId || '(none)'}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid #475569',
-                    background: '#1e293b',
-                    color: '#64748b',
-                    fontSize: '14px',
-                  }}
+                  className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
                 />
-              </label>
+              </div>
               <EntitySearchSelect
                 label="New Advisor"
                 endpoint={apiConfig.endpoints.advisors}
@@ -299,30 +277,29 @@ function GroupsPage() {
             </div>
 
             {transferState.error && (
-              <div
-                className={`${styles.statusBlock} ${styles.error}`}
-                style={{ marginTop: '12px' }}
-                role="status"
-              >
+              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3" role="status">
                 {transferState.error}
               </div>
             )}
 
-            <div className={styles.modalActions}>
-              <button
+            <div className="flex justify-end gap-2 mt-5">
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setTransferModal(null)}
                 disabled={transferState.loading}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
                 onClick={handleTransfer}
+                loading={transferState.loading}
                 disabled={transferState.loading || !newAdvisorId}
               >
                 {transferState.loading ? 'Transferring…' : 'Confirm Transfer'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -330,47 +307,47 @@ function GroupsPage() {
 
       {disbandModal && (
         <div
-          className={styles.modalBackdrop}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="disband-modal-title"
         >
-          <div className={styles.modal}>
-            <h3 id="disband-modal-title" style={{ color: '#f87171' }}>Disband Group</h3>
-            <p>
+          <div className="w-full max-w-sm rounded-2xl border border-[#1e293b] bg-[#0d1729] p-6 shadow-2xl">
+            <h3 id="disband-modal-title" className="text-base font-bold text-red-400 mb-2">
+              Disband Group
+            </h3>
+            <p className="text-sm text-slate-400 mb-4">
               Are you sure you want to disband{' '}
-              <strong>
+              <strong className="text-slate-200">
                 {disbandModal.groupName || disbandModal.name || disbandModal.groupId || disbandModal.id}
               </strong>
               ? This action cannot be undone.
             </p>
 
             {disbandState.error && (
-              <div
-                className={`${styles.statusBlock} ${styles.error}`}
-                style={{ marginTop: '12px' }}
-                role="status"
-              >
+              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3" role="status">
                 {disbandState.error}
               </div>
             )}
 
-            <div className={styles.modalActions}>
-              <button
+            <div className="flex justify-end gap-2 mt-5">
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setDisbandModal(null)}
                 disabled={disbandState.loading}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="danger"
                 onClick={handleDisband}
+                loading={disbandState.loading}
                 disabled={disbandState.loading}
-                style={{ background: '#991b1b' }}
               >
                 {disbandState.loading ? 'Disbanding…' : 'Confirm Disband'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

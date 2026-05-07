@@ -1,319 +1,237 @@
-import { useState, useEffect, useCallback } from 'react'
-import apiClient from '../utils/apiClient'
-import apiConfig from '../config/api'
-import styles from './GroupLifecyclePage.module.css'
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, UserCheck, XCircle, CheckCircle2 } from 'lucide-react';
+import apiClient from '../utils/apiClient';
+import apiConfig from '../config/api';
+import { Badge, Button, PageHeader } from '../components/ui';
 
-const STATUS_OPTIONS = ['', 'PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN']
+const STATUS_OPTIONS = ['', 'PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN'];
+const STATUS_LABELS = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', WITHDRAWN: 'Withdrawn' };
+
+const statusBadgeColor = { PENDING: 'yellow', APPROVED: 'green', REJECTED: 'red', WITHDRAWN: 'slate' };
 
 const getApiError = (error) => {
-  const message = error?.response?.data?.message
-  return Array.isArray(message) ? message.join(', ') : message || error.message || 'Unexpected error.'
-}
-
-const STATUS_LABELS = {
-  PENDING: 'Pending',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  WITHDRAWN: 'Withdrawn',
-}
-
-function StatusBadge({ status }) {
-  const upper = String(status || '').toUpperCase()
-  const colorMap = {
-    PENDING: { background: 'rgba(245,158,11,0.2)', color: '#fbbf24' },
-    APPROVED: { background: 'rgba(34,197,94,0.2)', color: '#4ade80' },
-    REJECTED: { background: 'rgba(239,68,68,0.2)', color: '#f87171' },
-    WITHDRAWN: { background: 'rgba(239,68,68,0.15)', color: '#f87171' },
-  }
-  const style = colorMap[upper] || { background: 'rgba(100,116,139,0.2)', color: '#94a3b8' }
-  return (
-    <span
-      style={{
-        padding: '4px 10px',
-        borderRadius: '999px',
-        fontSize: '12px',
-        fontWeight: 700,
-        ...style,
-      }}
-    >
-      {STATUS_LABELS[upper] || upper || 'Unknown'}
-    </span>
-  )
-}
-
-function StatusMessage({ state }) {
-  if (!state?.message && !state?.error) return null
-  return (
-    <div
-      className={`${styles.statusBlock} ${state.error ? styles.error : styles.success}`}
-      role="status"
-      aria-live="polite"
-    >
-      {state.error || state.message}
-    </div>
-  )
-}
+  const msg = error?.response?.data?.message;
+  return Array.isArray(msg) ? msg.join(', ') : msg || error.message || 'Unexpected error.';
+};
 
 function AdvisorRequestsPage() {
-  const [requests, setRequests] = useState([])
-  const [statusFilter, setStatusFilter] = useState('')
-  const [fetchState, setFetchState] = useState({ loading: false, message: '', error: '' })
-  const [actionState, setActionState] = useState({ loading: false, message: '', error: '' })
-  const [decisionModal, setDecisionModal] = useState(null)
+  const [requests, setRequests]       = useState([]);
+  const [statusFilter, setFilter]     = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [fetchError, setFetchError]   = useState('');
+  const [actionMsg, setActionMsg]     = useState({ text: '', isError: false });
+  const [modal, setModal]             = useState(null);
+  const [actionLoading, setActLoading] = useState(false);
 
   const fetchRequests = useCallback(async () => {
-    setFetchState({ loading: true, message: '', error: '' })
+    setLoading(true);
+    setFetchError('');
     try {
-      const params = {}
-      if (statusFilter) params.status = statusFilter
-      const response = await apiClient.get(apiConfig.endpoints.requests, { params })
-      const list = response.data?.data || response.data?.items || response.data || []
-      setRequests(Array.isArray(list) ? list : [])
-      setFetchState({ loading: false, message: '', error: '' })
-    } catch (error) {
-      setFetchState({ loading: false, message: '', error: getApiError(error) })
-      setRequests([])
+      const params = statusFilter ? { status: statusFilter } : {};
+      const res = await apiClient.get(apiConfig.endpoints.requests, { params });
+      const list = res.data?.data || res.data?.items || res.data || [];
+      setRequests(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setFetchError(getApiError(err));
+      setRequests([]);
+    } finally {
+      setLoading(false);
     }
-  }, [statusFilter])
+  }, [statusFilter]);
 
-  useEffect(() => {
-    fetchRequests()
-  }, [fetchRequests])
+  useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const openDecisionModal = (request, decision) => {
-    setActionState({ loading: false, message: '', error: '' })
-    setDecisionModal({ request, decision })
-  }
+  const openModal = (request, decision) => {
+    setActionMsg({ text: '', isError: false });
+    setModal({ request, decision });
+  };
 
   const handleDecision = async () => {
-    if (!decisionModal) return
-    const { request, decision } = decisionModal
-    const requestId = request.requestId || request.id
-    setActionState({ loading: true, message: '', error: '' })
+    if (!modal) return;
+    const { request, decision } = modal;
+    const requestId = request.requestId || request.id;
+    setActLoading(true);
     try {
-      await apiClient.patch(apiConfig.endpoints.requestDecision(requestId), { decision })
-      setActionState({
-        loading: false,
-        message: `Request ${decision === 'APPROVE' ? 'approved' : 'rejected'} successfully.`,
-        error: '',
-      })
-      setDecisionModal(null)
-      await fetchRequests()
-    } catch (error) {
-      setActionState({ loading: false, message: '', error: getApiError(error) })
+      await apiClient.patch(apiConfig.endpoints.requestDecision(requestId), { decision });
+      setActionMsg({ text: `Request ${decision === 'APPROVE' ? 'approved' : 'rejected'} successfully.`, isError: false });
+      setModal(null);
+      await fetchRequests();
+    } catch (err) {
+      setActionMsg({ text: getApiError(err), isError: true });
+    } finally {
+      setActLoading(false);
     }
-  }
+  };
 
-  const pendingCount = requests.filter(
-    (r) => String(r.status || '').toUpperCase() === 'PENDING',
-  ).length
+  const pendingCount = requests.filter((r) => String(r.status || '').toUpperCase() === 'PENDING').length;
 
   return (
-    <div className={styles.pageContainer}>
-      <header className={styles.hero}>
-        <div>
-          <p className={styles.badge}>Advisor Panel</p>
-          <h1>Advisee Requests</h1>
-          <p className={styles.lead}>
-            Review and respond to team advisee requests. Approving a request assigns the group to
-            you; all other pending requests for that group are automatically rejected.
-          </p>
-        </div>
-      </header>
+    <div>
+      <PageHeader
+        title="Advisee Requests"
+        subtitle="Review and respond to team advisee requests. Approving assigns the group to you."
+        actions={
+          <Button variant="ghost" size="sm" loading={loading} onClick={fetchRequests}>
+            <RefreshCw size={14} />
+            Refresh
+          </Button>
+        }
+      />
 
-      <div className={styles.singleCardContainer}>
-        <section
-          style={{
-            background: '#1e293b',
-            border: '1px solid #334155',
-            borderRadius: '16px',
-            padding: '24px',
-          }}
+      {actionMsg.text && (
+        <div
+          role="status"
+          className={[
+            'mb-4 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm font-medium',
+            actionMsg.isError
+              ? 'border-red-500/30 bg-red-500/10 text-red-400'
+              : 'border-green-500/30 bg-green-500/10 text-green-400',
+          ].join(' ')}
         >
-          <div
-            style={{
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-end',
-              flexWrap: 'wrap',
-              marginBottom: '16px',
-            }}
-          >
-            <label
-              style={{ display: 'grid', gap: '6px', fontSize: '14px', color: '#f8fafc', flex: 1, minWidth: '180px' }}
-            >
-              Filter by Status
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid #475569',
-                  background: '#334155',
-                  color: '#f8fafc',
-                  fontSize: '14px',
-                }}
-              >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s === '' ? 'All Statuses' : STATUS_LABELS[s] || s}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={fetchRequests}
-              disabled={fetchState.loading}
-              style={{
-                padding: '10px 18px',
-                borderRadius: '10px',
-                border: 'none',
-                background: '#1e40af',
-                color: '#fff',
-                fontWeight: 700,
-                cursor: fetchState.loading ? 'not-allowed' : 'pointer',
-                opacity: fetchState.loading ? 0.65 : 1,
-              }}
-            >
-              {fetchState.loading ? 'Refreshing…' : 'Refresh'}
-            </button>
-          </div>
+          {actionMsg.isError ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
+          {actionMsg.text}
+        </div>
+      )}
 
-          <StatusMessage state={fetchState} />
-          <StatusMessage state={actionState} />
-
-          {!fetchState.loading && requests.length === 0 ? (
-            <p className={styles.emptyState}>
-              {statusFilter ? `No ${statusFilter.toLowerCase()} requests found.` : 'No requests found.'}
-            </p>
-          ) : (
-            <>
-              {pendingCount > 0 && (
-                <p style={{ color: '#fbbf24', fontSize: '13px', marginBottom: '12px' }}>
-                  {pendingCount} pending {pendingCount === 1 ? 'request' : 'requests'} awaiting your decision.
-                </p>
-              )}
-              <ul className={styles.list}>
-                {requests.map((request) => {
-                  const requestId = request.requestId || request.id
-                  const isPending = String(request.status || '').toUpperCase() === 'PENDING'
-                  const submittedDate = request.createdAt || request.submittedAt
-                  const groupLabel = request.groupName || request.groupId || '-'
-                  const submitterLabel = request.submittedByEmail || request.submittedBy || '-'
-
-                  return (
-                    <li key={requestId} className={styles.requestRow}>
-                      <div>
-                        <strong style={{ color: '#f8fafc' }}>Group: {groupLabel}</strong>
-                        <p className={styles.requestMeta}>
-                          Submitted by: {submitterLabel}
-                          {submittedDate
-                            ? ` · ${new Date(submittedDate).toLocaleDateString('en-GB', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })}`
-                            : ''}
-                        </p>
-                      </div>
-                      <div className={styles.requestActions}>
-                        <StatusBadge status={request.status} />
-                        {isPending && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openDecisionModal(request, 'APPROVE')}
-                              style={{
-                                padding: '8px 14px',
-                                border: 'none',
-                                borderRadius: '10px',
-                                background: 'rgba(34,197,94,0.15)',
-                                color: '#4ade80',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openDecisionModal(request, 'REJECT')}
-                              style={{
-                                padding: '8px 14px',
-                                border: 'none',
-                                borderRadius: '10px',
-                                background: 'rgba(239,68,68,0.15)',
-                                color: '#f87171',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </>
-          )}
-        </section>
+      {/* Filter bar */}
+      <div className="mb-4 flex items-center gap-3">
+        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Status</label>
+        <select
+          value={statusFilter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200
+                     focus:outline-none focus:ring-2 focus:ring-blue-600/60"
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s === '' ? 'All Statuses' : STATUS_LABELS[s] || s}</option>
+          ))}
+        </select>
       </div>
 
-      {decisionModal && (
+      {fetchError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {fetchError}
+        </div>
+      )}
+
+      {pendingCount > 0 && (
+        <p className="mb-3 text-sm font-medium text-yellow-400">
+          {pendingCount} pending {pendingCount === 1 ? 'request' : 'requests'} awaiting your decision.
+        </p>
+      )}
+
+      {/* Table */}
+      <div className="overflow-hidden rounded-2xl border border-[#1e293b]">
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-sm text-slate-500">Loading…</div>
+        ) : requests.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-16 text-center">
+            <UserCheck size={32} className="text-slate-700" />
+            <p className="text-sm font-medium text-slate-500">
+              {statusFilter ? `No ${statusFilter.toLowerCase()} requests.` : 'No requests yet.'}
+            </p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#080f1f]">
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Group</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Submitted By</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Date</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((req) => {
+                const id = req.requestId || req.id;
+                const isPending = String(req.status || '').toUpperCase() === 'PENDING';
+                const statusKey = String(req.status || '').toUpperCase();
+                const date = req.createdAt || req.submittedAt;
+                return (
+                  <tr key={id} className="border-t border-[#1e293b] hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3 font-medium text-slate-200">
+                      {req.groupName || req.groupId || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-400">
+                      {req.submittedByEmail || req.submittedBy || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge color={statusBadgeColor[statusKey] ?? 'slate'}>
+                        {STATUS_LABELS[statusKey] || statusKey || 'Unknown'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {isPending && (
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => openModal(req, 'APPROVE')}
+                            className="!text-green-400 !border-green-500/30 hover:!bg-green-500/10">
+                            Approve
+                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => openModal(req, 'REJECT')}>
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Confirm modal */}
+      {modal && (
         <div
-          className={styles.modalBackdrop}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="decision-modal-title"
         >
-          <div className={styles.modal}>
-            <h3 id="decision-modal-title">
-              {decisionModal.decision === 'APPROVE' ? 'Approve Request' : 'Reject Request'}
+          <div className="w-full max-w-sm rounded-2xl border border-[#1e293b] bg-[#0d1729] p-6 shadow-2xl">
+            <h3 className="mb-1 text-base font-bold text-slate-100">
+              {modal.decision === 'APPROVE' ? 'Approve Request' : 'Reject Request'}
             </h3>
-            <p>
-              {decisionModal.decision === 'APPROVE'
-                ? 'Approving this request will assign the group to you. All other pending requests for this group will be automatically rejected.'
+            <p className="mb-1 text-sm text-slate-400">
+              {modal.decision === 'APPROVE'
+                ? 'Approving will assign this group to you. All other pending requests for this group will be automatically rejected.'
                 : 'Are you sure you want to reject this request?'}
             </p>
-            <p style={{ marginTop: '8px', color: '#94a3b8', fontSize: '13px' }}>
-              Group: <strong style={{ color: '#f8fafc' }}>
-                {decisionModal.request.groupName || decisionModal.request.groupId}
-              </strong>
+            <p className="mb-5 text-sm text-slate-500">
+              Group:{' '}
+              <span className="font-semibold text-slate-300">
+                {modal.request.groupName || modal.request.groupId}
+              </span>
             </p>
-            <StatusMessage state={actionState} />
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                onClick={() => setDecisionModal(null)}
-                disabled={actionState.loading}
-              >
+
+            {actionMsg.isError && actionMsg.text && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                {actionMsg.text}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" size="md" disabled={actionLoading} onClick={() => setModal(null)}>
                 Cancel
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant={modal.decision === 'APPROVE' ? 'primary' : 'danger'}
+                size="md"
+                loading={actionLoading}
                 onClick={handleDecision}
-                disabled={actionState.loading}
-                style={{
-                  background: decisionModal.decision === 'APPROVE' ? '#15803d' : '#991b1b',
-                }}
               >
-                {actionState.loading
-                  ? 'Processing…'
-                  : decisionModal.decision === 'APPROVE'
-                  ? 'Confirm Approve'
-                  : 'Confirm Reject'}
-              </button>
+                {modal.decision === 'APPROVE' ? 'Confirm Approve' : 'Confirm Reject'}
+              </Button>
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default AdvisorRequestsPage
+export default AdvisorRequestsPage;

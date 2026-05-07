@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { getSubmissionWindowStatus, WINDOW_STATE } from '../utils/submissionWindow';
-import styles from './StudentSubmissionPage.module.css';
+import { PageHeader } from '../components/ui';
 
 const initialFeedback = { loading: false, message: '', error: '' };
 
@@ -57,24 +57,22 @@ function StudentSubmissionPage() {
   );
 
   const windowBannerClass = useMemo(() => {
+    const base = 'rounded-lg border px-4 py-3 mt-3 text-sm font-medium';
     if (windowStatus.state === WINDOW_STATE.OPEN) {
-      return styles.open;
+      return `${base} border-green-500/30 bg-green-500/10 text-green-400`;
     }
-
     if (windowStatus.state === WINDOW_STATE.UPCOMING) {
-      return styles.upcoming;
+      return `${base} border-yellow-500/30 bg-yellow-500/10 text-yellow-400`;
     }
-
     if (windowStatus.state === WINDOW_STATE.CLOSED) {
-      return styles.closed;
+      return `${base} border-red-500/30 bg-red-500/10 text-red-400`;
     }
-
-    return styles.unavailable;
+    return `${base} border-slate-500/30 bg-slate-500/10 text-slate-400`;
   }, [windowStatus.state]);
 
   const fetchPhaseWindow = async () => {
     const trimmedPhaseId = phaseId.trim();
-    
+
     if (!trimmedPhaseId) {
       setPhaseFeedback({
         loading: false,
@@ -123,7 +121,7 @@ function StudentSubmissionPage() {
     setSubmitFeedback({ loading: true, message: '', error: '' });
 
     const latestWindowStatus = await fetchPhaseWindow();
-    
+
     if (!latestWindowStatus) {
       setSubmitFeedback({
         loading: false,
@@ -173,77 +171,101 @@ function StudentSubmissionPage() {
   };
 
   return (
-    <div className={styles.pageContainer}>
-      <header className={styles.hero}>
-        <h1>Submission Window Enforcement</h1>
-        <p>
-          Load a phase schedule and submit documents only when the submission window is open.
-        </p>
-      </header>
+    <div>
+      <PageHeader
+        title="Document Submission"
+        subtitle="Upload documents within the active submission window."
+      />
 
-      <section className={styles.card}>
-        <h2>1. Load Phase Window</h2>
+      {/* Section 1: Load Phase Window */}
+      <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5 mb-4">
+        <h2 className="text-sm font-bold text-slate-200 mb-4">1. Load Phase Window</h2>
+
         {!urlPhaseId && (
           <>
-            <div className={styles.formRow}>
-              <label htmlFor="phaseId">Phase ID</label>
+            <div className="flex flex-col gap-1.5 mb-4">
+              <label htmlFor="phaseId" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                Phase ID
+              </label>
               <input
                 id="phaseId"
                 value={phaseId}
                 onChange={(event) => setPhaseId(event.target.value)}
                 placeholder="Enter phase UUID"
+                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
-            <button type="button" onClick={fetchPhaseWindow} disabled={phaseFeedback.loading} className={styles.primaryButton}>
+            <button
+              type="button"
+              onClick={fetchPhaseWindow}
+              disabled={phaseFeedback.loading}
+              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               {phaseFeedback.loading ? 'Loading window...' : 'Load Window Status'}
             </button>
           </>
         )}
+
         {urlPhaseId && (
-          <p className={styles.infoText}>Phase loaded from URL: <strong>{urlPhaseId}</strong></p>
+          <p className="text-sm text-slate-500 mt-2">
+            Phase loaded from URL: <strong className="text-slate-300">{urlPhaseId}</strong>
+          </p>
         )}
 
-        {phaseFeedback.message && <p className={styles.successText}>{phaseFeedback.message}</p>}
-        {phaseFeedback.error && <p className={styles.errorText}>{phaseFeedback.error}</p>}
+        {phaseFeedback.message && (
+          <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
+            {phaseFeedback.message}
+          </p>
+        )}
+        {phaseFeedback.error && (
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
+            {phaseFeedback.error}
+          </p>
+        )}
 
-        <div
-          className={`${styles.windowBanner} ${windowBannerClass}`}
-        >
+        <div className={windowBannerClass}>
           <strong>Submission Window Status: {windowStatus.state}</strong>
-          <span>{windowStatus.message}</span>
+          <span className="block mt-0.5">{windowStatus.message}</span>
         </div>
 
         {phase && (
-          <div className={styles.windowDetails}>
+          <div className="text-sm text-slate-400 mt-2 space-y-1">
             <p>
-              <strong>submissionStart:</strong> {phase.submissionStart || 'Not set'}
+              <strong className="text-slate-300">submissionStart:</strong> {phase.submissionStart || 'Not set'}
             </p>
             <p>
-              <strong>submissionEnd:</strong> {phase.submissionEnd || 'Not set'}
+              <strong className="text-slate-300">submissionEnd:</strong> {phase.submissionEnd || 'Not set'}
             </p>
           </div>
         )}
       </section>
 
-      <section className={styles.card}>
-        <h2>2. Upload Submission Document</h2>
-        <form onSubmit={handleSubmit} className={styles.formGrid}>
-          <div className={styles.formRow}>
-            <label htmlFor="submissionId">Submission ID</label>
+      {/* Section 2: Upload Submission Document */}
+      <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+        <h2 className="text-sm font-bold text-slate-200 mb-4">2. Upload Submission Document</h2>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label htmlFor="submissionId" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Submission ID
+            </label>
             <input
               id="submissionId"
               value={submissionId}
               onChange={(event) => setSubmissionId(event.target.value)}
               placeholder="Enter submission ID"
               disabled={isSubmissionDisabled}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             {urlSubmissionId && (
-              <p className={styles.infoText}>Submission ID provided via URL</p>
+              <p className="text-sm text-slate-500 mt-2">Submission ID provided via URL</p>
             )}
           </div>
 
-          <div className={styles.formRow}>
-            <label htmlFor="submissionFile">Document</label>
+          <div>
+            <label htmlFor="submissionFile" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Document
+            </label>
             <input
               id="submissionFile"
               ref={fileInputRef}
@@ -251,22 +273,37 @@ function StudentSubmissionPage() {
               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
               onChange={(event) => setFile(event.target.files?.[0] || null)}
               disabled={isSubmissionDisabled}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
-          <button type="submit" className={styles.primaryButton} disabled={isSubmissionDisabled}>
-            {submitFeedback.loading ? 'Uploading...' : 'Submit Document'}
-          </button>
+          <div>
+            <button
+              type="submit"
+              disabled={isSubmissionDisabled}
+              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitFeedback.loading ? 'Uploading...' : 'Submit Document'}
+            </button>
+          </div>
         </form>
 
         {isSubmissionDisabled && (
-          <p className={styles.infoText}>
+          <p className="text-sm text-slate-500 mt-2">
             Submission controls are disabled because the current window state is {windowStatus.state}.
           </p>
         )}
 
-        {submitFeedback.message && <p className={styles.successText}>{submitFeedback.message}</p>}
-        {submitFeedback.error && <p className={styles.errorText}>{submitFeedback.error}</p>}
+        {submitFeedback.message && (
+          <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
+            {submitFeedback.message}
+          </p>
+        )}
+        {submitFeedback.error && (
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
+            {submitFeedback.error}
+          </p>
+        )}
       </section>
     </div>
   );

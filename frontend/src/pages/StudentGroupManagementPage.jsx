@@ -1,447 +1,451 @@
-import { useMemo, useState } from 'react'
-import apiClient from '../utils/apiClient'
-import apiConfig from '../config/api'
-import EntitySearchSelect from '../components/EntitySearchSelect'
-import { SectionCard } from '../components/ui'
-import styles from './GroupLifecyclePage.module.css'
+import { useMemo, useState } from 'react';
+import { Users, ClipboardList, Building2, BarChart2, XCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import apiClient from '../utils/apiClient';
+import apiConfig from '../config/api';
+import EntitySearchSelect from '../components/EntitySearchSelect';
+import { Badge, Button, Card, PageHeader } from '../components/ui';
+import clsx from 'clsx';
 
-const TEAM_LEADER_ROLES = new Set(['TeamLeader', 'TEAM_LEADER', 'Professor'])
+const TEAM_LEADER_ROLES = new Set(['TeamLeader', 'TEAM_LEADER', 'Professor']);
+const getApiError = (e) => {
+  const s = e?.response?.status;
+  const m = e?.response?.data?.message;
+  return { status: s, message: (Array.isArray(m) ? m.join(', ') : m) || e.message || 'Unexpected error.' };
+};
 
-const getApiError = (error) => {
-  const status = error?.response?.status
-  const message = error?.response?.data?.message
-  const normalizedMessage = Array.isArray(message) ? message.join(', ') : message
-  return { status, message: normalizedMessage || error.message || 'Unexpected error.' }
-}
-
-const submitMessages = {
-  400: 'Submit request validation failed. Please check your inputs.',
-  401: 'Your session has expired. Please login again.',
-  403: 'You are not authorized to submit advisor requests.',
-  409: 'A conflicting advisor request already exists for this group.',
-  423: 'This group is currently blocked from submitting advisor requests.',
-  500: 'Server error while submitting advisor request. Please try again later.',
-}
-
-const withdrawMessages = {
-  400: 'Withdraw request validation failed.',
-  401: 'Your session has expired. Please login again.',
-  403: 'You are not authorized to withdraw this request.',
-  404: 'Request not found. It may have been removed already.',
+const submitMsgs = {
+  400: 'Validation failed.',
+  401: 'Session expired. Please log in again.',
+  403: 'You are not authorised to submit advisor requests.',
+  409: 'A conflicting request already exists for this group.',
+  423: 'This group is blocked from submitting requests.',
+  500: 'Server error. Please try again.',
+};
+const withdrawMsgs = {
+  400: 'Withdraw validation failed.',
+  401: 'Session expired.',
+  403: 'Not authorised to withdraw.',
+  404: 'Request not found.',
   409: 'Only pending requests can be withdrawn.',
-  500: 'Server error while withdrawing request. Please try again later.',
-}
+  500: 'Server error.',
+};
+const lookupMsgs = { 401: 'Session expired.', 403: 'Not authorised.', 404: 'Not found.', 500: 'Server error.' };
 
-const lookupMessages = {
-  401: 'Your session has expired. Please login again.',
-  403: 'You are not authorized to view this group data.',
-  404: 'Group information not found.',
-  500: 'Server error while fetching group information.',
-}
+const getRequestId     = (r) => r.requestId || r.id;
+const getRequestStatus = (r) => String(r.status || '').toUpperCase();
+const isPending        = (r) => getRequestStatus(r) === 'PENDING';
 
-const getRequestId = (item) => item.requestId || item.id
-const getRequestStatus = (item) => String(item.status || '').toUpperCase()
-const isPending = (item) => getRequestStatus(item) === 'PENDING'
+const statusColor = { PENDING: 'yellow', APPROVED: 'green', REJECTED: 'red', WITHDRAWN: 'slate' };
 
-function StatusMessage({ state }) {
-  if (!state?.message && !state?.error) {
-    return null
-  }
-
+function Toast({ state }) {
+  if (!state?.message && !state?.error) return null;
+  const isErr = Boolean(state.error);
   return (
     <div
-      className={`${styles.statusBlock} ${state.error ? styles.error : styles.success}`}
       role="status"
       aria-live="polite"
+      className={clsx(
+        'flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm font-medium mb-4',
+        isErr
+          ? 'border-red-500/30 bg-red-500/10 text-red-400'
+          : 'border-green-500/30 bg-green-500/10 text-green-400',
+      )}
     >
-      <span>{state.error || state.message}</span>
+      {isErr ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
+      {state.error || state.message}
     </div>
-  )
+  );
 }
 
+const TABS = [
+  { id: 'browse-advisors',   label: 'Browse Advisors',    icon: Users },
+  { id: 'my-requests',       label: 'My Requests',         icon: ClipboardList },
+  { id: 'committee-details', label: 'Committee Details',   icon: Building2 },
+  { id: 'group-status',      label: 'Group Status',        icon: BarChart2 },
+];
+
 function StudentGroupManagementPage() {
-  const userStr = localStorage.getItem('user')
-  const user = userStr ? JSON.parse(userStr) : null
-  const isTeamLeader = TEAM_LEADER_ROLES.has(user?.role)
+  const userStr    = localStorage.getItem('user');
+  const user       = userStr ? JSON.parse(userStr) : null;
+  const isLeader   = TEAM_LEADER_ROLES.has(user?.role);
 
-  // Advisor flow state
-  const [advisors, setAdvisors] = useState([])
-  const [advisorState, setAdvisorState] = useState({ loading: false, message: '', error: '' })
-  const [selectedAdvisorId, setSelectedAdvisorId] = useState('')
-  const [advisorPage, setAdvisorPage] = useState(1)
-  const [advisorLimit, setAdvisorLimit] = useState(10)
+  const [activeTab, setTab] = useState('browse-advisors');
 
-  // Submit advisor request state
-  const [groupId, setGroupId] = useState('')
-  const [submitState, setSubmitState] = useState({ loading: false, message: '', error: '' })
+  const [advisors, setAdvisors]               = useState([]);
+  const [advisorState, setAdvisorState]       = useState({ loading: false, message: '', error: '' });
+  const [selectedAdvisorId, setSelAdvisor]    = useState('');
+  const [advisorPage, setAdvisorPage]         = useState(1);
+  const [advisorLimit, setAdvisorLimit]       = useState(10);
+  const [groupId, setGroupId]                 = useState('');
+  const [submitState, setSubmitState]         = useState({ loading: false, message: '', error: '' });
 
-  // View/withdraw requests state
-  const [requests, setRequests] = useState([])
-  const [requestState, setRequestState] = useState({ loading: false, message: '', error: '' })
-  const [requestWithdrawLoadingId, setRequestWithdrawLoadingId] = useState('')
-  const [withdrawModalTarget, setWithdrawModalTarget] = useState(null)
-  const [withdrawState, setWithdrawState] = useState({ loading: false, message: '', error: '' })
+  const [requests, setRequests]               = useState([]);
+  const [requestState, setRequestState]       = useState({ loading: false, message: '', error: '' });
+  const [withdrawLoadingId, setWdlId]         = useState('');
+  const [withdrawModal, setWdModal]           = useState(null);
+  const [withdrawState, setWithdrawState]     = useState({ loading: false, message: '', error: '' });
 
-  // Committee lookup state
-  const [committeeGroupId, setCommitteeGroupId] = useState('')
-  const [committeeResult, setCommitteeResult] = useState(null)
-  const [committeeState, setCommitteeState] = useState({ loading: false, message: '', error: '' })
+  const [committeeGroupId, setCommGId]        = useState('');
+  const [committeeResult, setCommResult]      = useState(null);
+  const [committeeState, setCommState]        = useState({ loading: false, message: '', error: '' });
 
-  // Group status lookup state
-  const [statusGroupId, setStatusGroupId] = useState('')
-  const [groupStatusResult, setGroupStatusResult] = useState(null)
-  const [groupStatusState, setGroupStatusState] = useState({ loading: false, message: '', error: '' })
-
-  // Tab state
-  const [activeTab, setActiveTab] = useState('browse-advisors')
+  const [statusGroupId, setStatusGId]         = useState('');
+  const [groupStatusResult, setGsResult]      = useState(null);
+  const [groupStatusState, setGsState]        = useState({ loading: false, message: '', error: '' });
 
   const selectedAdvisor = useMemo(
-    () => advisors.find((advisor) => String(advisor.advisorId || advisor.id) === String(selectedAdvisorId)),
+    () => advisors.find((a) => String(a.advisorId || a.id) === String(selectedAdvisorId)),
     [advisors, selectedAdvisorId],
-  )
+  );
 
-  // Advisor flow handlers
   const fetchAdvisors = async () => {
-    setAdvisorState({ loading: true, message: '', error: '' })
+    setAdvisorState({ loading: true, message: '', error: '' });
     try {
-      const response = await apiClient.get(apiConfig.endpoints.advisors, {
-        params: { page: advisorPage, limit: advisorLimit },
-      })
-      const list = response.data?.data || response.data?.items || response.data || []
-      setAdvisors(Array.isArray(list) ? list : [])
-      setAdvisorState({ loading: false, message: 'Advisor list loaded.', error: '' })
-    } catch (error) {
-      const { message } = getApiError(error)
-      setAdvisors([])
-      setAdvisorState({ loading: false, message: '', error: message || 'Could not load advisors.' })
+      const res = await apiClient.get(apiConfig.endpoints.advisors, { params: { page: advisorPage, limit: advisorLimit } });
+      const list = res.data?.data || res.data?.items || res.data || [];
+      setAdvisors(Array.isArray(list) ? list : []);
+      setAdvisorState({ loading: false, message: 'Advisor list loaded.', error: '' });
+    } catch (e) {
+      const { message } = getApiError(e);
+      setAdvisors([]);
+      setAdvisorState({ loading: false, message: '', error: message });
     }
-  }
+  };
 
-  const handleSubmitRequest = async (event) => {
-    event.preventDefault()
-    setSubmitState({ loading: true, message: '', error: '' })
+  const handleSubmitRequest = async (e) => {
+    e.preventDefault();
+    setSubmitState({ loading: true, message: '', error: '' });
     try {
-      await apiClient.post(apiConfig.endpoints.requests, {
-        groupId,
-        advisorId: selectedAdvisorId,
-      })
-      setSubmitState({ loading: false, message: 'Advisor request submitted successfully.', error: '' })
-      await fetchRequests()
-    } catch (error) {
-      const { status, message } = getApiError(error)
-      setSubmitState({
-        loading: false,
-        message: '',
-        error: submitMessages[status] || message || 'Failed to submit advisor request.',
-      })
+      await apiClient.post(apiConfig.endpoints.requests, { groupId, advisorId: selectedAdvisorId });
+      setSubmitState({ loading: false, message: 'Advisor request submitted successfully.', error: '' });
+      await fetchRequests();
+    } catch (err) {
+      const { status, message } = getApiError(err);
+      setSubmitState({ loading: false, message: '', error: submitMsgs[status] || message });
     }
-  }
+  };
 
   const fetchRequests = async () => {
-    setRequestState({ loading: true, message: '', error: '' })
+    setRequestState({ loading: true, message: '', error: '' });
     try {
-      const response = await apiClient.get(apiConfig.endpoints.requests)
-      const list = response.data?.data || response.data?.items || response.data || []
-      setRequests(Array.isArray(list) ? list : [])
-      setRequestState({ loading: false, message: 'Request list loaded.', error: '' })
-    } catch (error) {
-      const { message } = getApiError(error)
-      setRequests([])
-      setRequestState({ loading: false, message: '', error: message || 'Could not load requests.' })
+      const res = await apiClient.get(apiConfig.endpoints.requests);
+      const list = res.data?.data || res.data?.items || res.data || [];
+      setRequests(Array.isArray(list) ? list : []);
+      setRequestState({ loading: false, message: '', error: '' });
+    } catch (e) {
+      const { message } = getApiError(e);
+      setRequests([]);
+      setRequestState({ loading: false, message: '', error: message });
     }
-  }
+  };
 
   const handleWithdraw = async () => {
-    if (!withdrawModalTarget) {
-      return
-    }
-    const requestId = getRequestId(withdrawModalTarget)
-    setWithdrawState({ loading: true, message: '', error: '' })
-    setRequestWithdrawLoadingId(String(requestId))
-
+    if (!withdrawModal) return;
+    const requestId = getRequestId(withdrawModal);
+    setWithdrawState({ loading: true, message: '', error: '' });
+    setWdlId(String(requestId));
     try {
-      await apiClient.patch(apiConfig.endpoints.requestById(requestId), { status: 'WITHDRAWN' })
-      setWithdrawState({ loading: false, message: `Request ${requestId} withdrawn.`, error: '' })
-      setWithdrawModalTarget(null)
-      await fetchRequests()
-    } catch (error) {
-      const { status, message } = getApiError(error)
-      setWithdrawState({
-        loading: false,
-        message: '',
-        error: withdrawMessages[status] || message || 'Failed to withdraw request.',
-      })
+      await apiClient.patch(apiConfig.endpoints.requestById(requestId), { status: 'WITHDRAWN' });
+      setWithdrawState({ loading: false, message: 'Request withdrawn.', error: '' });
+      setWdModal(null);
+      await fetchRequests();
+    } catch (err) {
+      const { status, message } = getApiError(err);
+      setWithdrawState({ loading: false, message: '', error: withdrawMsgs[status] || message });
     } finally {
-      setRequestWithdrawLoadingId('')
+      setWdlId('');
     }
-  }
+  };
 
-  const handleCommitteeLookup = async (event) => {
-    event.preventDefault()
-    setCommitteeState({ loading: true, message: '', error: '' })
-    setCommitteeResult(null)
+  const handleCommitteeLookup = async (e) => {
+    e.preventDefault();
+    setCommState({ loading: true, message: '', error: '' });
+    setCommResult(null);
     try {
-      const response = await apiClient.get(apiConfig.endpoints.groupCommittee(committeeGroupId))
-      setCommitteeResult(response.data || null)
-      setCommitteeState({ loading: false, message: 'Committee information loaded.', error: '' })
-    } catch (error) {
-      const { status, message } = getApiError(error)
-      setCommitteeState({
-        loading: false,
-        message: '',
-        error: lookupMessages[status] || message || 'Could not fetch committee information.',
-      })
+      const res = await apiClient.get(apiConfig.endpoints.groupCommittee(committeeGroupId));
+      setCommResult(res.data || null);
+      setCommState({ loading: false, message: '', error: '' });
+    } catch (err) {
+      const { status, message } = getApiError(err);
+      setCommState({ loading: false, message: '', error: lookupMsgs[status] || message });
     }
-  }
+  };
 
-  const handleGroupStatusLookup = async (event) => {
-    event.preventDefault()
-    setGroupStatusState({ loading: true, message: '', error: '' })
-    setGroupStatusResult(null)
+  const handleGroupStatusLookup = async (e) => {
+    e.preventDefault();
+    setGsState({ loading: true, message: '', error: '' });
+    setGsResult(null);
     try {
-      const response = await apiClient.get(apiConfig.endpoints.groupStatus(statusGroupId))
-      setGroupStatusResult(response.data || null)
-      setGroupStatusState({ loading: false, message: 'Group assignment status loaded.', error: '' })
-    } catch (error) {
-      const { status, message } = getApiError(error)
-      setGroupStatusState({
-        loading: false,
-        message: '',
-        error: lookupMessages[status] || message || 'Could not fetch group status.',
-      })
+      const res = await apiClient.get(apiConfig.endpoints.groupStatus(statusGroupId));
+      setGsResult(res.data || null);
+      setGsState({ loading: false, message: '', error: '' });
+    } catch (err) {
+      const { status, message } = getApiError(err);
+      setGsState({ loading: false, message: '', error: lookupMsgs[status] || message });
     }
-  }
+  };
+
+  const labelClass = 'block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5';
+  const inputClass = 'w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50';
 
   return (
-    <div className={styles.pageContainer}>
-      <header className={styles.hero}>
-        <div>
-          <p className={styles.badge}>Student Group Management</p>
-          <h1>Group Management Hub</h1>
-          <p className={styles.lead}>
-           Take control of your academic project: manage advisor requests, track your status, and view committee details.
-          </p>
-        </div>
-      </header>
+    <div>
+      <PageHeader
+        title="Group Management Hub"
+        subtitle="Manage advisor requests, track your status, and view committee details."
+      />
 
-      <nav className={styles.tabMenu}>
-        <button
-          className={`${styles.tabButton} ${activeTab === 'browse-advisors' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('browse-advisors')}
-        >
-          Browse Advisors
-        </button>
-        <button
-          className={`${styles.tabButton} ${activeTab === 'my-requests' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('my-requests')}
-        >
-          My Requests
-        </button>
-        <button
-          className={`${styles.tabButton} ${activeTab === 'committee-details' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('committee-details')}
-        >
-          Committee Details
-        </button>
-        <button
-          className={`${styles.tabButton} ${activeTab === 'group-status' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('group-status')}
-        >
-          Group Status
-        </button>
-      </nav>
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 rounded-xl border border-[#1e293b] bg-[#080f1f] p-1">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={clsx(
+              'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-widest transition-colors duration-150',
+              activeTab === id
+                ? 'bg-blue-600/15 text-blue-400'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5',
+            )}
+          >
+            <Icon size={13} />
+            {label}
+          </button>
+        ))}
+      </div>
 
-      <main className={activeTab === 'browse-advisors' ? styles.grid : styles.singleCardContainer}>
-        {activeTab === 'browse-advisors' && (
-          <>
-            <SectionCard title="Advisor List" description="Browse advisors with pagination and choose one for request submission.">
-              <div className={styles.inlineControls}>
-                <label>
-                  Page
-                  <input
-                    type="number"
-                    min="1"
-                    value={advisorPage}
-                    onChange={(e) => setAdvisorPage(Number(e.target.value) || 1)}
-                  />
-                </label>
-                <label>
-                  Limit
-                  <input
-                    type="number"
-                    min="1"
-                    value={advisorLimit}
-                    onChange={(e) => setAdvisorLimit(Number(e.target.value) || 10)}
-                  />
-                </label>
-                <button type="button" onClick={fetchAdvisors} disabled={advisorState.loading}>
-                  {advisorState.loading ? 'Loading…' : 'Load Advisors'}
-                </button>
+      {/* ── Browse Advisors ── */}
+      {activeTab === 'browse-advisors' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <p className="mb-1 text-sm font-bold text-slate-200">Advisor List</p>
+            <p className="mb-4 text-xs text-slate-500">Browse advisors and choose one before submitting.</p>
+            <div className="mb-4 flex flex-wrap gap-3 items-end">
+              <div>
+                <label className={labelClass}>Page</label>
+                <input type="number" min="1" value={advisorPage} onChange={(e) => setAdvisorPage(Number(e.target.value) || 1)}
+                  className="w-20 rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60" />
               </div>
-              <StatusMessage state={advisorState} />
-              {advisors.length === 0 ? (
-                <p className={styles.emptyState}>No advisors loaded yet.</p>
-              ) : (
-                <ul className={styles.list}>
-                  {advisors.map((advisor) => {
-                    const advisorId = String(advisor.advisorId || advisor.id)
-                    const advisorName = advisor.name || advisor.fullName || advisor.email || `Advisor ${advisorId}`
-                    return (
-                      <li key={advisorId} className={styles.listItem}>
-                        <label className={styles.radioRow}>
-                          <input
-                            type="radio"
-                            name="advisor"
-                            checked={selectedAdvisorId === advisorId}
-                            onChange={() => setSelectedAdvisorId(advisorId)}
-                          />
-                          <span>{advisorName}</span>
-                        </label>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </SectionCard>
-
-            <SectionCard title="Submit Advisor Request" description="Finalize your selection and submit a request to the advisor.">
-              <form className={styles.form} onSubmit={handleSubmitRequest}>
-                <label>
-                  Group ID
-                  <input value={groupId} onChange={(e) => setGroupId(e.target.value)} required />
-                </label>
-                <label>
-                  Selected Advisor
-                  <input
-                    value={selectedAdvisor ? selectedAdvisor.name || selectedAdvisor.fullName || selectedAdvisorId : ''}
-                    disabled
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={!isTeamLeader || !groupId || !selectedAdvisorId || submitState.loading}
-                >
-                  {submitState.loading ? 'Submitting…' : 'Submit Request'}
-                </button>
-              </form>
-              {!isTeamLeader && <p className={styles.note}>Please note: Only the Team Leader can submit this request..</p>}
-              <StatusMessage state={submitState} />
-            </SectionCard>
-          </>
-        )}
-
-        {activeTab === 'my-requests' && (
-          <SectionCard title="Advisor Requests" description="View statuses and withdraw only pending requests.">
-            <div className={styles.inlineControls}>
-              <button type="button" onClick={fetchRequests} disabled={requestState.loading}>
-                {requestState.loading ? 'Refreshing…' : 'Refresh Requests'}
-              </button>
+              <div>
+                <label className={labelClass}>Limit</label>
+                <input type="number" min="1" value={advisorLimit} onChange={(e) => setAdvisorLimit(Number(e.target.value) || 10)}
+                  className="w-20 rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60" />
+              </div>
+              <Button variant="ghost" size="md" loading={advisorState.loading} onClick={fetchAdvisors}>
+                <RefreshCw size={13} /> Load
+              </Button>
             </div>
-            <StatusMessage state={requestState} />
-            <StatusMessage state={withdrawState} />
-            {requests.length === 0 ? (
-              <p className={styles.emptyState}>No requests found.</p>
+            <Toast state={advisorState} />
+            {advisors.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">No advisors loaded yet.</p>
             ) : (
-              <ul className={styles.list}>
-                {requests.map((request) => {
-                  const requestId = getRequestId(request)
-                  const pending = isPending(request)
+              <ul className="space-y-1">
+                {advisors.map((a) => {
+                  const aid  = String(a.advisorId || a.id);
+                  const name = a.name || a.fullName || a.email || `Advisor ${aid}`;
                   return (
-                    <li key={requestId} className={styles.requestRow}>
-                      <div>
-                        <strong>{requestId}</strong>
-                        <p className={styles.requestMeta}>
-                          Group: {request.groupId || '-'} | Advisor: {request.requestedAdvisorId || request.advisorId || '-'}
-                        </p>
-                      </div>
-                      <div className={styles.requestActions}>
-                        <span
-                          className={`${styles.badgeStatus} ${pending ? styles.pending : styles.nonPending}`}
-                        >
-                          {getRequestStatus(request) || 'UNKNOWN'}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={!isTeamLeader || !pending || Boolean(requestWithdrawLoadingId)}
-                          onClick={() => setWithdrawModalTarget(request)}
-                        >
-                          {requestWithdrawLoadingId === String(requestId) ? 'Withdrawing…' : 'Withdraw'}
-                        </button>
-                      </div>
+                    <li key={aid}>
+                      <label className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/5 transition-colors">
+                        <input
+                          type="radio"
+                          name="advisor"
+                          className="accent-blue-600"
+                          checked={selectedAdvisorId === aid}
+                          onChange={() => setSelAdvisor(aid)}
+                        />
+                        <span className="text-sm text-slate-300">{name}</span>
+                      </label>
                     </li>
-                  )
+                  );
                 })}
               </ul>
             )}
-          </SectionCard>
-        )}
+          </Card>
 
-        {activeTab === 'committee-details' && (
-          <SectionCard title="Group Committee Lookup" description="Retrieve committee assignment for a group.">
-            <form className={styles.form} onSubmit={handleCommitteeLookup}>
-              <label>
-                Group ID
-                <input value={committeeGroupId} onChange={(e) => setCommitteeGroupId(e.target.value)} required />
-              </label>
-              <button type="submit" disabled={committeeState.loading}>
-                {committeeState.loading ? 'Loading…' : 'Get Committee'}
-              </button>
-            </form>
-            <StatusMessage state={committeeState} />
-            {committeeResult && (
-              <div className={styles.resultBox}>
-                <pre>{JSON.stringify(committeeResult, null, 2)}</pre>
-              </div>
-            )}
-          </SectionCard>
-        )}
-
-        {activeTab === 'group-status' && (
-          <SectionCard title="Check your group's assignment status, advisor information, and any restrictions on submitting requests.">
-            <form className={styles.form} onSubmit={handleGroupStatusLookup}>
-              <label>
-                Group ID
-                <input value={statusGroupId} onChange={(e) => setStatusGroupId(e.target.value)} required />
-              </label>
-              <button type="submit" disabled={groupStatusState.loading}>
-                {groupStatusState.loading ? 'Loading…' : 'Get Status'}
-              </button>
-            </form>
-            <StatusMessage state={groupStatusState} />
-            {groupStatusResult && (
-              <div className={styles.resultBox}>
-                <ul className={styles.resultList}>
-                  <li>Status: {groupStatusResult.status || '-'}</li>
-                  <li>Advisor: {groupStatusResult.advisorId || groupStatusResult.advisorName || '-'}</li>
-                  <li>canSubmitRequest: {String(groupStatusResult.canSubmitRequest)}</li>
-                  <li>blockedReason: {groupStatusResult.blockedReason || '-'}</li>
-                </ul>
-              </div>
-            )}
-          </SectionCard>
-        )}
-      </main>
-
-      {withdrawModalTarget && (
-        <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="withdraw-modal-title">
-          <div className={styles.modal}>
-            <h3 id="withdraw-modal-title">Withdraw Request</h3>
-            <p>
-              Are you sure you want to withdraw request <strong>{getRequestId(withdrawModalTarget)}</strong>?
+          <Card>
+            <p className="mb-1 text-sm font-bold text-slate-200">Submit Advisor Request</p>
+            <p className="mb-4 text-xs text-slate-500">
+              {isLeader ? 'Finalise your selection and submit.' : 'Only the Team Leader can submit requests.'}
             </p>
-            <div className={styles.modalActions}>
-              <button type="button" onClick={() => setWithdrawModalTarget(null)} disabled={withdrawState.loading}>
+            <form className="space-y-4" onSubmit={handleSubmitRequest}>
+              <div>
+                <label className={labelClass}>Group ID</label>
+                <input className={inputClass} value={groupId} onChange={(e) => setGroupId(e.target.value)} required />
+              </div>
+              <div>
+                <label className={labelClass}>Selected Advisor</label>
+                <input
+                  className={`${inputClass} opacity-60`}
+                  value={selectedAdvisor ? (selectedAdvisor.name || selectedAdvisor.fullName || selectedAdvisorId) : ''}
+                  disabled
+                  placeholder="Select from list →"
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                disabled={!isLeader || !groupId || !selectedAdvisorId}
+                loading={submitState.loading}
+                className="w-full"
+              >
+                Submit Request
+              </Button>
+            </form>
+            <Toast state={submitState} />
+          </Card>
+        </div>
+      )}
+
+      {/* ── My Requests ── */}
+      {activeTab === 'my-requests' && (
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-slate-400">Your advisor requests and their current status.</p>
+            <Button variant="ghost" size="sm" loading={requestState.loading} onClick={fetchRequests}>
+              <RefreshCw size={13} /> Refresh
+            </Button>
+          </div>
+          <Toast state={requestState} />
+          <Toast state={withdrawState} />
+          <div className="overflow-hidden rounded-2xl border border-[#1e293b]">
+            {requests.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-16 text-center">
+                <ClipboardList size={32} className="text-slate-700" />
+                <p className="text-sm text-slate-500">No requests found.</p>
+                <Button variant="ghost" size="sm" onClick={fetchRequests}>Load Requests</Button>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#080f1f]">
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Request ID</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Group</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Advisor</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.map((r) => {
+                    const rid     = getRequestId(r);
+                    const pending = isPending(r);
+                    const sKey    = getRequestStatus(r);
+                    return (
+                      <tr key={rid} className="border-t border-[#1e293b] hover:bg-white/[0.02] transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs text-slate-400">{rid}</td>
+                        <td className="px-4 py-3 text-slate-300">{r.groupId || '—'}</td>
+                        <td className="px-4 py-3 text-slate-400">{r.requestedAdvisorId || r.advisorId || '—'}</td>
+                        <td className="px-4 py-3">
+                          <Badge color={statusColor[sKey] ?? 'slate'}>{sKey || 'UNKNOWN'}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          {pending && (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              disabled={!isLeader || Boolean(withdrawLoadingId)}
+                              loading={withdrawLoadingId === String(rid)}
+                              onClick={() => setWdModal(r)}
+                            >
+                              Withdraw
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Committee Details ── */}
+      {activeTab === 'committee-details' && (
+        <Card>
+          <p className="mb-1 text-sm font-bold text-slate-200">Group Committee Lookup</p>
+          <p className="mb-4 text-xs text-slate-500">Retrieve committee assignment for a group.</p>
+          <form className="mb-4 flex gap-3 items-end" onSubmit={handleCommitteeLookup}>
+            <div className="flex-1">
+              <label className={labelClass}>Group ID</label>
+              <input className={inputClass} value={committeeGroupId} onChange={(e) => setCommGId(e.target.value)} required />
+            </div>
+            <Button type="submit" variant="primary" size="md" loading={committeeState.loading}>
+              Look Up
+            </Button>
+          </form>
+          <Toast state={committeeState} />
+          {committeeResult && (
+            <pre className="mt-2 overflow-x-auto rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 text-xs text-slate-300">
+              {JSON.stringify(committeeResult, null, 2)}
+            </pre>
+          )}
+        </Card>
+      )}
+
+      {/* ── Group Status ── */}
+      {activeTab === 'group-status' && (
+        <Card>
+          <p className="mb-1 text-sm font-bold text-slate-200">Group Assignment Status</p>
+          <p className="mb-4 text-xs text-slate-500">Check your group's advisor assignment, status, and any restrictions.</p>
+          <form className="mb-4 flex gap-3 items-end" onSubmit={handleGroupStatusLookup}>
+            <div className="flex-1">
+              <label className={labelClass}>Group ID</label>
+              <input className={inputClass} value={statusGroupId} onChange={(e) => setStatusGId(e.target.value)} required />
+            </div>
+            <Button type="submit" variant="primary" size="md" loading={groupStatusState.loading}>
+              Look Up
+            </Button>
+          </form>
+          <Toast state={groupStatusState} />
+          {groupStatusResult && (
+            <ul className="mt-2 space-y-2 rounded-xl border border-[#1e293b] bg-[#080f1f] p-4">
+              {[
+                ['Status', groupStatusResult.status],
+                ['Advisor', groupStatusResult.advisorId || groupStatusResult.advisorName],
+                ['Can Submit Request', String(groupStatusResult.canSubmitRequest)],
+                ['Blocked Reason', groupStatusResult.blockedReason || 'None'],
+              ].map(([k, v]) => (
+                <li key={k} className="flex items-baseline gap-3 text-sm">
+                  <span className="w-40 shrink-0 text-[11px] font-bold uppercase tracking-widest text-slate-500">{k}</span>
+                  <span className="text-slate-300">{v || '—'}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
+      {/* Withdraw modal */}
+      {withdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-2xl border border-[#1e293b] bg-[#0d1729] p-6 shadow-2xl">
+            <h3 className="mb-2 text-base font-bold text-slate-100">Withdraw Request</h3>
+            <p className="mb-5 text-sm text-slate-400">
+              Are you sure you want to withdraw request{' '}
+              <span className="font-semibold text-slate-200">{getRequestId(withdrawModal)}</span>?
+            </p>
+            {withdrawState.error && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                {withdrawState.error}
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" size="md" disabled={withdrawState.loading} onClick={() => setWdModal(null)}>
                 Cancel
-              </button>
-              <button type="button" onClick={handleWithdraw} disabled={withdrawState.loading}>
-                {withdrawState.loading ? 'Withdrawing…' : 'Confirm Withdraw'}
-              </button>
+              </Button>
+              <Button variant="danger" size="md" loading={withdrawState.loading} onClick={handleWithdraw}>
+                Confirm Withdraw
+              </Button>
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default StudentGroupManagementPage
+export default StudentGroupManagementPage;

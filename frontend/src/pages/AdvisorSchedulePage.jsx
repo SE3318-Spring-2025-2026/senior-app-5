@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
-import styles from './GroupLifecyclePage.module.css'
+import { Badge, PageHeader } from '../components/ui'
 
 const PHASE = 'ADVISOR_SELECTION'
 
@@ -31,19 +31,6 @@ function isWindowOpen(schedule) {
   const start = new Date(schedule.startAt || schedule.startDatetime)
   const end = new Date(schedule.endAt || schedule.endDatetime)
   return now >= start && now <= end
-}
-
-function StatusMessage({ state }) {
-  if (!state?.message && !state?.error) return null
-  return (
-    <div
-      className={`${styles.statusBlock} ${state.error ? styles.error : styles.success}`}
-      role="status"
-      aria-live="polite"
-    >
-      {state.error || state.message}
-    </div>
-  )
 }
 
 function AdvisorSchedulePage() {
@@ -107,123 +94,102 @@ function AdvisorSchedulePage() {
   const open = isWindowOpen(activeSchedule)
 
   return (
-    <div className={styles.pageContainer}>
-      <header className={styles.hero}>
-        <div>
-          <p className={styles.badge}>Coordinator</p>
-          <h1>Advisor Selection Schedule</h1>
-          <p className={styles.lead}>
-            Configure the window during which student team leaders can submit advisee requests.
-            Teams can only send requests while this window is open.
-          </p>
-        </div>
-      </header>
+    <div>
+      <PageHeader
+        title="Advisor Selection Schedule"
+        subtitle="Configure when team leaders can submit advisee requests."
+      />
 
-      <div style={{ display: 'grid', gap: '20px', maxWidth: '760px' }}>
-        <section
-          style={{
-            background: '#1e293b',
-            border: '1px solid #334155',
-            borderRadius: '16px',
-            padding: '24px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px',
-              flexWrap: 'wrap',
-              gap: '12px',
-            }}
-          >
-            <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '18px' }}>Current Window</h2>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: '999px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  background: open ? 'rgba(34,197,94,0.2)' : 'rgba(100,116,139,0.2)',
-                  color: open ? '#4ade80' : '#94a3b8',
-                }}
-              >
+      <div className="grid gap-5 max-w-[760px]">
+        {/* Current Window */}
+        <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 className="text-sm font-bold text-slate-200">Current Window</h2>
+            <div className="flex items-center gap-2.5">
+              <Badge color={open ? 'green' : 'slate'}>
                 {fetchState.loading ? 'Loading…' : open ? 'Open' : 'Closed'}
-              </span>
+              </Badge>
               <button
                 type="button"
                 onClick={fetchActiveSchedule}
                 disabled={fetchState.loading}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #475569',
-                  background: 'transparent',
-                  color: '#94a3b8',
-                  fontSize: '13px',
-                  cursor: fetchState.loading ? 'not-allowed' : 'pointer',
-                }}
+                className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Refresh
               </button>
             </div>
           </div>
 
-          <StatusMessage state={fetchState} />
+          {fetchState.error && (
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
+              {fetchState.error}
+            </p>
+          )}
 
           {activeSchedule ? (
-            <div className={styles.resultBox}>
-              <p style={{ margin: 0, color: '#f8fafc', fontWeight: 600 }}>
-                {formatDateRange(activeSchedule)}
-              </p>
-              <p style={{ margin: '6px 0 0', color: '#94a3b8', fontSize: '13px' }}>
-                Phase: {activeSchedule.phase || PHASE}
-              </p>
+            <div className="rounded-xl border border-[#1e293b] bg-[#080f1f] p-4">
+              <p className="text-sm font-semibold text-slate-200">{formatDateRange(activeSchedule)}</p>
+              <p className="text-xs text-slate-500 mt-1">Phase: {activeSchedule.phase || PHASE}</p>
             </div>
           ) : (
             !fetchState.loading && (
-              <p className={styles.emptyState}>No active advisor selection schedule found.</p>
+              <p className="text-sm text-slate-500">No active advisor selection schedule found.</p>
             )
           )}
         </section>
 
-        <section
-          style={{
-            background: '#1e293b',
-            border: '1px solid #334155',
-            borderRadius: '16px',
-            padding: '24px',
-          }}
-        >
-          <h2 style={{ margin: '0 0 16px', color: '#f8fafc', fontSize: '18px' }}>
-            Create New Window
-          </h2>
-          <form className={styles.form} onSubmit={handleCreate}>
-            <label>
-              Start Date & Time
+        {/* Create New Window */}
+        <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+          <h2 className="text-sm font-bold text-slate-200 mb-4">Create New Window</h2>
+
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                Start Date &amp; Time
+              </label>
               <input
                 type="datetime-local"
                 value={form.startAt}
                 onChange={(e) => setForm((prev) => ({ ...prev, startAt: e.target.value }))}
                 required
+                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
               />
-            </label>
-            <label>
-              End Date & Time
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                End Date &amp; Time
+              </label>
               <input
                 type="datetime-local"
                 value={form.endAt}
                 onChange={(e) => setForm((prev) => ({ ...prev, endAt: e.target.value }))}
                 required
+                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
               />
-            </label>
-            <button type="submit" disabled={createState.loading}>
-              {createState.loading ? 'Creating…' : 'Create Schedule'}
-            </button>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={createState.loading}
+                className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {createState.loading ? 'Creating…' : 'Create Schedule'}
+              </button>
+            </div>
           </form>
-          <StatusMessage state={createState} />
+
+          {createState.message && (
+            <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
+              {createState.message}
+            </p>
+          )}
+          {createState.error && (
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
+              {createState.error}
+            </p>
+          )}
         </section>
       </div>
     </div>

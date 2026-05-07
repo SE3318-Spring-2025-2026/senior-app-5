@@ -14,7 +14,7 @@ const TABS = ['Jury Members', 'Advisors', 'Groups', 'Grading Scope']
 
 function Badge({ label, variant = 'default' }) {
   const map = {
-    default: 'bg-slate-700 text-slate-400',
+    default: 'bg-[#1e293b] text-slate-400',
     blue: 'bg-blue-500/20 text-blue-400',
     purple: 'bg-purple-500/20 text-purple-400',
     green: 'bg-emerald-500/20 text-emerald-400',
@@ -30,11 +30,11 @@ function Badge({ label, variant = 'default' }) {
 function Pagination({ page, totalPages, onPrev, onNext }) {
   if (totalPages <= 1) return null
   return (
-    <div className="flex items-center justify-between border-t border-slate-700 pt-4 mt-4">
+    <div className="flex items-center justify-between border-t border-[#1e293b] pt-4 mt-4">
       <button
         onClick={onPrev}
         disabled={page === 1}
-        className="text-xs text-slate-400 hover:text-slate-100 disabled:opacity-40 transition-colors"
+        className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
       >
         ← Prev
       </button>
@@ -42,7 +42,7 @@ function Pagination({ page, totalPages, onPrev, onNext }) {
       <button
         onClick={onNext}
         disabled={page === totalPages}
-        className="text-xs text-slate-400 hover:text-slate-100 disabled:opacity-40 transition-colors"
+        className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
       >
         Next →
       </button>
@@ -124,19 +124,19 @@ function JuryTab({ committeeId }) {
   return (
     <div className="space-y-4">
       {loading ? (
-        <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
+        <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
       ) : error ? (
         <p className="text-sm text-red-400">{error}</p>
       ) : items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">No jury members yet.</p>
+        <p className="py-12 text-center text-sm text-slate-500">No jury members yet.</p>
       ) : (
-        <div className="divide-y divide-slate-700/60">
+        <div className="divide-y divide-[#1e293b]">
           {items.map((item) => {
             const uid = item.userId || item._id
             return (
               <div key={uid} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm font-mono text-slate-100">{uid}</p>
+                  <p className="text-sm font-mono text-slate-200">{uid}</p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Assigned {new Date(item.assignedAt || item.createdAt).toLocaleString()}
                     {item.assignedBy ? ` · by ${item.assignedBy}` : ''}
@@ -156,18 +156,18 @@ function JuryTab({ committeeId }) {
         onNext={() => { const p = page + 1; setPage(p); load(p) }}
       />
 
-      <form onSubmit={handleAdd} className="flex gap-2 border-t border-slate-700 pt-4">
+      <form onSubmit={handleAdd} className="flex gap-2 border-t border-[#1e293b] pt-4">
         <input
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           placeholder="User ID (UUID)"
           required
-          className="flex-1 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={addStatus.loading}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50 whitespace-nowrap"
+          className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {addStatus.loading ? 'Adding…' : 'Add Jury'}
         </button>
@@ -240,20 +240,20 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
   return (
     <div className="space-y-4">
       {loading ? (
-        <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
+        <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
       ) : error ? (
         <p className="text-sm text-red-400">{error}</p>
       ) : items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">No advisors assigned yet.</p>
+        <p className="py-12 text-center text-sm text-slate-500">No advisors assigned yet.</p>
       ) : (
-        <div className="divide-y divide-slate-700/60">
+        <div className="divide-y divide-[#1e293b]">
           {items.map((item) => {
             const uid = item.advisorUserId || item._id
             const isPrimary = item.assignmentSource === 'PRIMARY_ADVISOR'
             return (
               <div key={uid} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm font-mono text-slate-100">{uid}</p>
+                  <p className="text-sm font-mono text-slate-200">{uid}</p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Assigned {new Date(item.assignedAt || item.createdAt).toLocaleString()}
                   </p>
@@ -280,19 +280,19 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
 
       <form
         onSubmit={handleAdd}
-        className="flex flex-col sm:flex-row gap-2 border-t border-slate-700 pt-4"
+        className="flex flex-col sm:flex-row gap-2 border-t border-[#1e293b] pt-4"
       >
         <input
           value={advisorId}
           onChange={(e) => setAdvisorId(e.target.value)}
           placeholder="Advisor User ID (UUID)"
           required
-          className="flex-1 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
         />
         <select
           value={source}
           onChange={(e) => setSource(e.target.value)}
-          className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+          className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
         >
           <option value="PRIMARY_ADVISOR">Primary Advisor</option>
           <option value="JURY_MEMBER">Jury Member</option>
@@ -300,7 +300,7 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
         <button
           type="submit"
           disabled={addStatus.loading}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50 whitespace-nowrap"
+          className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {addStatus.loading ? 'Adding…' : 'Add Advisor'}
         </button>
@@ -398,19 +398,19 @@ function GroupsTab({ committeeId }) {
       )}
 
       {loading ? (
-        <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
+        <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
       ) : error ? (
         <p className="text-sm text-red-400">{error}</p>
       ) : items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">No groups assigned yet.</p>
+        <p className="py-12 text-center text-sm text-slate-500">No groups assigned yet.</p>
       ) : (
-        <div className="divide-y divide-slate-700/60">
+        <div className="divide-y divide-[#1e293b]">
           {items.map((item) => {
             const gid = item.groupId || item._id
             return (
               <div key={gid} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm font-mono text-slate-100">{gid}</p>
+                  <p className="text-sm font-mono text-slate-200">{gid}</p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Assigned {new Date(item.assignedAt || item.createdAt).toLocaleString()}
                     {item.assignedBy ? ` · by ${item.assignedBy}` : ''}
@@ -430,19 +430,19 @@ function GroupsTab({ committeeId }) {
         onNext={() => { const p = page + 1; setPage(p); load(p) }}
       />
 
-      <form onSubmit={handleAdd} className="flex gap-2 border-t border-slate-700 pt-4">
+      <form onSubmit={handleAdd} className="flex gap-2 border-t border-[#1e293b] pt-4">
         <input
           value={groupId}
           onChange={(e) => setGroupId(e.target.value)}
           placeholder="Group ID (UUID)"
           required
           disabled={!isWindowOpen}
-          className="flex-1 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:cursor-not-allowed disabled:opacity-40"
         />
         <button
           type="submit"
           disabled={addStatus.loading || !isWindowOpen}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+          className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap"
         >
           {addStatus.loading ? 'Assigning…' : 'Assign Group'}
         </button>
@@ -491,11 +491,11 @@ function GradingScopeTab({ committeeId, advisorList }) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="mb-1.5 block text-xs text-slate-500">Advisor</label>
+        <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Advisor</label>
         <select
           value={selectedAdvisor}
           onChange={handleSelect}
-          className="w-full sm:w-auto rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+          className="w-full sm:w-auto rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
         >
           <option value="">— Select an advisor —</option>
           {advisorList.map((a) => {
@@ -510,24 +510,24 @@ function GradingScopeTab({ committeeId, advisorList }) {
       </div>
 
       {!selectedAdvisor ? (
-        <p className="py-8 text-center text-sm text-slate-500">
+        <p className="py-12 text-center text-sm text-slate-500">
           Select an advisor to see their grading scope.
         </p>
       ) : loading ? (
-        <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
+        <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
       ) : error ? (
         <p className="text-sm text-red-400">{error}</p>
       ) : items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">No groups in grading scope.</p>
+        <p className="py-12 text-center text-sm text-slate-500">No groups in grading scope.</p>
       ) : (
         <>
-          <div className="divide-y divide-slate-700/60">
+          <div className="divide-y divide-[#1e293b]">
             {items.map((item) => {
               const gid = item.groupId || item._id
               return (
                 <div key={gid} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="text-sm font-mono text-slate-100">{gid}</p>
+                    <p className="text-sm font-mono text-slate-200">{gid}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
                       Original advisor: {item.originalAdvisorId || item.advisorUserId || '—'}
                       {item.assignedAt
@@ -611,7 +611,7 @@ export default function CommitteeDetailPage() {
   if (notFound) {
     return (
       <div className="max-w-4xl mx-auto p-1">
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-10 text-center">
+        <div className="rounded-2xl border border-[#1e293b] bg-[#111827] p-10 text-center">
           <p className="text-sm text-slate-400">Committee not found.</p>
           <button
             onClick={() => navigate('/admin/committees')}
@@ -627,7 +627,7 @@ export default function CommitteeDetailPage() {
   if (!committee) {
     return (
       <div className="max-w-4xl mx-auto p-1">
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-10 text-center">
+        <div className="rounded-2xl border border-[#1e293b] bg-[#111827] p-10 text-center">
           <p className="text-sm text-slate-500">Loading…</p>
         </div>
       </div>
@@ -638,7 +638,7 @@ export default function CommitteeDetailPage() {
     <div className="max-w-4xl mx-auto space-y-5 p-1">
 
       {/* Header card */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 p-5">
+      <div className="rounded-2xl border border-[#1e293b] bg-[#111827] p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             {editing ? (
@@ -646,24 +646,24 @@ export default function CommitteeDetailPage() {
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-1.5 text-lg font-semibold text-slate-100 focus:border-blue-500 focus:outline-none"
+                  className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2 text-lg font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
                 />
                 <button
                   onClick={handleSaveName}
                   disabled={editStatus.loading}
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {editStatus.loading ? 'Saving…' : 'Save'}
                 </button>
                 <button
                   onClick={() => setEditing(false)}
-                  className="text-sm text-slate-400 hover:text-slate-100 px-2 py-1.5 transition-colors"
+                  className="text-sm text-slate-400 hover:text-slate-200 px-2 py-2 transition-colors"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
-              <h1 className="text-xl font-semibold text-slate-100 truncate">{committee.name}</h1>
+              <h1 className="text-xl font-semibold text-slate-200 truncate">{committee.name}</h1>
             )}
             {editStatus.error && (
               <p className="mt-1 text-xs text-red-400">{editStatus.error}</p>
@@ -680,14 +680,14 @@ export default function CommitteeDetailPage() {
             {!editing && (
               <button
                 onClick={() => { setEditing(true); setEditName(committee.name) }}
-                className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-400 transition-colors hover:border-slate-500 hover:text-slate-100"
+                className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100"
               >
                 Edit
               </button>
             )}
             <button
               onClick={() => setDeleteConfirm(true)}
-              className="rounded-lg border border-red-900 px-3 py-1.5 text-sm text-red-400 transition-colors hover:border-red-700 hover:text-red-300"
+              className="rounded-xl border border-red-500/30 bg-red-600/10 px-4 py-2 text-sm font-bold text-red-400 hover:bg-red-600/20"
             >
               Delete
             </button>
@@ -696,17 +696,17 @@ export default function CommitteeDetailPage() {
       </div>
 
       {/* Tabs card */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <div className="rounded-2xl border border-[#1e293b] bg-[#111827] overflow-hidden">
         {/* Tab bar */}
-        <div className="flex border-b border-slate-700 overflow-x-auto">
+        <div className="flex border-b border-[#1e293b] overflow-x-auto">
           {TABS.map((tab, i) => (
             <button
               key={tab}
               onClick={() => setActiveTab(i)}
               className={`shrink-0 px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === i
-                  ? 'border-b-2 border-blue-500 text-blue-400 bg-slate-700/30'
-                  : 'text-slate-400 hover:text-slate-100'
+                  ? 'border-b-2 border-blue-500 text-blue-400 bg-blue-600/10'
+                  : 'text-slate-500 hover:text-slate-200'
               }`}
             >
               {tab}
@@ -733,11 +733,11 @@ export default function CommitteeDetailPage() {
       {/* Delete modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-2xl">
-            <h3 className="mb-2 text-lg font-semibold text-red-400">Delete Committee</h3>
+          <div className="w-full max-w-sm rounded-2xl border border-[#1e293b] bg-[#0d1729] p-6 shadow-2xl">
+            <h3 className="mb-2 text-base font-bold text-red-400">Delete Committee</h3>
             <p className="mb-4 text-sm text-slate-400">
               Permanently delete{' '}
-              <strong className="text-slate-100">{committee.name}</strong>? All assignments will be
+              <strong className="text-slate-200">{committee.name}</strong>? All assignments will be
               removed. Groups will not be deleted.
             </p>
             {deleteStatus.error && (
@@ -747,14 +747,14 @@ export default function CommitteeDetailPage() {
               <button
                 onClick={() => setDeleteConfirm(false)}
                 disabled={deleteStatus.loading}
-                className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-400 transition-colors hover:text-slate-100 disabled:opacity-50"
+                className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleteStatus.loading}
-                className="rounded-lg border border-red-900 px-4 py-2 text-sm text-red-400 transition-colors hover:border-red-700 hover:text-red-300 disabled:opacity-50"
+                className="rounded-xl border border-red-500/30 bg-red-600/10 px-4 py-2.5 text-sm font-bold text-red-400 hover:bg-red-600/20 disabled:opacity-50"
               >
                 {deleteStatus.loading ? 'Deleting…' : 'Delete'}
               </button>

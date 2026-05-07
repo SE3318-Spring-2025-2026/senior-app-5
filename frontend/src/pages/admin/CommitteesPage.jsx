@@ -118,10 +118,10 @@ export default function CommitteesPage() {
     <div className="max-w-4xl mx-auto space-y-5 p-1">
 
       {/* Schedule Window Card */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 p-5">
+      <div className="rounded-2xl border border-[#1e293b] bg-[#111827] p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
               Assignment Window
             </h2>
             {!scheduleLoading && <WindowBadge open={isWindowOpen} />}
@@ -144,30 +144,30 @@ export default function CommitteesPage() {
 
         <form onSubmit={handleCreateSchedule} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3">
           <div>
-            <label className="block text-xs text-slate-500 mb-1.5">Start</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Start</label>
             <input
               type="datetime-local"
               value={newStart}
               onChange={(e) => setNewStart(e.target.value)}
               required
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1.5">End</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">End</label>
             <input
               type="datetime-local"
               value={newEnd}
               onChange={(e) => setNewEnd(e.target.value)}
               required
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
           </div>
           <div className="flex items-end">
             <button
               type="submit"
               disabled={scheduleStatus.loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+              className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {scheduleStatus.loading ? 'Saving…' : 'Set Window'}
             </button>
@@ -183,8 +183,8 @@ export default function CommitteesPage() {
       </div>
 
       {/* Committees Card */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 p-5">
-        <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wide mb-4">
+      <div className="rounded-2xl border border-[#1e293b] bg-[#111827] p-5">
+        <h2 className="text-sm font-semibold text-slate-200 uppercase tracking-wide mb-4">
           Committees
         </h2>
 
@@ -196,12 +196,12 @@ export default function CommitteesPage() {
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Committee name…"
             required
-            className="flex-1 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
           />
           <button
             type="submit"
             disabled={createStatus.loading}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50 whitespace-nowrap"
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {createStatus.loading ? 'Creating…' : '+ New Committee'}
           </button>
@@ -216,26 +216,26 @@ export default function CommitteesPage() {
 
         {/* List */}
         {listLoading ? (
-          <div className="py-10 text-center text-sm text-slate-500">Loading…</div>
+          <div className="py-12 text-center text-sm text-slate-500">Loading…</div>
         ) : listError ? (
           <p className="text-sm text-red-400">{listError}</p>
         ) : committees.length === 0 ? (
-          <div className="py-10 text-center text-sm text-slate-500">
+          <div className="py-12 text-center text-sm text-slate-500">
             No committees yet. Create one above.
           </div>
         ) : (
           <>
-            <div className="divide-y divide-slate-700/60">
+            <div className="divide-y divide-[#1e293b]">
               {committees.map((c) => {
                 const id = c.id || c._id
                 return (
                   <button
                     key={id}
                     onClick={() => navigate(`/admin/committees/${id}`)}
-                    className="flex w-full items-center justify-between py-3.5 text-left transition-colors hover:bg-slate-700/30 px-3 -mx-3 rounded-lg"
+                    className="flex w-full items-center justify-between py-3.5 text-left transition-colors hover:bg-white/[0.02] px-3 -mx-3 rounded-lg"
                   >
                     <div>
-                      <p className="text-sm font-medium text-slate-100">{c.name}</p>
+                      <p className="text-sm font-medium text-slate-200">{c.name}</p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {c.advisorCount ?? 0} advisors &middot; {c.groupCount ?? 0} groups
                         {c.createdAt
@@ -250,11 +250,11 @@ export default function CommitteesPage() {
             </div>
 
             {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between border-t border-slate-700 pt-4">
+              <div className="mt-4 flex items-center justify-between border-t border-[#1e293b] pt-4">
                 <button
                   onClick={() => goTo(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="text-xs text-slate-400 transition-colors hover:text-slate-100 disabled:opacity-40"
+                  className="text-xs text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-40"
                 >
                   ← Prev
                 </button>
@@ -264,7 +264,7 @@ export default function CommitteesPage() {
                 <button
                   onClick={() => goTo(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="text-xs text-slate-400 transition-colors hover:text-slate-100 disabled:opacity-40"
+                  className="text-xs text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-40"
                 >
                   Next →
                 </button>

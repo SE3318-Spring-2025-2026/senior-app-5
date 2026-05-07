@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import EntitySearchSelect from '../../components/EntitySearchSelect'
-import { SectionCard, StatusBlock } from '../../components/ui'
-import styles from '../GroupLifecyclePage.module.css'
+import { SectionCard, StatusBlock, Button, PageHeader } from '../../components/ui'
 import { useAdminGroup } from '../../context/AdminGroupContext'
 
 function MembersPage() {
@@ -39,18 +38,23 @@ function MembersPage() {
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className="max-w-4xl mx-auto space-y-5 p-1">
+      <PageHeader title="Members" />
+
       <SectionCard title="Add Member" description="Assign a student to the created or existing group.">
-        <form className={styles.form} onSubmit={handleAddMember}>
-          <label>
-            Group ID
+        <form className="space-y-4" onSubmit={handleAddMember}>
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Group ID
+            </label>
             <input
               value={groupIdForMembers}
               onChange={(e) => setGroupIdForMembers(e.target.value)}
               placeholder="UUID of group"
               required
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
-          </label>
+          </div>
           <EntitySearchSelect
             label="Member"
             endpoint={apiConfig.endpoints.userSearch}
@@ -62,9 +66,9 @@ function MembersPage() {
             placeholder="Search user by email"
             required
           />
-          <button type="submit" disabled={memberStatus.loading}>
+          <Button type="submit" variant="primary" loading={memberStatus.loading} disabled={memberStatus.loading}>
             {memberStatus.loading ? 'Adding…' : 'Add Member'}
-          </button>
+          </Button>
         </form>
         <StatusBlock title="Add Member" message={memberStatus.message} type="success" />
         <StatusBlock title="Add Member" message={memberStatus.error} type="error" />

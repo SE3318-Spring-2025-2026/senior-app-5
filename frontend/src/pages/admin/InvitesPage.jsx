@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
-import { SectionCard, StatusBlock } from '../../components/ui'
-import styles from '../GroupLifecyclePage.module.css'
+import { SectionCard, StatusBlock, Button, PageHeader } from '../../components/ui'
 import { useAdminGroup } from '../../context/AdminGroupContext'
 
 function InvitesPage() {
@@ -38,30 +37,38 @@ function InvitesPage() {
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className="max-w-4xl mx-auto space-y-5 p-1">
+      <PageHeader title="Invites" />
+
       <SectionCard title="Deliver Invite" description="Send a group invite notification to a student.">
-        <form className={styles.form} onSubmit={handleDeliverInvite}>
-          <label>
-            Group ID
+        <form className="space-y-4" onSubmit={handleDeliverInvite}>
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Group ID
+            </label>
             <input
               value={inviteGroupId}
               onChange={(e) => setInviteGroupId(e.target.value)}
               placeholder="UUID of group"
               required
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
-          </label>
-          <label>
-            Recipient User ID
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Recipient User ID
+            </label>
             <input
               value={recipientUserId}
               onChange={(e) => setRecipientUserId(e.target.value)}
               placeholder="UUID of recipient"
               required
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
-          </label>
-          <button type="submit" disabled={inviteStatus.loading}>
+          </div>
+          <Button type="submit" variant="primary" loading={inviteStatus.loading} disabled={inviteStatus.loading}>
             {inviteStatus.loading ? 'Delivering…' : 'Deliver Invite'}
-          </button>
+          </Button>
         </form>
         <StatusBlock title="Invite Delivery" message={inviteStatus.message} type="success" />
         <StatusBlock title="Invite Delivery" message={inviteStatus.error} type="error" />

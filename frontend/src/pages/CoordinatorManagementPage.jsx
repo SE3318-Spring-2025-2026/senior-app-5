@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import styles from './CoordinatorManagementPage.module.css'
 import { createSchedule, getActiveSchedule } from '../utils/scheduleService'
 import {
   addAdvisor,
@@ -17,9 +16,19 @@ import {
   removeJuryMember,
   updateCommittee,
 } from '../utils/committeeService'
-
 import { useAuth } from '../context/AuthContext'
 import { CreateCoordinatorForm } from '../components/CreateCoordinatorForm'
+import { SectionCard } from '../components/ui'
+
+const labelClass = 'block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5'
+const inputClass =
+  'w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50'
+const btnPrimary =
+  'rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed'
+const btnGhost =
+  'rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed'
+const btnDanger =
+  'rounded-xl border border-red-500/30 bg-red-600/10 text-sm font-bold text-red-400 px-4 py-2.5 hover:bg-red-600/20'
 
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
@@ -41,53 +50,52 @@ const fromDateInput = (value) => new Date(value).toISOString()
 
 function StatusMessage({ status }) {
   if (!status.message && !status.error) return null
-  const typeClass = status.error ? styles.error : styles.success
-  return (
-    <div className={`${styles.statusBlock} ${typeClass}`} role="status" aria-live="polite">
-      {status.error || status.message}
-    </div>
-  )
-}
 
-function SectionCard({ title, subtitle, children }) {
-  return (
-    <section className={styles.card}>
-      <div className={styles.cardHeader}>
-        <h2>{title}</h2>
-        {subtitle ? <p>{subtitle}</p> : null}
+  if (status.error) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 mt-3"
+      >
+        {status.error}
       </div>
-      {children}
-    </section>
+    )
+  }
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-medium text-green-400 mt-3"
+    >
+      {status.message}
+    </div>
   )
 }
 
 function CoordinatorManagementPage() {
   const { user } = useAuth()
 
-  // 🛡️ GARANTİLİ RÜTBE BULUCU (Context veya Token üzerinden)
   const activeRole = useMemo(() => {
-    if (user?.role) return String(user.role).toUpperCase();
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return null;
-      
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(window.atob(base64));
-      
-      return payload.role ? String(payload.role).toUpperCase() : null;
-    } catch (error) {
-      console.error("Token okunamadı:", error);
-      return null;
-    }
-  }, [user]);
+    if (user?.role) return String(user.role).toUpperCase()
 
-  const [scheduleForm, setScheduleForm] = useState({
-    phase: '',
-    startAt: '',
-    endAt: '',
-  })
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return null
+
+      const base64Url = token.split('.')[1]
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const payload = JSON.parse(window.atob(base64))
+
+      return payload.role ? String(payload.role).toUpperCase() : null
+    } catch (error) {
+      console.error('Token okunamadı:', error)
+      return null
+    }
+  }, [user])
+
+  const [scheduleForm, setScheduleForm] = useState({ phase: '', startAt: '', endAt: '' })
   const [scheduleStatus, setScheduleStatus] = useState(emptyStatus())
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [activeSchedule, setActiveSchedule] = useState(null)
@@ -166,15 +174,9 @@ function CoordinatorManagementPage() {
     setTabLoading(true)
     setTabStatus(emptyStatus())
     try {
-      if (tabKey === 'jury') {
-        setJuryMembers(toList(await listJuryMembers(committeeId)))
-      }
-      if (tabKey === 'advisors') {
-        setAdvisors(toList(await listAdvisors(committeeId)))
-      }
-      if (tabKey === 'groups') {
-        setAssignedGroups(toList(await listCommitteeGroups(committeeId)))
-      }
+      if (tabKey === 'jury') setJuryMembers(toList(await listJuryMembers(committeeId)))
+      if (tabKey === 'advisors') setAdvisors(toList(await listAdvisors(committeeId)))
+      if (tabKey === 'groups') setAssignedGroups(toList(await listCommitteeGroups(committeeId)))
     } catch (error) {
       setTabStatus({ message: '', error: `(${error.status ?? 'N/A'}) ${error.message}` })
       if (tabKey === 'jury') setJuryMembers([])
@@ -348,7 +350,14 @@ function CoordinatorManagementPage() {
 
   const getRelationId = useCallback((item) => {
     if (typeof item === 'string') return item
-    return item?.userId || item?.advisorUserId || item?.groupId || item?.id || item?.committeeId || 'unknown'
+    return (
+      item?.userId ||
+      item?.advisorUserId ||
+      item?.groupId ||
+      item?.id ||
+      item?.committeeId ||
+      'unknown'
+    )
   }, [])
 
   const committeeMeta = useMemo(() => {
@@ -358,253 +367,379 @@ function CoordinatorManagementPage() {
   }, [pagination, filters.page, filters.limit])
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <p className={styles.badge}>Coordinator Management Suite</p>
-        <h1>Schedules, Committees, Members and Group Assignments</h1>
-      </header>
+    <div className="space-y-5">
+      {activeRole === 'ADMIN' && (
+        <SectionCard title="Admin Suite" description="Register new coordinator accounts.">
+          <CreateCoordinatorForm />
+        </SectionCard>
+      )}
 
-      <div className={styles.grid}>
-        
-        {/* YENİ NESİL ÇELİK KAPI - Rütbe ne olursa olsun kesin bulur */}
-        {activeRole === 'ADMIN' && (
-          <SectionCard title="Admin Suite" subtitle="Register new coordinator accounts.">
-            <CreateCoordinatorForm />
-          </SectionCard>
+      {/* Schedule Management */}
+      <SectionCard
+        title="Schedule Management"
+        description="Create schedule and inspect active window."
+      >
+        <form onSubmit={onCreateSchedule} className="space-y-4">
+          <div>
+            <label htmlFor="phaseInput" className={labelClass}>
+              Phase
+            </label>
+            <input
+              id="phaseInput"
+              className={inputClass}
+              value={scheduleForm.phase}
+              onChange={(event) =>
+                setScheduleForm((prev) => ({ ...prev, phase: event.target.value }))
+              }
+              placeholder="e.g. COMMITTEE_ASSIGNMENT"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="startAtInput" className={labelClass}>
+              Start Date
+            </label>
+            <input
+              id="startAtInput"
+              type="datetime-local"
+              className={inputClass}
+              value={scheduleForm.startAt}
+              onChange={(event) =>
+                setScheduleForm((prev) => ({ ...prev, startAt: event.target.value }))
+              }
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="endAtInput" className={labelClass}>
+              End Date
+            </label>
+            <input
+              id="endAtInput"
+              type="datetime-local"
+              className={inputClass}
+              value={scheduleForm.endAt}
+              onChange={(event) =>
+                setScheduleForm((prev) => ({ ...prev, endAt: event.target.value }))
+              }
+              required
+            />
+          </div>
+          <div className="flex flex-wrap gap-3 items-end">
+            <button type="submit" disabled={scheduleLoading} className={btnPrimary}>
+              {scheduleLoading ? 'Saving...' : 'Create Schedule'}
+            </button>
+            <button
+              type="button"
+              onClick={loadActiveSchedule}
+              disabled={scheduleLoading}
+              className={btnGhost}
+            >
+              {scheduleLoading ? 'Loading...' : 'Refresh Active Window'}
+            </button>
+          </div>
+        </form>
+
+        <StatusMessage status={scheduleStatus} />
+
+        <div className="overflow-x-auto rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 text-xs text-slate-300 font-mono mt-3">
+          {activeSchedule ? (
+            <pre>{JSON.stringify(activeSchedule, null, 2)}</pre>
+          ) : (
+            <p className="text-sm text-slate-500 py-4 text-center">
+              No active schedule window found.
+            </p>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Committee List & CRUD */}
+      <SectionCard
+        title="Committee List & CRUD"
+        description="Filter by name, paginate and manage committee records."
+      >
+        <div className="flex flex-wrap gap-3 items-end mb-4">
+          <div className="flex-1 min-w-[180px]">
+            <label htmlFor="filterName" className={labelClass}>
+              Name Filter
+            </label>
+            <input
+              id="filterName"
+              className={inputClass}
+              value={filters.name}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, name: event.target.value, page: 1 }))
+              }
+              placeholder="Search committee by name"
+            />
+          </div>
+          <div className="w-28">
+            <label htmlFor="filterLimit" className={labelClass}>
+              Page Size
+            </label>
+            <input
+              id="filterLimit"
+              type="number"
+              min="1"
+              max="50"
+              className={inputClass}
+              value={filters.limit}
+              onChange={(event) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  limit: Number(event.target.value) || 10,
+                  page: 1,
+                }))
+              }
+            />
+          </div>
+          <button
+            type="button"
+            onClick={loadCommittees}
+            disabled={committeeLoading}
+            className={btnPrimary}
+          >
+            {committeeLoading ? 'Loading...' : 'Apply'}
+          </button>
+        </div>
+
+        <form onSubmit={onSubmitCommittee} className="space-y-4">
+          <div>
+            <label htmlFor="committeeName" className={labelClass}>
+              Committee Name
+            </label>
+            <input
+              id="committeeName"
+              className={inputClass}
+              value={committeeForm.name}
+              onChange={(event) => setCommitteeForm({ name: event.target.value })}
+              placeholder="e.g. AI Research Committee"
+              required
+            />
+          </div>
+          <div className="flex flex-wrap gap-3 items-end">
+            <button type="submit" disabled={committeeLoading} className={btnPrimary}>
+              {committeeLoading
+                ? 'Saving...'
+                : editingCommitteeId
+                  ? 'Update Committee'
+                  : 'Create Committee'}
+            </button>
+            {editingCommitteeId && (
+              <button
+                type="button"
+                className={btnGhost}
+                onClick={() => {
+                  setEditingCommitteeId(null)
+                  setCommitteeForm({ name: '' })
+                }}
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
+        </form>
+
+        <StatusMessage status={committeeStatus} />
+
+        {committeeMeta && (
+          <p className="text-xs text-slate-500 mt-3">{committeeMeta}</p>
         )}
 
-        <SectionCard title="Schedule Management" subtitle="Create schedule and inspect active window.">
-          <form className={styles.form} onSubmit={onCreateSchedule}>
-            <label htmlFor="phaseInput">
-              Phase
-              <input
-                id="phaseInput"
-                value={scheduleForm.phase}
-                onChange={(event) => setScheduleForm((prev) => ({ ...prev, phase: event.target.value }))}
-                placeholder="e.g. COMMITTEE_ASSIGNMENT"
-                required
-              />
-            </label>
-            <label htmlFor="startAtInput">
-              Start Date
-              <input
-                id="startAtInput"
-                type="datetime-local"
-                value={scheduleForm.startAt}
-                onChange={(event) => setScheduleForm((prev) => ({ ...prev, startAt: event.target.value }))}
-                required
-              />
-            </label>
-            <label htmlFor="endAtInput">
-              End Date
-              <input
-                id="endAtInput"
-                type="datetime-local"
-                value={scheduleForm.endAt}
-                onChange={(event) => setScheduleForm((prev) => ({ ...prev, endAt: event.target.value }))}
-                required
-              />
-            </label>
-            <div className={styles.inlineActions}>
-              <button type="submit" disabled={scheduleLoading}>
-                {scheduleLoading ? 'Saving...' : 'Create Schedule'}
-              </button>
-              <button type="button" onClick={loadActiveSchedule} disabled={scheduleLoading}>
-                {scheduleLoading ? 'Loading...' : 'Refresh Active Window'}
-              </button>
-            </div>
-          </form>
-          <StatusMessage status={scheduleStatus} />
-          <div className={styles.infoPanel}>
-            {activeSchedule ? (
-              <pre>{JSON.stringify(activeSchedule, null, 2)}</pre>
-            ) : (
-              <p className={styles.empty}>No active schedule window found.</p>
-            )}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Committee List & CRUD" subtitle="Filter by name, paginate and manage committee records.">
-          <div className={styles.filterRow}>
-            <label htmlFor="filterName">
-              Name Filter
-              <input
-                id="filterName"
-                value={filters.name}
-                onChange={(event) => setFilters((prev) => ({ ...prev, name: event.target.value, page: 1 }))}
-                placeholder="Search committee by name"
-              />
-            </label>
-            <label htmlFor="filterLimit">
-              Page Size
-              <input
-                id="filterLimit"
-                type="number"
-                min="1"
-                max="50"
-                value={filters.limit}
-                onChange={(event) => setFilters((prev) => ({ ...prev, limit: Number(event.target.value) || 10, page: 1 }))}
-              />
-            </label>
-            <button type="button" onClick={loadCommittees} disabled={committeeLoading}>
-              {committeeLoading ? 'Loading...' : 'Apply'}
-            </button>
-          </div>
-
-          <form className={styles.form} onSubmit={onSubmitCommittee}>
-            <label htmlFor="committeeName">
-              Committee Name
-              <input
-                id="committeeName"
-                value={committeeForm.name}
-                onChange={(event) => setCommitteeForm({ name: event.target.value })}
-                placeholder="e.g. AI Research Committee"
-                required
-              />
-            </label>
-            <div className={styles.inlineActions}>
-              <button type="submit" disabled={committeeLoading}>
-                {committeeLoading ? 'Saving...' : editingCommitteeId ? 'Update Committee' : 'Create Committee'}
-              </button>
-              {editingCommitteeId ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingCommitteeId(null)
-                    setCommitteeForm({ name: '' })
-                  }}
+        <div className="mt-3">
+          {committeeLoading ? (
+            <p className="text-sm text-slate-500 py-4 text-center">Loading committees...</p>
+          ) : committees.length === 0 ? (
+            <p className="text-sm text-slate-500 py-4 text-center">
+              No committees found for current filter.
+            </p>
+          ) : (
+            committees.map((committee) => {
+              const id = committee.id || committee.committeeId
+              const name = committee.name || committee.committeeName || 'Unnamed committee'
+              return (
+                <div
+                  key={id}
+                  className="flex items-center justify-between py-3 border-b border-[#1e293b] hover:bg-white/5 px-3 rounded-lg"
                 >
-                  Cancel Edit
-                </button>
-              ) : null}
-            </div>
-          </form>
-
-          <StatusMessage status={committeeStatus} />
-
-          {committeeMeta ? <p className={styles.meta}>{committeeMeta}</p> : null}
-          <div className={styles.list}>
-            {committeeLoading ? (
-              <p className={styles.empty}>Loading committees...</p>
-            ) : committees.length === 0 ? (
-              <p className={styles.empty}>No committees found for current filter.</p>
-            ) : (
-              committees.map((committee) => {
-                const id = committee.id || committee.committeeId
-                const name = committee.name || committee.committeeName || 'Unnamed committee'
-                return (
-                  <article key={id} className={styles.listItem}>
+                  <button
+                    type="button"
+                    className="text-sm text-slate-200 hover:text-blue-400 text-left"
+                    onClick={() => setSelectedCommitteeId(id)}
+                  >
+                    {name}
+                  </button>
+                  <div className="flex gap-2">
                     <button
                       type="button"
-                      className={styles.linkButton}
-                      onClick={() => setSelectedCommitteeId(id)}
+                      className={btnGhost}
+                      onClick={() => {
+                        setEditingCommitteeId(id)
+                        setCommitteeForm({ name })
+                      }}
                     >
-                      {name}
+                      Edit
                     </button>
-                    <div className={styles.itemActions}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCommitteeId(id)
-                          setCommitteeForm({ name })
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button type="button" onClick={() => onDeleteCommittee(id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </article>
-                )
-              })
-            )}
-          </div>
+                    <button
+                      type="button"
+                      className={btnDanger}
+                      onClick={() => onDeleteCommittee(id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
 
-          <div className={styles.inlineActions}>
-            <button
-              type="button"
-              disabled={committeeLoading || filters.page <= 1}
-              onClick={() => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={committeeLoading || (pagination.total !== null && committees.length < filters.limit)}
-              onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
-            >
-              Next
-            </button>
-          </div>
-        </SectionCard>
-      </div>
+        <div className="flex gap-3 mt-4">
+          <button
+            type="button"
+            disabled={committeeLoading || filters.page <= 1}
+            className={btnGhost}
+            onClick={() => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            disabled={
+              committeeLoading ||
+              (pagination.total !== null && committees.length < filters.limit)
+            }
+            className={btnGhost}
+            onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+          >
+            Next
+          </button>
+        </div>
+      </SectionCard>
 
-      <SectionCard title="Committee Details" subtitle="Jury, advisors and groups management tabs.">
-        <div className={styles.selectRow}>
-          <label htmlFor="committeeSelect">
-            Selected Committee
+      {/* Committee Details */}
+      <SectionCard
+        title="Committee Details"
+        description="Jury, advisors and groups management tabs."
+      >
+        <div className="flex flex-wrap gap-3 items-end mb-4">
+          <div className="flex-1 min-w-[180px]">
+            <label htmlFor="committeeSelect" className={labelClass}>
+              Selected Committee
+            </label>
             <input
               id="committeeSelect"
+              className={inputClass}
               value={selectedCommitteeId}
               onChange={(event) => setSelectedCommitteeId(event.target.value)}
               placeholder="Committee ID"
             />
-          </label>
-          <button type="button" onClick={() => loadCommitteeDetails(selectedCommitteeId)} disabled={detailLoading || !selectedCommitteeId}>
+          </div>
+          <button
+            type="button"
+            className={btnPrimary}
+            onClick={() => loadCommitteeDetails(selectedCommitteeId)}
+            disabled={detailLoading || !selectedCommitteeId}
+          >
             {detailLoading ? 'Loading...' : 'Load Details'}
           </button>
         </div>
 
         <StatusMessage status={detailStatus} />
-        <div className={styles.infoPanel}>
+
+        <div className="overflow-x-auto rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 text-xs text-slate-300 font-mono mt-3">
           {selectedCommittee ? (
             <pre>{JSON.stringify(selectedCommittee, null, 2)}</pre>
           ) : (
-            <p className={styles.empty}>No committee selected yet.</p>
+            <p className="text-sm text-slate-500 py-4 text-center">
+              No committee selected yet.
+            </p>
           )}
         </div>
 
-        <div className={styles.tabs} role="tablist" aria-label="Committee relation tabs">
+        {/* Relation Tabs */}
+        <div
+          className="flex gap-1 rounded-xl border border-[#1e293b] bg-[#080f1f] p-1 mb-4 mt-5"
+          role="tablist"
+          aria-label="Committee relation tabs"
+        >
           {TAB_KEYS.map((key) => (
             <button
               key={key}
               type="button"
               role="tab"
               aria-selected={activeTab === key}
-              className={activeTab === key ? styles.activeTab : styles.tab}
               onClick={() => setActiveTab(key)}
+              className={[
+                'flex-1 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-widest transition-colors',
+                activeTab === key
+                  ? 'bg-blue-600/15 text-blue-400'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5',
+              ].join(' ')}
             >
               {key === 'jury' ? 'Jury' : key === 'advisors' ? 'Advisors' : 'Groups'}
             </button>
           ))}
         </div>
 
-        <form className={styles.form} onSubmit={onAddRelation}>
-          {activeTab === 'jury' ? (
-            <label htmlFor="juryInput">
-              Jury User ID
-              <input id="juryInput" value={juryInput} onChange={(event) => setJuryInput(event.target.value)} placeholder="user id" />
-            </label>
-          ) : null}
-          {activeTab === 'advisors' ? (
-            <label htmlFor="advisorInput">
-              Advisor User ID
-              <input id="advisorInput" value={advisorInput} onChange={(event) => setAdvisorInput(event.target.value)} placeholder="advisor user id" />
-            </label>
-          ) : null}
-          {activeTab === 'groups' ? (
-            <label htmlFor="groupInput">
-              Group ID
-              <input id="groupInput" value={groupInput} onChange={(event) => setGroupInput(event.target.value)} placeholder="group id" />
-            </label>
-          ) : null}
+        <form onSubmit={onAddRelation} className="space-y-4">
+          {activeTab === 'jury' && (
+            <div>
+              <label htmlFor="juryInput" className={labelClass}>
+                Jury User ID
+              </label>
+              <input
+                id="juryInput"
+                className={inputClass}
+                value={juryInput}
+                onChange={(event) => setJuryInput(event.target.value)}
+                placeholder="user id"
+              />
+            </div>
+          )}
+          {activeTab === 'advisors' && (
+            <div>
+              <label htmlFor="advisorInput" className={labelClass}>
+                Advisor User ID
+              </label>
+              <input
+                id="advisorInput"
+                className={inputClass}
+                value={advisorInput}
+                onChange={(event) => setAdvisorInput(event.target.value)}
+                placeholder="advisor user id"
+              />
+            </div>
+          )}
+          {activeTab === 'groups' && (
+            <div>
+              <label htmlFor="groupInput" className={labelClass}>
+                Group ID
+              </label>
+              <input
+                id="groupInput"
+                className={inputClass}
+                value={groupInput}
+                onChange={(event) => setGroupInput(event.target.value)}
+                placeholder="group id"
+              />
+            </div>
+          )}
 
-          <div className={styles.inlineActions}>
-            <button type="submit" disabled={tabLoading || !selectedCommitteeId}>
+          <div className="flex flex-wrap gap-3 items-end">
+            <button
+              type="submit"
+              disabled={tabLoading || !selectedCommitteeId}
+              className={btnPrimary}
+            >
               {tabLoading ? 'Processing...' : 'Add / Assign'}
             </button>
-            <button type="button" onClick={() => loadTabData(selectedCommitteeId, activeTab)} disabled={tabLoading || !selectedCommitteeId}>
+            <button
+              type="button"
+              className={btnGhost}
+              onClick={() => loadTabData(selectedCommitteeId, activeTab)}
+              disabled={tabLoading || !selectedCommitteeId}
+            >
               {tabLoading ? 'Loading...' : 'Refresh Tab'}
             </button>
           </div>
@@ -612,21 +747,32 @@ function CoordinatorManagementPage() {
 
         <StatusMessage status={tabStatus} />
 
-        <div className={styles.list}>
+        <div className="mt-3">
           {tabLoading ? (
-            <p className={styles.empty}>Loading tab data...</p>
+            <p className="text-sm text-slate-500 py-4 text-center">Loading tab data...</p>
           ) : activeCollection.length === 0 ? (
-            <p className={styles.empty}>No records available in this tab.</p>
+            <p className="text-sm text-slate-500 py-4 text-center">
+              No records available in this tab.
+            </p>
           ) : (
             activeCollection.map((item) => {
               const id = getRelationId(item)
               return (
-                <article key={id} className={styles.listItem}>
-                  <pre>{JSON.stringify(item, null, 2)}</pre>
-                  <button type="button" onClick={() => onRemoveRelation(id)}>
+                <div
+                  key={id}
+                  className="flex items-center justify-between py-3 border-b border-[#1e293b] hover:bg-white/5 px-3 rounded-lg"
+                >
+                  <pre className="overflow-x-auto rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 text-xs text-slate-300 font-mono flex-1 mr-4">
+                    {JSON.stringify(item, null, 2)}
+                  </pre>
+                  <button
+                    type="button"
+                    className={btnDanger}
+                    onClick={() => onRemoveRelation(id)}
+                  >
                     Remove
                   </button>
-                </article>
+                </div>
               )
             })
           )}

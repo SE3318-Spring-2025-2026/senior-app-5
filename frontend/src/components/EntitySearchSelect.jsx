@@ -1,34 +1,6 @@
-// frontend/src/components/EntitySearchSelect.jsx
 import { useEffect, useMemo, useRef, useState } from 'react'
 import apiClient from '../utils/apiClient'
-import styles from './EntitySearchSelect.module.css'
 
-/**
- * Reusable entity search + select input.
- *
- * It queries a configurable backend endpoint that exposes a search-by-field
- * pattern (e.g. `GET /users/search?field=email&value=foo`) and lets the user
- * pick a result. The component is agnostic of the resource (users, groups,
- * teams, ...) as long as the endpoint follows the convention.
- *
- * Props:
- * - endpoint:      REST path relative to apiClient base (e.g. '/users/search')
- * - searchField:   Field name the backend should query on (e.g. 'email')
- * - returnField:   Field from each result that should be emitted via onChange
- *                  (e.g. '_id')
- * - displayField:  Field used for the visible label in the dropdown
- *                  (defaults to searchField)
- * - value:         Currently selected returnField value (controlled)
- * - onChange:      Called with the returnField value (or '' when cleared)
- * - onSelect:      Optional, called with the full selected entity
- * - label:         Optional label text
- * - placeholder:   Input placeholder
- * - required:      Marks the hidden value as required in forms
- * - minChars:      Minimum chars before firing a search (default 2)
- * - debounceMs:    Debounce window (default 250ms)
- * - paramNames:    Override query param names if the backend uses different
- *                  keys, e.g. { field: 'filterField', value: 'q' }
- */
 function EntitySearchSelect({
   endpoint,
   searchField,
@@ -112,10 +84,7 @@ function EntitySearchSelect({
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
         setOpen(false)
       }
     }
@@ -151,12 +120,16 @@ function EntitySearchSelect({
   }
 
   return (
-    <div ref={containerRef} className={styles.wrapper}>
-      {label && <span className={styles.label}>{label}</span>}
-      <div className={styles.inputRow}>
+    <div ref={containerRef} className="relative w-full">
+      {label && (
+        <span className="mb-1 block text-xs font-semibold text-slate-400">{label}</span>
+      )}
+      <div className="relative flex items-center gap-2">
         <input
           type="text"
-          className={styles.input}
+          className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200
+                     placeholder:text-slate-600 focus:border-blue-700 focus:outline-none focus:ring-2
+                     focus:ring-blue-600/30"
           value={query}
           onChange={handleInputChange}
           onFocus={() => {
@@ -168,7 +141,8 @@ function EntitySearchSelect({
         {selected && (
           <button
             type="button"
-            className={styles.clearButton}
+            className="shrink-0 rounded-lg border border-[#1e293b] bg-[#111827] px-2 py-1 text-xs
+                       text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-colors"
             onClick={handleClear}
             aria-label="Clear selection"
           >
@@ -187,41 +161,43 @@ function EntitySearchSelect({
       </div>
 
       {open && !selected && (loading || hasSearched || error) && (
-        <ul className={styles.dropdown} role="listbox">
-          {loading && <li className={styles.status}>Searching…</li>}
-          {!loading && error && (
-            <li className={`${styles.status} ${styles.errorStatus}`}>
-              {error}
-            </li>
+        <ul
+          className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-xl border border-[#1e293b]
+                     bg-[#0d1729] shadow-2xl"
+          role="listbox"
+        >
+          {loading && (
+            <li className="px-3 py-2 text-sm text-slate-500">Searching…</li>
           )}
-          {!loading &&
-            !error &&
-            results.map((item) => {
-              const key = item?.[returnField] ?? item?._id ?? Math.random()
-              return (
-                <li
-                  key={key}
-                  className={styles.option}
-                  role="option"
-                  onClick={() => handlePick(item)}
-                >
-                  <span className={styles.optionPrimary}>
-                    {String(item?.[effectiveDisplayField] ?? '—')}
-                  </span>
-                  <span className={styles.optionSecondary}>
-                    {String(item?.[returnField] ?? '')}
-                  </span>
-                </li>
-              )
-            })}
+          {!loading && error && (
+            <li className="px-3 py-2 text-sm text-red-400">{error}</li>
+          )}
+          {!loading && !error && results.map((item) => {
+            const key = item?.[returnField] ?? item?._id ?? Math.random()
+            return (
+              <li
+                key={key}
+                className="cursor-pointer px-3 py-2.5 hover:bg-white/[0.04] transition-colors"
+                role="option"
+                onClick={() => handlePick(item)}
+              >
+                <span className="block text-sm font-medium text-slate-200">
+                  {String(item?.[effectiveDisplayField] ?? '—')}
+                </span>
+                <span className="block text-xs text-slate-500">
+                  {String(item?.[returnField] ?? '')}
+                </span>
+              </li>
+            )
+          })}
           {!loading && !error && results.length === 0 && (
-            <li className={styles.status}>No matches</li>
+            <li className="px-3 py-2 text-sm text-slate-500">No matches</li>
           )}
         </ul>
       )}
 
       {selected && (
-        <small className={styles.hint}>
+        <small className="mt-1 block text-xs text-slate-600">
           Selected {returnField}: {value}
         </small>
       )}

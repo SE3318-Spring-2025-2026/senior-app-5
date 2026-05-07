@@ -23,7 +23,7 @@ export class PhasesController {
   constructor(private readonly phasesService: PhasesService) {}
 
   @Get()
-  @Roles(Role.Coordinator)
+  @Roles(Role.Coordinator, Role.Student, Role.TeamLeader, Role.Professor, Role.Admin)
   async listPhases() {
     return this.phasesService.listForScheduling();
   }

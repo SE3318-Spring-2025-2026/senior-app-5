@@ -57,6 +57,43 @@ export class GroupsService {
     return this.groupModel.findOne({ groupId }).exec();
   }
 
+  async findAll(
+    page: number,
+    limit: number,
+    name?: string,
+  ): Promise<{
+    data: Array<{
+      groupId: string;
+      groupName: string;
+      leaderUserId: string;
+      advisorUserId?: string;
+      status: string;
+      assignmentStatus: string;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const filter: Record<string, unknown> = {};
+    if (name?.trim()) {
+      const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.groupName = { $regex: escaped, $options: 'i' };
+    }
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+      this.groupModel
+        .find(filter)
+        .select('groupId groupName leaderUserId advisorUserId status assignmentStatus -_id')
+        .sort({ groupName: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.groupModel.countDocuments(filter).exec(),
+    ]);
+    return { data: docs as any[], total, page, limit };
+  }
+
   async addMember(groupId: string, memberUserId: string) {
     const group = await this.findGroupById(groupId);
     if (!group) {

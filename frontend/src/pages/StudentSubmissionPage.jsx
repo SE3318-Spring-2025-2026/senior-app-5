@@ -33,7 +33,7 @@ function StudentSubmissionPage() {
   const [phaseFeedback, setPhaseFeedback] = useState(initialFeedback);
   const [submitFeedback, setSubmitFeedback] = useState(initialFeedback);
   
-  // States from issue-221-frontend-search-select-fields
+  const [phases, setPhases] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [submissionsFeedback, setSubmissionsFeedback] = useState(initialFeedback);
   
@@ -135,7 +135,13 @@ function StudentSubmissionPage() {
     }
   }, [urlPhaseId]);
 
-  // Submissions fetch logic from issue-221-frontend-search-select-fields
+  useEffect(() => {
+    if (urlPhaseId) return;
+    apiClient.get(apiConfig.endpoints.phases)
+      .then(r => setPhases(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setPhases([]));
+  }, [urlPhaseId]);
+
   useEffect(() => {
     if (urlSubmissionId) return;
 
@@ -317,21 +323,24 @@ function StudentSubmissionPage() {
         {!urlPhaseId && (
           <>
             <div className={styles.formRow}>
-              <label htmlFor="phaseId">Phase ID</label>
-              <input
+              <label htmlFor="phaseId">Phase</label>
+              <select
                 id="phaseId"
                 value={phaseId}
                 onChange={(event) => setPhaseId(event.target.value)}
-                placeholder="Enter phase UUID"
-              />
-              <small className={styles.infoText}>
-                Phase search is blocked until a student-visible phase list endpoint is available.
-              </small>
+              >
+                <option value="">Select a phase</option>
+                {phases.map((p) => (
+                  <option key={p.phaseId} value={p.phaseId}>
+                    {p.name || p.phaseId}
+                  </option>
+                ))}
+              </select>
             </div>
             <button
               type="button"
               onClick={fetchPhaseWindow}
-              disabled={phaseFeedback.loading}
+              disabled={phaseFeedback.loading || !phaseId}
               className={styles.primaryButton}
             >
               {phaseFeedback.loading ? 'Loading window...' : 'Load Window Status'}

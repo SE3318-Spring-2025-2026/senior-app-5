@@ -13,7 +13,6 @@ const SprintConfigPage = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [editingSprintId, setEditingSprintId] = useState(null);
-  const [sprintId, setSprintId] = useState('');
   const [targetStoryPoints, setTargetStoryPoints] = useState('');
   const [mappings, setMappings] = useState([emptyMapping()]);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +42,6 @@ const SprintConfigPage = () => {
 
   const resetForm = () => {
     setEditingSprintId(null);
-    setSprintId('');
     setTargetStoryPoints('');
     setMappings([emptyMapping()]);
     setShowForm(false);
@@ -51,7 +49,6 @@ const SprintConfigPage = () => {
 
   const handleEdit = (config) => {
     setEditingSprintId(config.sprintId);
-    setSprintId(config.sprintId);
     setTargetStoryPoints(String(config.targetStoryPoints));
     setMappings(
       config.deliverableMappings.length > 0
@@ -78,7 +75,6 @@ const SprintConfigPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!sprintId.trim()) { toast.error('Sprint ID is required.'); return; }
     if (!targetStoryPoints || isNaN(parseInt(targetStoryPoints, 10))) { toast.error('Target story points must be a number.'); return; }
 
     const parsedMappings = mappings
@@ -86,7 +82,6 @@ const SprintConfigPage = () => {
       .map((m) => ({ deliverableId: m.deliverableId, contributionPercentage: parseFloat(m.contributionPercentage) }));
 
     const payload = {
-      sprintId: sprintId.trim(),
       targetStoryPoints: parseInt(targetStoryPoints, 10),
       deliverableMappings: parsedMappings,
     };
@@ -132,29 +127,22 @@ const SprintConfigPage = () => {
             {editingSprintId ? 'Edit Sprint Config' : 'New Sprint Config'}
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            {editingSprintId && (
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-400">Sprint ID (UUID)</label>
-                <input
-                  type="text"
-                  value={sprintId}
-                  onChange={(e) => setSprintId(e.target.value)}
-                  disabled={!!editingSprintId}
-                  placeholder="Sprint UUID"
-                  className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200 disabled:opacity-50"
-                />
+                <label className="block text-xs font-semibold text-slate-400">Sprint ID</label>
+                <p className="text-xs font-mono text-slate-500 px-1">{editingSprintId}</p>
               </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-400">Target Story Points</label>
-                <input
-                  type="number"
-                  value={targetStoryPoints}
-                  onChange={(e) => setTargetStoryPoints(e.target.value)}
-                  placeholder="e.g. 5"
-                  min="0"
-                  className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200"
-                />
-              </div>
+            )}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-400">Target Story Points</label>
+              <input
+                type="number"
+                value={targetStoryPoints}
+                onChange={(e) => setTargetStoryPoints(e.target.value)}
+                placeholder="e.g. 5"
+                min="0"
+                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200"
+              />
             </div>
 
             <div className="space-y-2">

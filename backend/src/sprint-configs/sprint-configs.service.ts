@@ -7,6 +7,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -43,22 +44,26 @@ export class SprintConfigsService {
   // ──────────────────────────────────────────────────────────────────────────
 
   async create(dto: CreateSprintConfigDto): Promise<SprintConfigResponseDto> {
+    const resolvedSprintId = dto.sprintId?.trim() || randomUUID();
+
     // 1. Validate all deliverableIds exist in D1 (per spec: D1 first)
     await this.validateDeliverableIds(
       dto.deliverableMappings.map((m) => m.deliverableId),
     );
 
-    // 2. Validate sprintId exists in Schedule API (Process 4)
-    await this.validateSprintId(dto.sprintId);
+    // 2. If caller provided a sprintId, validate it exists in Schedule API
+    if (dto.sprintId?.trim()) {
+      await this.validateSprintId(resolvedSprintId);
+    }
 
     // 3. Check for duplicate sprint config (409)
     const existing = await this.sprintConfigModel
-      .findOne({ sprintId: dto.sprintId })
+      .findOne({ sprintId: resolvedSprintId })
       .lean()
       .exec();
     if (existing) {
       throw new ConflictException(
-        `Sprint config for sprintId '${dto.sprintId}' already exists.`,
+        `Sprint config for sprintId '${resolvedSprintId}' already exists.`,
       );
     }
 
@@ -67,7 +72,7 @@ export class SprintConfigsService {
 
     // 5. Persist
     const created = await this.sprintConfigModel.create({
-      sprintId: dto.sprintId,
+      sprintId: resolvedSprintId,
       targetStoryPoints: dto.targetStoryPoints,
       deliverableMappings: dto.deliverableMappings,
     });

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import styles from './DocumentsPage.module.css';
+import EntitySearchSelect from '../components/EntitySearchSelect';
 
 const HISTORY_ROLES = new Set(['Coordinator', 'Admin']);
 const GROUP_GRADE_ROLES = new Set(['Coordinator', 'Admin', 'Professor']);
@@ -192,25 +193,24 @@ function GradeDisplayPage() {
         <p className={styles.description}>View final grades and history for a group.</p>
       </div>
 
-      {/* Group ID lookup form */}
+      {/* Group lookup form */}
       <form
         onSubmit={fetchGroupGrade}
-        style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}
+        style={{ display: 'flex', gap: '10px', marginBottom: '24px', alignItems: 'flex-end' }}
       >
-        <input
-          value={groupIdInput}
-          onChange={(e) => setGroupIdInput(e.target.value)}
-          placeholder="Enter Group ID (UUID)"
-          required
-          style={{
-            flex: 1,
-            padding: '10px',
-            borderRadius: '6px',
-            background: '#0f172a',
-            border: '1px solid #334155',
-            color: '#f8fafc',
-          }}
-        />
+        <div style={{ flex: 1 }}>
+          <EntitySearchSelect
+            endpoint={apiConfig.endpoints.groups}
+            buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+            getItems={(res) => res.data}
+            returnField="groupId"
+            displayField="groupName"
+            value={groupIdInput}
+            onChange={setGroupIdInput}
+            placeholder="Search group by name"
+            required
+          />
+        </div>
         <button
           type="submit"
           disabled={groupStatus.loading}

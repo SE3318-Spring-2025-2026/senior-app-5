@@ -624,13 +624,17 @@ function CoordinatorManagementPage() {
             />
           ) : null}
           {activeTab === 'groups' ? (
-            <label htmlFor="groupInput">
-              Group ID
-              <input id="groupInput" value={groupInput} onChange={(event) => setGroupInput(event.target.value)} placeholder="group id" />
-              <small className={styles.note}>
-                Group search is blocked until a backend group-search endpoint is available.
-              </small>
-            </label>
+            <EntitySearchSelect
+              label="Group"
+              endpoint={apiConfig.endpoints.groups}
+              buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+              getItems={(res) => res.data}
+              returnField="groupId"
+              displayField="groupName"
+              value={groupInput}
+              onChange={setGroupInput}
+              placeholder="Search group by name"
+            />
           ) : null}
 
           <div className={styles.inlineActions}>

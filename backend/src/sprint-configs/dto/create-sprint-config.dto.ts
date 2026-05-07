@@ -1,9 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
   IsInt,
+  IsOptional,
   IsUUID,
   Max,
   Min,
@@ -31,12 +32,13 @@ export class DeliverableMappingDto {
 }
 
 export class CreateSprintConfigDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     format: 'uuid',
-    description: 'Sprint ID — must exist in the Schedule API',
+    description: 'Sprint ID — auto-generated if omitted. If provided, must exist in the Schedule API.',
   })
+  @IsOptional()
   @IsUUID()
-  sprintId!: string;
+  sprintId?: string;
 
   @ApiProperty({
     minimum: 0,

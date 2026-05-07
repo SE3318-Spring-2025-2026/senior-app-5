@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -25,6 +26,7 @@ import { Request as ExpressRequest } from 'express';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { ListGroupsQueryDto } from './dto/list-groups-query.dto';
 import { CommitteeGradeResultDto } from './dto/committee-grade-result.dto';
 import { CommitteesService } from '../committees/committees.service';
 import { CommitteeResponseDto } from '../committees/dto/committee-response.dto';
@@ -47,6 +49,15 @@ export class GroupsController {
     private readonly groupsService: GroupsService,
     private readonly committeesService: CommitteesService,
   ) {}
+
+  @ApiOperation({ summary: 'List groups with optional name filter (Admin, Coordinator)' })
+  @ApiOkResponse({ description: 'Paginated list of groups' })
+  @Get()
+  @Roles(Role.Admin, Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  async listGroups(@Query() query: ListGroupsQueryDto) {
+    return this.groupsService.findAll(query.page, query.limit, query.name);
+  }
 
   @ApiOperation({ summary: 'Create a new group' })
   @ApiCreatedResponse({ description: 'Group created successfully' })

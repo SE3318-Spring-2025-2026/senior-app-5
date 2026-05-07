@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
+import EntitySearchSelect from '../../components/EntitySearchSelect'
 
 const getApiError = (error) => {
   const message = error?.response?.data?.message
@@ -156,14 +157,19 @@ function JuryTab({ committeeId }) {
         onNext={() => { const p = page + 1; setPage(p); load(p) }}
       />
 
-      <form onSubmit={handleAdd} className="flex gap-2 border-t border-[#1e293b] pt-4">
-        <input
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          placeholder="User ID (UUID)"
-          required
-          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
-        />
+      <form onSubmit={handleAdd} className="flex gap-2 border-t border-[#1e293b] pt-4 items-end">
+        <div className="flex-1">
+          <EntitySearchSelect
+            endpoint={apiConfig.endpoints.userSearch}
+            searchField="email"
+            returnField="_id"
+            displayField="email"
+            value={userId}
+            onChange={setUserId}
+            placeholder="Search user by email"
+            required
+          />
+        </div>
         <button
           type="submit"
           disabled={addStatus.loading}
@@ -188,6 +194,8 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
   const [advisorId, setAdvisorId] = useState('')
   const [source, setSource] = useState('PRIMARY_ADVISOR')
   const [addStatus, setAddStatus] = useState({ message: '', error: '', loading: false })
+  const [advisorList, setAdvisorList] = useState([])
+  const [advisorsLoading, setAdvisorsLoading] = useState(true)
 
   const load = useCallback(async (p = 1) => {
     setLoading(true)
@@ -209,6 +217,13 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
   }, [committeeId, onAdvisorsLoaded])
 
   useEffect(() => { load(1) }, [load])
+
+  useEffect(() => {
+    apiClient.get(apiConfig.endpoints.advisors, { params: { page: 1, limit: 100 } })
+      .then(r => setAdvisorList(r.data?.data ?? []))
+      .catch(() => setAdvisorList([]))
+      .finally(() => setAdvisorsLoading(false))
+  }, [])
 
   const handleAdd = async (e) => {
     e.preventDefault()
@@ -282,13 +297,21 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
         onSubmit={handleAdd}
         className="flex flex-col sm:flex-row gap-2 border-t border-[#1e293b] pt-4"
       >
-        <input
+        <select
           value={advisorId}
           onChange={(e) => setAdvisorId(e.target.value)}
-          placeholder="Advisor User ID (UUID)"
           required
-          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
-        />
+          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
+        >
+          <option value="">
+            {advisorsLoading ? 'Loading advisors…' : 'Select advisor'}
+          </option>
+          {advisorList.map((a) => (
+            <option key={a.advisorId} value={a.advisorId}>
+              {a.name ? `${a.name} (${a.email})` : a.email}
+            </option>
+          ))}
+        </select>
         <select
           value={source}
           onChange={(e) => setSource(e.target.value)}
@@ -430,15 +453,24 @@ function GroupsTab({ committeeId }) {
         onNext={() => { const p = page + 1; setPage(p); load(p) }}
       />
 
-      <form onSubmit={handleAdd} className="flex gap-2 border-t border-[#1e293b] pt-4">
-        <input
-          value={groupId}
-          onChange={(e) => setGroupId(e.target.value)}
-          placeholder="Group ID (UUID)"
-          required
-          disabled={!isWindowOpen}
-          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:cursor-not-allowed disabled:opacity-40"
-        />
+      <form onSubmit={handleAdd} className="flex gap-2 border-t border-[#1e293b] pt-4 items-end">
+        {isWindowOpen ? (
+          <div className="flex-1">
+            <EntitySearchSelect
+              endpoint={apiConfig.endpoints.groups}
+              buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+              getItems={(res) => res.data}
+              returnField="groupId"
+              displayField="groupName"
+              value={groupId}
+              onChange={setGroupId}
+              placeholder="Search group by name"
+              required
+            />
+          </div>
+        ) : (
+          <p className="flex-1 text-xs text-slate-500 py-2.5">Select a group once the assignment window is open.</p>
+        )}
         <button
           type="submit"
           disabled={addStatus.loading || !isWindowOpen}

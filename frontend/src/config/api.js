@@ -63,7 +63,11 @@ export const apiConfig = {
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
     githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,
-  },
+    storyPoints: (groupId, sprintId) =>
+      `/groups/${groupId}/sprints/${sprintId}/story-points`,
+    overrideStoryPoints: (groupId, sprintId) =>
+      `/groups/${groupId}/sprints/${sprintId}/story-points/override`,
+  },  
 };
 
 export default apiConfig;

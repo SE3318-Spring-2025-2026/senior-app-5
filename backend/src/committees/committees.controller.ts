@@ -341,6 +341,44 @@ export class CommitteesController {
     );
   }
 
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'removeGroupFromCommittee',
+    summary: 'Remove a group from a committee (COORDINATOR only)',
+  })
+  @ApiNoContentResponse({ description: 'Group removed successfully' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
+  @ApiNotFoundResponse({
+    description: 'Committee or group assignment not found',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Delete(':committeeId/groups/:groupId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeGroupFromCommittee(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Param('groupId', new ParseUUIDPipe()) groupId: string,
+    @Request() req: RequestWithUser,
+  ): Promise<void> {
+    const coordinatorId =
+      req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+
+    await this.committeesService.removeGroupFromCommittee(
+      committeeId,
+      groupId,
+      coordinatorId,
+      correlationId,
+    );
+  }
+
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
     return {
       id: committee.id,

@@ -24,7 +24,9 @@ import SanitizationPage from './pages/admin/SanitizationPage';
 
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
+import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
+import IntegrationsPage from './pages/IntegrationsPage';
 import './App.css';
 
 const RootRedirect = () => {
@@ -58,7 +60,16 @@ function App() {
             <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
+            <Route
+              path="/review"
+              element={
+                <ProtectedRoute requiredRole="Professor">
+                  <ReviewPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
             <Route
               path="/phases/schedule"
               element={

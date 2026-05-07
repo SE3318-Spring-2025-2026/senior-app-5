@@ -28,6 +28,10 @@ vi.mock('./pages/SubmissionDetailsPage', () => ({
   default: () => <div>Submission Details Page</div>,
 }));
 
+vi.mock('./pages/ReviewPage', () => ({
+  default: () => <div>Review Page</div>,
+}));
+
 vi.mock('./pages/StudentGroupManagementPage', () => ({
   default: () => <div>Student Group Management Page</div>,
 }));
@@ -115,5 +119,13 @@ describe('App document routes', () => {
     render(<App />);
 
     expect(screen.getByText('Submission Details Page')).toBeTruthy();
+  });
+
+  it('renders the professor review page at /review', () => {
+    window.history.pushState({}, '', '/review');
+
+    render(<App />);
+
+    expect(screen.getByText('Review Page')).toBeTruthy();
   });
 });

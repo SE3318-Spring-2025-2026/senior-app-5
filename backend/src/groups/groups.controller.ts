@@ -14,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -24,6 +25,7 @@ import { Request as ExpressRequest } from 'express';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { CommitteeGradeResultDto } from './dto/committee-grade-result.dto';
 import { CommitteesService } from '../committees/committees.service';
 import { CommitteeResponseDto } from '../committees/dto/committee-response.dto';
 import { CommitteeDocument } from '../committees/schemas/committee.schema';
@@ -38,7 +40,7 @@ interface RequestWithUser extends ExpressRequest {
 
 @ApiTags('Groups')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard) 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('groups')
 export class GroupsController {
   constructor(
@@ -49,7 +51,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Create a new group' })
   @ApiCreatedResponse({ description: 'Group created successfully' })
   @Post()
-  @Roles(Role.Admin, Role.Coordinator) // SECURITY: Explicitly restricted
+  @Roles(Role.Admin, Role.Coordinator)
   @HttpCode(HttpStatus.CREATED)
   async createGroup(@Body() createGroupDto: CreateGroupDto) {
     return this.groupsService.createGroup(createGroupDto);
@@ -58,7 +60,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Add a member to a group (by groupId UUID)' })
   @ApiCreatedResponse({ description: 'Member added to group successfully' })
   @Post(':groupId/members')
-  @Roles(Role.Admin, Role.Coordinator) // SECURITY: Explicitly restricted
+  @Roles(Role.Admin, Role.Coordinator)
   @HttpCode(HttpStatus.CREATED)
   async addMember(
     @Param('groupId') groupId: string,
@@ -69,7 +71,6 @@ export class GroupsController {
 
   @Get(':groupId/validate-statement-of-work')
   @ApiOperation({ summary: 'Check SoW status for a group' })
-  // SECURITY: Explicitly open to all authenticated roles to avoid RolesGuard ambiguity
   @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
   async validateSow(@Param('groupId') groupId: string) {
     return this.groupsService.validateStatementOfWork(groupId);
@@ -83,7 +84,6 @@ export class GroupsController {
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({ description: 'Authenticated but forbidden by policy' })
   @ApiNotFoundResponse({ description: 'Group not found or no committee assigned' })
-  // SECURITY: Removed redundant UseGuards(AuthGuard('jwt')) and added explicit role policy
   @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
   @Get(':groupId/committee')
   @HttpCode(HttpStatus.OK)
@@ -97,6 +97,27 @@ export class GroupsController {
       correlationId,
     );
     return this.toResponseDto(committee);
+  }
+
+  @ApiOperation({
+    operationId: 'getCommitteeGrade',
+    summary: 'Aggregate committee member grades for a deliverable (COORDINATOR, ADVISOR, ADMIN)',
+  })
+  @ApiOkResponse({ description: 'Aggregated committee grade returned', type: CommitteeGradeResultDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Valid token but insufficient role' })
+  @ApiNotFoundResponse({ description: 'No committee evaluation records found for this group/deliverable' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
+  @Get(':groupId/deliverables/:deliverableId/committee-grade')
+  @HttpCode(HttpStatus.OK)
+  async getCommitteeGrade(
+    @Param('groupId', new ParseUUIDPipe()) groupId: string,
+    @Param('deliverableId', new ParseUUIDPipe()) deliverableId: string,
+    @Request() req: RequestWithUser,
+  ): Promise<CommitteeGradeResultDto> {
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.groupsService.getCommitteeGrade(groupId, deliverableId, correlationId);
   }
 
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {

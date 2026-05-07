@@ -2,6 +2,7 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -13,6 +14,10 @@ describe('AuthController', () => {
     confirmPasswordReset: jest.fn(),
   } as any;
 
+  const mockUsersService = {
+    findById: jest.fn(),
+  } as any;
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -22,6 +27,10 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: UsersService,
+          useValue: mockUsersService,
         },
       ],
     }).compile();

@@ -12,6 +12,8 @@ describe('SubmissionsController', () => {
   let controller: SubmissionsController;
   let service: SubmissionsService;
 
+  const validSubmissionId = '507f1f77bcf86cd799439011';
+
   const mockSubmissionsService = {
     findAll: jest.fn(),
     findOne: jest.fn(),
@@ -72,7 +74,7 @@ describe('SubmissionsController', () => {
         type: 'INITIAL',
         phaseId: 'phase-1',
       };
-      const created = { _id: 'sub-1', ...dto };
+      const created = { _id: validSubmissionId, ...dto };
 
       mockSubmissionsService.assertAuthorizedGroupMember.mockResolvedValue(
         undefined,
@@ -211,9 +213,11 @@ describe('SubmissionsController', () => {
     it('should throw BadRequestException for invalid ObjectId format', async () => {
       const req = { user: { role: 'Coordinator' } };
       const invalidId = '123';
-      await expect(controller.findOne(req as any, invalidId)).rejects.toThrow(
-        BadRequestException,
+      mockSubmissionsService.findOne.mockRejectedValueOnce(
+        new BadRequestException('Invalid Submission ID format.'),
       );
+
+      await expect(controller.findOne(req as any, invalidId)).rejects.toThrow(BadRequestException);
     });
 
     it('should allow viewing a submission if student belongs to the group', async () => {

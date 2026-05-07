@@ -11,15 +11,22 @@ export const Sidebar = () => {
       <nav style={styles.nav}>
         
         
-        <NavLink 
-          to="/dashboard" 
+        <NavLink
+          to="/dashboard"
           style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
         >
           📊 <span style={styles.linkText}>Dashboard</span>
         </NavLink>
 
+        <NavLink
+          to="/integrations"
+          style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+        >
+          🔗 <span style={styles.linkText}>Integrations</span>
+        </NavLink>
+
         
-        {role === 'Student' && (
+        {(role === 'Student' || role === 'TeamLeader') && (
           <>
             <div style={styles.sectionHeader}>STUDENT MENU</div>
             <NavLink 
@@ -33,6 +40,18 @@ export const Sidebar = () => {
               style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
             >
               📄 <span style={styles.linkText}>My Documents</span>
+            </NavLink>
+          </>
+        )}
+
+        {role === 'Professor' && (
+          <>
+            <div style={styles.sectionHeader}>PROFESSOR MENU</div>
+            <NavLink
+              to="/review"
+              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
+            >
+              <span>Review</span>
             </NavLink>
           </>
         )}

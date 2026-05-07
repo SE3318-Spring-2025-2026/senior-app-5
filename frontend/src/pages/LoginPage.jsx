@@ -101,7 +101,7 @@ export const LoginPage = () => {
         }}
       />
 
-      <div className="relative z-20 flex min-h-screen w-full">
+      <div className="pointer-events-none relative z-20 flex min-h-screen w-full">
 
         {/* ═══════════════════════════════════════
             LEFT — Branding overlay (no background, lets Spline show)
@@ -140,11 +140,9 @@ export const LoginPage = () => {
             RIGHT — Transparent glass form panel
         ═══════════════════════════════════════ */}
         <section
-          className="flex w-full flex-col items-center justify-center px-6 py-14 lg:w-115 lg:flex-none"
+          className="pointer-events-auto flex w-full flex-col items-center justify-center px-6 py-14 lg:w-115 lg:flex-none"
           style={{
-            background: 'linear-gradient(135deg, rgba(2, 6, 23, 0.18) 0%, rgba(15, 23, 42, 0.10) 100%)',
-            backdropFilter: 'blur(2px) saturate(105%)',
-            WebkitBackdropFilter: 'blur(2px) saturate(105%)',
+            background: '#080808',
             borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >

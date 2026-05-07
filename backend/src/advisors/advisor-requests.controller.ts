@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Get,
   Logger,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -19,6 +21,7 @@ import {
   AdvisorDecision,
   DecisionRequestDto,
 } from './dto/decision-request.dto';
+import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
 import { SubmitRequestDto } from './dto/submit-request.dto';
 import {
   UpdateRequestStatusDto,
@@ -44,6 +47,37 @@ export class AdvisorRequestsController {
     const headerValue =
       req.headers?.['x-correlation-id'] ?? req.headers?.['x-request-id'];
     return typeof headerValue === 'string' ? headerValue : undefined;
+  }
+
+  @Get()
+  @Roles(Role.Coordinator, Role.Professor, Role.TeamLeader)
+  async listRequests(
+    @Req() req: RequestWithUser,
+    @Query() query: ListRequestsQueryDto,
+  ) {
+    const callerId = req.user?.userId ?? '';
+    const callerRole = req.user?.role ?? '';
+    const correlationId = this.getCorrelationId(req);
+
+    const result = await this.advisorsService.listRequests({
+      callerId,
+      callerRole,
+      requestedAdvisorId: query.requestedAdvisorId,
+      status: query.status,
+      page: query.page,
+      limit: query.limit,
+    });
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'advisor_requests_listed',
+        callerRole,
+        resultCount: result.data.length,
+        correlationId,
+      }),
+    );
+
+    return result;
   }
 
   @Post()

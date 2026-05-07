@@ -26,8 +26,11 @@ import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
 import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
+import CommitteesPage from './pages/admin/CommitteesPage';
+import CommitteeDetailPage from './pages/admin/CommitteeDetailPage';
 import IntegrationsPage from './pages/IntegrationsPage';
-import './App.css';
+import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
+import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -70,6 +73,8 @@ function App() {
             />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
+            <Route path="/coordinator/advisor-schedule" element={<AdvisorSchedulePage />} />
             <Route
               path="/phases/schedule"
               element={
@@ -90,6 +95,8 @@ function App() {
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
               <Route path="professors" element={<ProfessorsPage />} />
+              <Route path="committees" element={<CommitteesPage />} />
+              <Route path="committees/:committeeId" element={<CommitteeDetailPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
 
               <Route path="activity" element={<ActivityPage />} />

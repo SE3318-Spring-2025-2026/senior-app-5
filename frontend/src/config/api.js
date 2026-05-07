@@ -26,6 +26,9 @@ export const apiConfig = {
     advisors: '/advisors',
     requests: '/requests',
     requestById: (requestId) => `/requests/${requestId}`,
+    requestDecision: (requestId) => `/requests/${requestId}/decision`,
+    groupAdvisor: (groupId) => `/groups/${groupId}/advisor`,
+    groupDisband: (groupId) => `/groups/${groupId}`,
     userSearch: '/users/search',
     invites: '/invites/deliver',
     phaseSchedule: (phaseId) => `/phases/${phaseId}/schedule`,
@@ -56,6 +59,7 @@ export const apiConfig = {
     committeeAdvisorByUser: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}`,
     committeeGroups: (committeeId) => `/committees/${committeeId}/groups`,
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
+    committeeAdvisorGradingScope: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}/groups`,
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
     storyPoints: (groupId, sprintId) =>

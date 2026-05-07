@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
-import styles from './PhaseSchedulingPage.module.css';
+import { PageHeader } from '../components/ui';
 
 const toLocalInputValue = (date) => {
   const tzOffset = date.getTimezoneOffset() * 60000;
@@ -193,27 +193,25 @@ function PhaseSchedulingPage() {
   };
 
   return (
-    <div className={styles.pageContainer}>
-      <header className={styles.header}>
-        <p className={styles.badge}>Coordinator Tools</p>
-        <h1>Phase Scheduling</h1>
-        <p className={styles.lead}>
-          Select a phase, review its current submission window, and update the schedule.
-        </p>
-        <p className={styles.timezoneNote}>
-          Date fields use {timezoneName}; updates are saved to the server as UTC ISO timestamps.
-        </p>
-      </header>
+    <div>
+      <PageHeader
+        title="Phase Scheduling"
+        subtitle={`Date fields use ${timezoneName}; saved as UTC.`}
+      />
 
-      <section className={styles.card}>
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <label>
-            Phase
+      <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Phase Select */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Phase
+            </label>
             <select
               value={phaseId}
               onChange={handlePhaseChange}
               disabled={status.loadingPhases || status.loading}
               aria-invalid={Boolean(fieldErrors.phaseId)}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">
                 {status.loadingPhases ? 'Loading phases...' : 'Select a phase'}
@@ -224,26 +222,39 @@ function PhaseSchedulingPage() {
                 </option>
               ))}
             </select>
-            {fieldErrors.phaseId && <span className={styles.fieldError}>{fieldErrors.phaseId}</span>}
-          </label>
+            {fieldErrors.phaseId && (
+              <p className="text-xs text-red-400 mt-1">{fieldErrors.phaseId}</p>
+            )}
+          </div>
 
+          {/* Current Schedule Preview */}
           {selectedPhase && (
-            <div className={styles.previewBox}>
-              <strong>Current Schedule</strong>
-              <dl>
+            <div className="rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 mt-3 mb-4">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">
+                Current Schedule
+              </p>
+              <dl className="space-y-3">
                 <div>
-                  <dt>Submission Start</dt>
-                  <dd>{formatDisplayDate(selectedPhase.submissionStart)}</dd>
-                  <dd className={styles.utcValue}>
-                    <span className={styles.srOnly}>UTC time: </span>
+                  <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                    Submission Start
+                  </dt>
+                  <dd className="text-sm text-slate-200 mt-0.5">
+                    {formatDisplayDate(selectedPhase.submissionStart)}
+                  </dd>
+                  <dd className="text-xs text-slate-600 font-mono mt-0.5">
+                    <span className="sr-only">UTC time: </span>
                     {formatUtcDate(selectedPhase.submissionStart)}
                   </dd>
                 </div>
                 <div>
-                  <dt>Submission End</dt>
-                  <dd>{formatDisplayDate(selectedPhase.submissionEnd)}</dd>
-                  <dd className={styles.utcValue}>
-                    <span className={styles.srOnly}>UTC time: </span>
+                  <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                    Submission End
+                  </dt>
+                  <dd className="text-sm text-slate-200 mt-0.5">
+                    {formatDisplayDate(selectedPhase.submissionEnd)}
+                  </dd>
+                  <dd className="text-xs text-slate-600 font-mono mt-0.5">
+                    <span className="sr-only">UTC time: </span>
                     {formatUtcDate(selectedPhase.submissionEnd)}
                   </dd>
                 </div>
@@ -251,8 +262,11 @@ function PhaseSchedulingPage() {
             </div>
           )}
 
-          <label>
-            Submission Start
+          {/* Submission Start */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Submission Start
+            </label>
             <input
               type="datetime-local"
               value={submissionStart}
@@ -262,14 +276,18 @@ function PhaseSchedulingPage() {
                 setFieldErrors((current) => ({ ...current, submissionStart: '' }));
               }}
               aria-invalid={Boolean(fieldErrors.submissionStart)}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             {fieldErrors.submissionStart && (
-              <span className={styles.fieldError}>{fieldErrors.submissionStart}</span>
+              <p className="text-xs text-red-400 mt-1">{fieldErrors.submissionStart}</p>
             )}
-          </label>
+          </div>
 
-          <label>
-            Submission End
+          {/* Submission End */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Submission End
+            </label>
             <input
               type="datetime-local"
               value={submissionEnd}
@@ -280,29 +298,45 @@ function PhaseSchedulingPage() {
                 setFieldErrors((current) => ({ ...current, submissionEnd: '' }));
               }}
               aria-invalid={Boolean(fieldErrors.submissionEnd)}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             {fieldErrors.submissionEnd && (
-              <span className={styles.fieldError}>{fieldErrors.submissionEnd}</span>
+              <p className="text-xs text-red-400 mt-1">{fieldErrors.submissionEnd}</p>
             )}
-          </label>
+          </div>
 
-          <div className={styles.actions}>
-            <button type="submit" disabled={status.loading || !phaseId}>
+          {/* Actions */}
+          <div className="flex gap-3 mt-2">
+            <button
+              type="submit"
+              disabled={status.loading || !phaseId}
+              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               {status.loading ? 'Updating...' : 'Update Phase Schedule'}
             </button>
-            <button type="button" onClick={handleReset} disabled={!phaseId || status.loading} className={styles.secondaryButton}>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={!phaseId || status.loading}
+              className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Reset
             </button>
           </div>
         </form>
 
-        {status.message && <div className={`${styles.status} ${styles.success}`}>{status.message}</div>}
+        {/* Status messages */}
+        {status.message && (
+          <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
+            {status.message}
+          </p>
+        )}
         {status.errors.length > 0 && (
-          <div className={`${styles.status} ${styles.error}`}>
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
             {status.errors.length === 1 ? (
               status.errors[0]
             ) : (
-              <ul className={styles.errorList}>
+              <ul className="list-disc list-inside space-y-1">
                 {status.errors.map((errorMessage) => (
                   <li key={errorMessage}>{errorMessage}</li>
                 ))}
@@ -311,46 +345,65 @@ function PhaseSchedulingPage() {
           </div>
         )}
 
+        {/* Result box */}
         {result && (
-          <div className={styles.resultBox}>
-            <strong>Schedule Changes</strong>
-            <dl className={styles.changeList}>
+          <div className="rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">
+              Schedule Changes
+            </p>
+            <dl className="space-y-3">
               <div>
-                <dt>Previous Start</dt>
-                <dd>{formatDisplayDate(result.previous.submissionStart)}</dd>
-                <dd className={styles.utcValue}>
-                  <span className={styles.srOnly}>UTC time: </span>
+                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                  Previous Start
+                </dt>
+                <dd className="text-sm text-slate-200 mt-0.5">
+                  {formatDisplayDate(result.previous.submissionStart)}
+                </dd>
+                <dd className="text-xs text-slate-600 font-mono mt-0.5">
+                  <span className="sr-only">UTC time: </span>
                   {formatUtcDate(result.previous.submissionStart)}
                 </dd>
               </div>
               <div>
-                <dt>Updated Start</dt>
-                <dd>{formatDisplayDate(result.updated.submissionStart)}</dd>
-                <dd className={styles.utcValue}>
-                  <span className={styles.srOnly}>UTC time: </span>
+                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                  Updated Start
+                </dt>
+                <dd className="text-sm text-slate-200 mt-0.5">
+                  {formatDisplayDate(result.updated.submissionStart)}
+                </dd>
+                <dd className="text-xs text-slate-600 font-mono mt-0.5">
+                  <span className="sr-only">UTC time: </span>
                   {formatUtcDate(result.updated.submissionStart)}
                 </dd>
               </div>
               <div>
-                <dt>Previous End</dt>
-                <dd>{formatDisplayDate(result.previous.submissionEnd)}</dd>
-                <dd className={styles.utcValue}>
-                  <span className={styles.srOnly}>UTC time: </span>
+                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                  Previous End
+                </dt>
+                <dd className="text-sm text-slate-200 mt-0.5">
+                  {formatDisplayDate(result.previous.submissionEnd)}
+                </dd>
+                <dd className="text-xs text-slate-600 font-mono mt-0.5">
+                  <span className="sr-only">UTC time: </span>
                   {formatUtcDate(result.previous.submissionEnd)}
                 </dd>
               </div>
               <div>
-                <dt>Updated End</dt>
-                <dd>{formatDisplayDate(result.updated.submissionEnd)}</dd>
-                <dd className={styles.utcValue}>
-                  <span className={styles.srOnly}>UTC time: </span>
+                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                  Updated End
+                </dt>
+                <dd className="text-sm text-slate-200 mt-0.5">
+                  {formatDisplayDate(result.updated.submissionEnd)}
+                </dd>
+                <dd className="text-xs text-slate-600 font-mono mt-0.5">
+                  <span className="sr-only">UTC time: </span>
                   {formatUtcDate(result.updated.submissionEnd)}
                 </dd>
               </div>
             </dl>
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }

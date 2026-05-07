@@ -31,7 +31,6 @@ import CommitteeDetailPage from './pages/admin/CommitteeDetailPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
 import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
-import './App.css';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();

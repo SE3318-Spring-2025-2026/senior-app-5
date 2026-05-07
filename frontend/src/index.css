@@ -1,7 +1,8 @@
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
 
 :root {
   --text: #6b6375;
@@ -15,13 +16,8 @@
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-/* ── Custom design tokens ── */
-@theme {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Global resets */
 *, *::before, *::after {
   box-sizing: border-box;
 }

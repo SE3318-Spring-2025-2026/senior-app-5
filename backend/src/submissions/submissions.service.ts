@@ -78,6 +78,14 @@ export class SubmissionsService {
   }
 
   async createSubmission(createSubmissionDto: CreateSubmissionDto) {
+    if (createSubmissionDto.type === 'SOW') {
+      const eligibility = await this.validateSowEligibility(createSubmissionDto.groupId);
+      if (!eligibility.canProceed) {
+         throw new ForbiddenException(
+          `The SOW cannot be created. Prerequisites are not met. Revised Proposal Status: ${eligibility.revisedProposalStatus}`,
+        );
+      }
+    }
     const phase = await this.phasesService.findByPhaseId(
       createSubmissionDto.phaseId,
     );
@@ -205,6 +213,15 @@ export class SubmissionsService {
 
     const submission =
       submissionFromGuard ?? (await this.findById(submissionId));
+
+    if (submission.type === 'SOW') {
+      const eligibility = await this.validateSowEligibility(submission.groupId);
+      if (!eligibility.canProceed) {
+        throw new ForbiddenException(
+          `The SOW document cannot be uploaded. Prerequisites are not met. Revised Proposal Status.: ${eligibility.revisedProposalStatus}`,
+        );
+      }
+    }  
 
     // SECURITY: Validate Window (Missing from main, added from current PR)
     const phase = await this.phasesService.getPhaseById(submission.phaseId);
@@ -367,4 +384,33 @@ export class SubmissionsService {
     await this.assertJuryMember(userId, submission.groupId);
     return submission;
   }
+  
+   async validateSowEligibility(groupId: string) {
+    // 1. Group Not Found Check 
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found.`);
+    }
+   // Find Revised Proposal
+    const revisedProposal = await this.submissionModel
+      .findOne({ groupId, type: 'REVISED_PROPOSAL' })
+      .sort({ createdAt: -1 }) // En güncel olanı al
+      .exec();
+    //
+    const sow = await this.submissionModel
+      .findOne({ groupId, type: 'SOW' })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    const revisedProposalStatus = revisedProposal ? revisedProposal.status : 'MISSING';
+    const sowStatus = sow ? sow.status : 'NOT_SUBMITTED';
+    const canProceed = revisedProposalStatus === 'APPROVED';
+
+    return {
+      sowStatus,
+      revisedProposalStatus,
+      canProceed,
+    };
+
+   }
 }

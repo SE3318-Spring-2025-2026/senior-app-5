@@ -1,5 +1,6 @@
 import { InvitesModule } from './invites/invites.module';
 import { StoryPointsModule } from './story-points/story-points.module';
+import { RubricsModule } from './rubrics/rubrics.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -38,6 +39,7 @@ import { DeliverablesModule } from './deliverables/deliverables.module';
     GradesModule,
     SprintEvaluationsModule,
     DeliverablesModule,
+    RubricsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

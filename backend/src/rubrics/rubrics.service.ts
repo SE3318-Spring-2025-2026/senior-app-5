@@ -16,6 +16,10 @@ import {
   PaginatedRubricsDto,
 } from './dto/rubric-response.dto';
 import { Rubric, RubricDocument } from './schemas/rubric.schema';
+import {
+  SprintEvaluation,
+  SprintEvaluationDocument,
+} from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 
 @Injectable()
 export class RubricsService {
@@ -24,6 +28,8 @@ export class RubricsService {
   constructor(
     @InjectModel(Rubric.name)
     private readonly rubricModel: Model<RubricDocument>,
+    @InjectModel(SprintEvaluation.name)
+    private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
     @InjectConnection()
     private readonly connection: Connection,
   ) {}
@@ -215,9 +221,14 @@ export class RubricsService {
         );
       }
 
-      // Note: In a full implementation, we would check the SprintEvaluation collection
-      // to see if this rubricId is referenced. For now, we proceed with deletion.
-      // TODO: Implement SprintEvaluation check before deletion if needed.
+      const inUse = await this.sprintEvaluationModel
+        .exists({ rubricId })
+        .exec();
+      if (inUse) {
+        throw new ConflictException(
+          'Rubric is in use by sprint evaluations and cannot be deleted.',
+        );
+      }
 
       await this.rubricModel.deleteOne({ rubricId }).exec();
 

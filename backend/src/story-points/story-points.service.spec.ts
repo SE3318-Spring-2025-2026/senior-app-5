@@ -213,7 +213,8 @@ describe('StoryPointsService', () => {
       const result = await service.override(
         GROUP_ID,
         SPRINT_ID,
-        { studentId: STUDENT_A, completedPoints: 15 },
+        STUDENT_A,
+        { completedPoints: 15 },
         'coord-1',
       );
 
@@ -225,7 +226,7 @@ describe('StoryPointsService', () => {
       sprintModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
 
       await expect(
-        service.override(GROUP_ID, SPRINT_ID, { studentId: STUDENT_A, completedPoints: 5 }, 'coord-1'),
+        service.override(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, 'coord-1'),
       ).rejects.toThrow(UnprocessableEntityException);
     });
   });

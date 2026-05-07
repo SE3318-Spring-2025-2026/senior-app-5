@@ -28,6 +28,10 @@ import styles from './EntitySearchSelect.module.css'
  * - debounceMs:    Debounce window (default 250ms)
  * - paramNames:    Override query param names if the backend uses different
  *                  keys, e.g. { field: 'filterField', value: 'q' }
+ * - buildParams:   Optional custom query param builder. Defaults to
+ *                  `{ [fieldParam]: searchField, [valueParam]: query }`.
+ * - getItems:      Optional response normalizer for paginated/list payloads.
+ *                  Defaults to using response.data when it is an array.
  */
 function EntitySearchSelect({
   endpoint,
@@ -43,6 +47,8 @@ function EntitySearchSelect({
   minChars = 2,
   debounceMs = 250,
   paramNames,
+  buildParams,
+  getItems,
 }) {
   const params = useMemo(
     () => ({
@@ -87,12 +93,18 @@ function EntitySearchSelect({
     debounceRef.current = setTimeout(async () => {
       try {
         const response = await apiClient.get(endpoint, {
-          params: {
-            [params.field]: searchField,
-            [params.value]: query.trim(),
-          },
+          params: buildParams
+            ? buildParams(query.trim())
+            : {
+                [params.field]: searchField,
+                [params.value]: query.trim(),
+              },
         })
-        const data = Array.isArray(response.data) ? response.data : []
+        const data = getItems
+          ? getItems(response.data)
+          : Array.isArray(response.data)
+            ? response.data
+            : []
         setResults(data)
         setOpen(true)
         setError('')
@@ -108,7 +120,7 @@ function EntitySearchSelect({
     }, debounceMs)
 
     return () => clearTimeout(debounceRef.current)
-  }, [query, endpoint, searchField, params, minChars, debounceMs, selected])
+  }, [query, endpoint, searchField, params, minChars, debounceMs, selected, buildParams, getItems])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -188,7 +200,7 @@ function EntitySearchSelect({
 
       {open && !selected && (loading || hasSearched || error) && (
         <ul className={styles.dropdown} role="listbox">
-          {loading && <li className={styles.status}>Searching…</li>}
+          {loading && <li className={styles.status}>Searching...</li>}
           {!loading && error && (
             <li className={`${styles.status} ${styles.errorStatus}`}>
               {error}
@@ -206,7 +218,7 @@ function EntitySearchSelect({
                   onClick={() => handlePick(item)}
                 >
                   <span className={styles.optionPrimary}>
-                    {String(item?.[effectiveDisplayField] ?? '—')}
+                    {String(item?.[effectiveDisplayField] ?? '-')}
                   </span>
                   <span className={styles.optionSecondary}>
                     {String(item?.[returnField] ?? '')}

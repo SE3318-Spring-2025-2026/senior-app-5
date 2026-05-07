@@ -207,6 +207,16 @@
   min-width: 280px;
 }
 
+.searchControl {
+  min-width: 320px;
+  flex: 1;
+}
+
+.note {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
 .selectRow input {
   border: 1px solid #475569;
   border-radius: 10px;

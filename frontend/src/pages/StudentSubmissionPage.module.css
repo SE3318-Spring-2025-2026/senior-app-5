@@ -47,7 +47,8 @@
   color: #cbd5e1;
 }
 
-.formRow input {
+.formRow input,
+.formRow select {
   border: 1px solid #334155;
   border-radius: 0.5rem;
   background: #020617;
@@ -55,7 +56,8 @@
   padding: 0.6rem 0.7rem;
 }
 
-.formRow input:disabled {
+.formRow input:disabled,
+.formRow select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

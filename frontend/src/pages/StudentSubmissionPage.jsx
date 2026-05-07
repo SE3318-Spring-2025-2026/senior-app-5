@@ -6,6 +6,21 @@ import { getSubmissionWindowStatus, WINDOW_STATE } from '../utils/submissionWind
 import styles from './StudentSubmissionPage.module.css';
 
 const initialFeedback = { loading: false, message: '', error: '' };
+const toSubmissionList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
+};
+
+const getSubmissionId = (submission) => submission?._id || submission?.id || submission?.submissionId || '';
+const getSubmissionLabel = (submission) => {
+  const title = submission?.title || submission?.type || 'Untitled submission';
+  const dateValue = submission?.submittedAt || submission?.createdAt;
+  const dateLabel = dateValue ? new Date(dateValue).toLocaleDateString() : 'no date';
+  const status = submission?.status ? ` - ${submission.status}` : '';
+  return `${title} (${dateLabel})${status}`;
+};
 
 function StudentSubmissionPage() {
   const { phaseId: urlPhaseId, submissionId: urlSubmissionId } = useParams();
@@ -17,6 +32,12 @@ function StudentSubmissionPage() {
   const [windowStatus, setWindowStatus] = useState(() => getSubmissionWindowStatus(null, null));
   const [phaseFeedback, setPhaseFeedback] = useState(initialFeedback);
   const [submitFeedback, setSubmitFeedback] = useState(initialFeedback);
+  
+  // States from issue-221-frontend-search-select-fields
+  const [submissions, setSubmissions] = useState([]);
+  const [submissionsFeedback, setSubmissionsFeedback] = useState(initialFeedback);
+  
+  // State from main
   const [membership, setMembership] = useState({
     loading: true,
     groupId: '',
@@ -113,6 +134,36 @@ function StudentSubmissionPage() {
       });
     }
   }, [urlPhaseId]);
+
+  // Submissions fetch logic from issue-221-frontend-search-select-fields
+  useEffect(() => {
+    if (urlSubmissionId) return;
+
+    const loadSubmissions = async () => {
+      setSubmissionsFeedback({ loading: true, message: '', error: '' });
+      try {
+        const response = await apiClient.get(apiConfig.endpoints.submissions.mine);
+        const nextSubmissions = toSubmissionList(response.data);
+        setSubmissions(nextSubmissions);
+        setSubmissionsFeedback({
+          loading: false,
+          message: nextSubmissions.length ? 'Your submissions are ready to select.' : '',
+          error: '',
+        });
+      } catch (error) {
+        const details = error.response?.data?.message || error.message || 'Unable to load your submissions.';
+        setSubmissions([]);
+        setSubmissionsFeedback({
+          loading: false,
+          message: '',
+          error: Array.isArray(details) ? details.join(', ') : details,
+        });
+      }
+    };
+
+    loadSubmissions();
+  }, [urlSubmissionId]);
+
   const isSubmissionDisabled = useMemo(
     () =>
       !windowStatus.isActive ||
@@ -121,12 +172,14 @@ function StudentSubmissionPage() {
       !membership.groupId,
     [windowStatus.isActive, submitFeedback.loading, membership.loading, membership.groupId],
   );
+
   const windowBannerClass = useMemo(() => {
     if (windowStatus.state === WINDOW_STATE.OPEN) return styles.open;
     if (windowStatus.state === WINDOW_STATE.UPCOMING) return styles.upcoming;
     if (windowStatus.state === WINDOW_STATE.CLOSED) return styles.closed;
     return styles.unavailable;
   }, [windowStatus.state]);
+
   const fetchPhaseWindow = async () => {
     const trimmedPhaseId = phaseId.trim();
     if (!trimmedPhaseId) {
@@ -170,6 +223,7 @@ function StudentSubmissionPage() {
       return null;
     }
   };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!membership.groupId) {
@@ -251,6 +305,7 @@ function StudentSubmissionPage() {
       });
     }
   };
+
   return (
     <div className={styles.pageContainer}>
       <header className={styles.hero}>
@@ -269,6 +324,9 @@ function StudentSubmissionPage() {
                 onChange={(event) => setPhaseId(event.target.value)}
                 placeholder="Enter phase UUID"
               />
+              <small className={styles.infoText}>
+                Phase search is blocked until a student-visible phase list endpoint is available.
+              </small>
             </div>
             <button
               type="button"
@@ -318,15 +376,35 @@ function StudentSubmissionPage() {
           </div>
           <div className={styles.formRow}>
             <label htmlFor="submissionId">Submission ID</label>
-            <input
-              id="submissionId"
-              value={submissionId}
-              onChange={(event) => setSubmissionId(event.target.value)}
-              placeholder="Enter submission ID"
-              disabled={isSubmissionDisabled}
-            />
-            {urlSubmissionId && (
-              <p className={styles.infoText}>Submission ID provided via URL</p>
+            {urlSubmissionId ? (
+              <>
+                <input id="submissionId" value={submissionId} disabled />
+                <p className={styles.infoText}>Submission ID provided via URL</p>
+              </>
+            ) : (
+              <>
+                <select
+                  id="submissionId"
+                  value={submissionId}
+                  onChange={(event) => setSubmissionId(event.target.value)}
+                  disabled={submissionsFeedback.loading}
+                  required
+                >
+                  <option value="">
+                    {submissionsFeedback.loading ? 'Loading submissions...' : 'Select a submission'}
+                  </option>
+                  {submissions.map((submission) => {
+                    const id = getSubmissionId(submission);
+                    return (
+                      <option key={id} value={id}>
+                        {getSubmissionLabel(submission)}
+                      </option>
+                    );
+                  })}
+                </select>
+                {submissionsFeedback.message && <p className={styles.successText}>{submissionsFeedback.message}</p>}
+                {submissionsFeedback.error && <p className={styles.errorText}>{submissionsFeedback.error}</p>}
+              </>
             )}
           </div>
           <div className={styles.formRow}>
@@ -359,4 +437,5 @@ function StudentSubmissionPage() {
     </div>
   );
 }
+
 export default StudentSubmissionPage;

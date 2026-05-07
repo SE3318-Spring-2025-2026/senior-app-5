@@ -4,6 +4,20 @@ import { randomUUID } from 'crypto';
 
 export type CommitteeDocument = HydratedDocument<Committee>;
 
+export interface JuryMember {
+  userId: string;
+  name?: string;
+  [key: string]: any;
+}
+
+export interface CommitteeGroup {
+  groupId: string;
+  assignedAt?: Date;
+  assignedByUserId?: string;
+  [key: string]: any;
+}
+
+
 @Schema({ timestamps: true })
 export class Committee {
   @Prop({ type: String, default: () => randomUUID() })
@@ -13,13 +27,13 @@ export class Committee {
   name!: string;
 
   @Prop({ type: [Object], default: [] })
-  jury!: object[];
+  jury!: JuryMember[];
 
   @Prop({ type: [Object], default: [] })
   advisors!: object[];
 
   @Prop({ type: [Object], default: [] })
-  groups!: object[];
+  groups!: CommitteeGroup[];
 }
 
 export const CommitteeSchema = SchemaFactory.createForClass(Committee);

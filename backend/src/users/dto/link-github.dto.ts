@@ -3,10 +3,11 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 export class LinkGithubDto {
   @ApiProperty({
-    example: 'gho_1234567890abcdef',
-    description: 'GitHub OAuth access token',
+    example: 'a1b2c3d4e5f6',
+    description:
+      'OAuth authorization code returned by GitHub after user consent',
   })
   @IsNotEmpty()
   @IsString()
-  oauthAccessToken!: string;
+  code!: string;
 }

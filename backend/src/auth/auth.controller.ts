@@ -1,23 +1,29 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Req,
+  Res,
   UseGuards,
   HttpCode,
   HttpStatus,
+  Param,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express'; // 'type' kelimesini kaldırmak bazen tip tanımını netleştirir
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 import { RegisterDto } from '../users/data/dto/register.dto';
 import { LoginDto } from '../users/data/dto/login.dto';
 import { CreateProfessorDto } from './dto/create-professor.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
+import { LinkGithubDto } from '../users/dto/link-github.dto';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { Role } from './enums/role.enum';
@@ -35,6 +41,7 @@ interface JwtUser {
   userId: string;
   email: string;
   role: string;
+  groupId?: string | null;
 }
 
 interface RequestWithUser extends Request {
@@ -44,7 +51,10 @@ interface RequestWithUser extends Request {
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @ApiOperation({ summary: 'Register a new user' })
   @ApiCreatedResponse({ description: 'User registered successfully' })
@@ -62,8 +72,85 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid login credentials' })
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto.email, dto.password);
+
+    // Set refresh token as HttpOnly cookie
+    if (result.refreshToken && result.userId) {
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      };
+      res.cookie('refreshToken', result.refreshToken, cookieOptions);
+      res.cookie('refreshUserId', result.userId, cookieOptions);
+    }
+
+    return { accessToken: result.accessToken };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate refresh token and return a new access token' })
+  @ApiOkResponse({ description: 'Returns new access token and sets rotated refresh cookie' })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const cookies = (req as any).cookies;
+    const refreshToken = cookies?.refreshToken;
+    const refreshUserId = cookies?.refreshUserId;
+    if (!refreshToken || !refreshUserId) {
+      throw new ForbiddenException('Refresh token not found');
+    }
+
+    const result = await this.authService.refreshAccessToken(refreshUserId, refreshToken);
+
+    // Rotate refresh token cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    };
+    res.cookie('refreshToken', result.refreshToken, cookieOptions);
+    res.cookie('refreshUserId', result.userId, cookieOptions);
+
+    return { accessToken: result.accessToken };
+  }
+
+  @ApiOperation({ summary: 'Logout and clear refresh token cookie. Can be called with access token or refresh cookie.' })
+  @ApiOkResponse({ description: 'Logged out and refresh cookie cleared' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid token (if access token provided)' })
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    // Attempt to derive userId from access token (if provided) or from refresh cookie
+    let userId: string | undefined;
+    try {
+      if ((req as any).user) {
+        userId = (req as any).user.userId;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const cookies = (req as any).cookies;
+    if (!userId && cookies?.refreshUserId) {
+      userId = cookies.refreshUserId;
+    }
+
+    if (userId) {
+      await this.authService.logout(userId);
+    }
+
+    // Clear cookies unconditionally
+    res.clearCookie('refreshToken', { path: '/' });
+    res.clearCookie('refreshUserId', { path: '/' });
+
+    return { message: 'Logged out' };
   }
 
   @ApiOperation({ summary: 'Request a password reset link' })
@@ -93,15 +180,92 @@ export class AuthController {
   }
 
   @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Register a new coordinator (Admin only)' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized or invalid token' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Admin)
+  @Post('admin/coordinators')
+  async registerCoordinator(@Body() body: RegisterDto) {
+    return this.authService.register(
+      body.email,
+      body.password,
+      Role.Coordinator,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current authenticated user details' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized or invalid token' })
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
-  me(@Req() req: RequestWithUser) {
+  async me(@Req() req: RequestWithUser) {
+    const user = await this.usersService.findById(req.user.userId);
     return {
       id: req.user.userId,
       email: req.user.email,
       role: req.user.role,
+      groupId: req.user.groupId ?? null,
+      teamId: req.user.groupId ?? null,
+      isGithubConnected: !!user?.githubAccountId,
     };
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Link GitHub account using OAuth code' })
+  @ApiOkResponse({ description: 'GitHub account linked successfully' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
+  @UseGuards(AuthGuard('jwt'))
+  @Post('users/:userId/integrations/github')
+  async linkGithubIntegration(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+    @Body() dto: LinkGithubDto,
+  ) {
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this account',
+      );
+    }
+
+    return this.authService.linkGithubAccount(userId, dto.code);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get GitHub link status for the user' })
+  @ApiOkResponse({
+    description: 'Returns whether the user has linked a GitHub account',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
+  @UseGuards(AuthGuard('jwt'))
+  @Get('users/:userId/integrations/github')
+  async getGithubIntegration(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+  ) {
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to view this account',
+      );
+    }
+    return this.authService.getGithubStatus(userId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Unlink the user’s GitHub account' })
+  @ApiOkResponse({ description: 'GitHub account unlinked successfully' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  @Delete('users/:userId/integrations/github')
+  async unlinkGithubIntegration(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+  ) {
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this account',
+      );
+    }
+    return this.authService.unlinkGithubAccount(userId);
   }
 }

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, Clock, ClipboardList } from 'lucide-react';
 import apiClient from '../utils/apiClient';
-import styles from './SubmissionChecklist.module.css';
+import { Card } from './ui';
 
 const SubmissionChecklist = () => {
   const [requirements, setRequirements] = useState([]);
@@ -33,82 +34,83 @@ const SubmissionChecklist = () => {
         const submissions = subRes.data;
 
         if (!submissions || submissions.length === 0) {
-           setError('No active submissions found to track.');
-           setLoading(false);
-           return;
+          setError('No active submissions found to track.');
+          setLoading(false);
+          return;
         }
 
         const latestSubmissionId = submissions[0]._id;
-        const completenessRes = await apiClient.get(`/submissions/${latestSubmissionId}/completeness`, { signal });
-        
+        const completenessRes = await apiClient.get(
+          `/submissions/${latestSubmissionId}/completeness`,
+          { signal },
+        );
+
         const required = completenessRes.data.requiredFields || [];
         const missing = completenessRes.data.missingFields || [];
-        
-        const mappedRequirements = required.map((field) => ({
-          name: field.charAt(0).toUpperCase() + field.slice(1),
-          isComplete: !missing.includes(field) 
-        }));
 
-        setRequirements(mappedRequirements);
+        setRequirements(
+          required.map((field) => ({
+            name: field.charAt(0).toUpperCase() + field.slice(1),
+            isComplete: !missing.includes(field),
+          })),
+        );
         setLoading(false);
-
       } catch (err) {
         if (err.name === 'CanceledError' || err.name === 'AbortError') return;
-        console.error("Failed to fetch completeness:", err);
         setError('Failed to load checklist data from the server.');
         setLoading(false);
       }
     };
-    
+
     fetchCompleteness();
     return () => controller.abort();
   }, []);
 
-  if (loading) {
-    return (
-      <div className={styles.checklistContainer}>
-        <h3 className={styles.title}>📋 Phase Submission Checklist</h3>
-        <p style={{ color: '#38bdf8', fontWeight: 'bold' }}>Loading requirements...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.checklistContainer}>
-        <h3 className={styles.title}>📋 Phase Submission Checklist</h3>
-        <p style={{ color: '#94a3b8' }}>{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.checklistContainer}>
-      <h3 className={styles.title}>📋 Phase Submission Checklist</h3>
-      
-      {requirements.length === 0 ? (
-        <p style={{ color: '#94a3b8' }}>No specific requirements found for this phase.</p>
+    <Card>
+      <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+        <ClipboardList size={13} />
+        Phase Submission Checklist
+      </p>
+
+      {loading ? (
+        <p className="text-sm text-slate-500">Loading requirements…</p>
+      ) : error ? (
+        <p className="text-sm text-slate-500">{error}</p>
+      ) : requirements.length === 0 ? (
+        <p className="text-sm text-slate-500">No specific requirements found for this phase.</p>
       ) : (
-        <ul className={styles.list}>
-          {requirements.map((req) => {
-            const statusText = req.isComplete ? 'COMPLETE' : 'PENDING';
-            return (
-              <li key={req.name} className={styles.listItem}>
-                <div className={styles.leftSection}>
-                  <span className={styles.icon}>{req.isComplete ? '✅' : '⏳'}</span>
-                  <span className={`${styles.reqName} ${req.isComplete ? styles.completedText : ''}`}>
-                    {req.name}
-                  </span>
-                </div>
-                <span className={`${styles.badge} ${req.isComplete ? styles.badgeComplete : styles.badgePending}`}>
-                  {statusText}
+        <ul className="space-y-2">
+          {requirements.map((req) => (
+            <li
+              key={req.name}
+              className="flex items-center justify-between rounded-lg px-3 py-2 bg-white/[0.02]"
+            >
+              <div className="flex items-center gap-2.5">
+                {req.isComplete ? (
+                  <CheckCircle2 size={15} className="shrink-0 text-green-400" />
+                ) : (
+                  <Clock size={15} className="shrink-0 text-yellow-400" />
+                )}
+                <span className={`text-sm ${req.isComplete ? 'text-slate-400 line-through' : 'text-slate-300'}`}>
+                  {req.name}
                 </span>
-              </li>
-            );
-          })}
+              </div>
+              <span
+                className={[
+                  'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                  req.isComplete
+                    ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                    : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400',
+                ].join(' ')}
+              >
+                {req.isComplete ? 'Complete' : 'Pending'}
+              </span>
+            </li>
+          ))}
         </ul>
       )}
-    </div>
+    </Card>
   );
 };
 

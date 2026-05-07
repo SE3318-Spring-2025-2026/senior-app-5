@@ -33,6 +33,8 @@ describe('AdvisorsController', () => {
     expect(controller).toBeDefined();
   });
 
+  
+
   it('should delegate advisor listing to the service', async () => {
     const query: ListAdvisorsQueryArg = {
       page: 1,
@@ -129,5 +131,18 @@ describe('AdvisorsController', () => {
       callerRole: Role.Coordinator,
     });
     expect(result).toEqual(expected);
+  });
+
+  
+  describe('RBAC Matrix Validation', () => {
+    it('should restrict listAdvisors to Coordinator, TeamLeader, and Admin', () => {
+      const roles = Reflect.getMetadata('roles', controller.listAdvisors);
+      expect(roles).toEqual([Role.Coordinator, Role.TeamLeader, Role.Admin]);
+    });
+
+    it('should restrict releaseTeam to Coordinator, Professor, and Admin', () => {
+      const roles = Reflect.getMetadata('roles', controller.releaseTeam);
+      expect(roles).toEqual([Role.Coordinator, Role.Professor, Role.Admin]);
+    });
   });
 });

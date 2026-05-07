@@ -1,116 +1,100 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Link2,
+  Users,
+  FileText,
+  ClipboardCheck,
+  UserCheck,
+  Settings2,
+  Calendar,
+  CalendarDays,
+  ShieldCheck,
+  Star,
+  BookOpen,
+  GitBranch,
+} from 'lucide-react';
+import clsx from 'clsx';
+
+const navLinkBase =
+  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150';
+const navLinkDefault = 'text-slate-400 hover:text-slate-200 hover:bg-white/5';
+const navLinkActive = 'bg-blue-600/15 text-blue-400 border-l-2 border-blue-500 rounded-l-none';
+
+function SideNavLink({ to, icon: Icon, label, matchPrefix }) {
+  const location = useLocation();
+  const active = matchPrefix
+    ? location.pathname.startsWith(to)
+    : undefined;
+
+  return (
+    <NavLink
+      to={to}
+      end={!matchPrefix}
+      className={({ isActive }) =>
+        clsx(navLinkBase, (matchPrefix ? active : isActive) ? navLinkActive : navLinkDefault)
+      }
+    >
+      <Icon size={16} className="shrink-0" />
+      <span>{label}</span>
+    </NavLink>
+  );
+}
+
+function SectionHeader({ label }) {
+  return (
+    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600 px-3 pt-4 pb-1">
+      {label}
+    </p>
+  );
+}
 
 export const Sidebar = () => {
-  
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : { role: 'Student' };
   const role = user.role;
 
   return (
-    <aside style={styles.sidebar}>
-      <nav style={styles.nav}>
-        
-        
-        <NavLink 
-          to="/dashboard" 
-          style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
-        >
-          📊 <span style={styles.linkText}>Dashboard</span>
-        </NavLink>
+    <aside className="w-60 flex-none bg-[#080f1f] border-r border-[#1e293b] flex flex-col py-4 px-3 overflow-y-auto">
+      <nav className="flex flex-col gap-0.5">
+        <SideNavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+        <SideNavLink to="/integrations" icon={Link2} label="Integrations" />
 
-        
-        {role === 'Student' && (
+        {(role === 'Student' || role === 'TeamLeader') && (
           <>
-            <div style={styles.sectionHeader}>STUDENT MENU</div>
-            <NavLink 
-              to="/groups" 
-              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
-            >
-              👥 <span style={styles.linkText}>My Group</span>
-            </NavLink>
-            <NavLink 
-              to="/documents" 
-              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
-            >
-              📄 <span style={styles.linkText}>My Documents</span>
-            </NavLink>
+            <SectionHeader label="Student" />
+            <SideNavLink to="/groups" icon={Users} label="My Group" />
+            <SideNavLink to="/documents" icon={FileText} label="My Documents" />
           </>
         )}
 
-        
+        {role === 'Professor' && (
+          <>
+            <SectionHeader label="Professor" />
+            <SideNavLink to="/review" icon={ClipboardCheck} label="Review" />
+            <SideNavLink to="/advisor/sprint-evaluation" icon={Star} label="Sprint Evaluation" />
+          </>
+        )}
+
+        {(role === 'Professor' || role === 'Advisor') && (
+          <>
+            <SectionHeader label="Advisor" />
+            <SideNavLink to="/advisor/requests" icon={UserCheck} label="Advisee Requests" />
+          </>
+        )}
+
         {role === 'Coordinator' && (
           <>
-            <div style={styles.sectionHeader}>COORDINATOR MENU</div>
-            <NavLink 
-              to="/all-groups" 
-              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
-            >
-              🏢 <span style={styles.linkText}>All Groups</span>
-            </NavLink>
-            <NavLink
-              to="/coordinator-management"
-              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
-            >
-              🗂️ <span style={styles.linkText}>Coordinator Suite</span>
-            </NavLink>
-            <NavLink
-              to="/phases/schedule"
-              style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.activeLink : {}) })}
-            >
-              🗓️ <span style={styles.linkText}>Phase Scheduling</span>
-            </NavLink>
+            <SectionHeader label="Coordinator" />
+            <SideNavLink to="/coordinator-management" icon={Settings2} label="Coordinator Suite" />
+            <SideNavLink to="/coordinator/advisor-schedule" icon={Calendar} label="Advisor Schedule" />
+            <SideNavLink to="/phases/schedule" icon={CalendarDays} label="Phase Scheduling" />
+            <SideNavLink to="/coordinator/rubrics" icon={BookOpen} label="Rubric Management" />
+            <SideNavLink to="/coordinator/sprint-config" icon={GitBranch} label="Sprint Config" />
+            <SideNavLink to="/admin" icon={ShieldCheck} label="Admin Panel" matchPrefix />
           </>
         )}
       </nav>
     </aside>
   );
-};
-
-
-const styles = {
-  sidebar: {
-    width: '260px',
-    backgroundColor: '#030712', 
-    color: '#e2e8f0',
-    height: 'calc(100vh - 65px)', 
-    padding: '20px 0',
-    borderRight: '1px solid #1e293b',
-    fontFamily: '"Inter", sans-serif',
-  },
-  nav: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    padding: '0 15px',
-  },
-  link: {
-    textDecoration: 'none',
-    color: '#94a3b8', 
-    padding: '12px 18px',
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '15px',
-    fontWeight: '500',
-    borderRadius: '10px',
-    transition: 'all 0.3s ease',
-  },
-  linkText: {
-    marginLeft: '12px',
-  },
-  sectionHeader: {
-    fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    color: '#64748b',
-    padding: '25px 18px 8px',
-    fontWeight: 'bold',
-  },
-  
-  activeLink: {
-    backgroundColor: '#1e293b', 
-    color: '#38bdf8', 
-    fontWeight: 'bold',
-    boxShadow: 'inset 0 0 10px rgba(56, 189, 248, 0.1)',
-    borderLeft: '4px solid #38bdf8', 
-  }
 };

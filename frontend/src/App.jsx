@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
-import GroupLifecyclePage from './pages/GroupLifecyclePage';
+import StudentGroupManagementPage from './pages/StudentGroupManagementPage'
 import CoordinatorManagementPage from './pages/CoordinatorManagementPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
@@ -24,8 +24,18 @@ import SanitizationPage from './pages/admin/SanitizationPage';
 
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
+import GradeDisplayPage from './pages/GradeDisplayPage';
+import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
-import './App.css';
+import CommitteesPage from './pages/admin/CommitteesPage';
+import CommitteeDetailPage from './pages/admin/CommitteeDetailPage';
+import GroupDetailPage from './pages/admin/GroupDetailPage';
+import IntegrationsPage from './pages/IntegrationsPage';
+import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
+import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
+import SprintEvaluationPage from './pages/SprintEvaluationPage';
+import RubricManagementPage from './pages/RubricManagementPage';
+import SprintConfigPage from './pages/SprintConfigPage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -52,11 +62,43 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/groups" element={<GroupLifecyclePage />} />
-            <Route path="/all-groups" element={<GroupLifecyclePage />} />
-            <Route path="/documents" element={<StudentSubmissionPage />} />
-            <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
+                       <Route path="/groups" element={<StudentGroupManagementPage />} />
+            <Route path="/all-groups" element={<StudentGroupManagementPage />} />
+            <Route path="/documents/upload" element={<StudentSubmissionPage />} />
+            <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
+            <Route path="/documents" element={<StudentSubmissionPage />} />
+            <Route path="/grades" element={<GradeDisplayPage />} />
+            <Route path="/documents" element={<DocumentsPage />} />
+            <Route
+              path="/review"
+              element={
+                <ProtectedRoute requiredRole="Professor">
+                  <ReviewPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
+            <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
+            <Route path="/coordinator/advisor-schedule" element={<AdvisorSchedulePage />} />
+            <Route
+              path="/coordinator/rubrics"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <RubricManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coordinator/sprint-config"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <SprintConfigPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/phases/schedule"
               element={
@@ -73,10 +115,13 @@ function App() {
             }>
               <Route index element={<Navigate to="groups" replace />} />
               <Route path="groups" element={<GroupsPage />} />
+              <Route path="groups/:groupId" element={<GroupDetailPage />} />
               <Route path="members" element={<MembersPage />} />
               <Route path="invites" element={<InvitesPage />} />
               <Route path="advisors" element={<AdvisorsPage />} />
               <Route path="professors" element={<ProfessorsPage />} />
+              <Route path="committees" element={<CommitteesPage />} />
+              <Route path="committees/:committeeId" element={<CommitteeDetailPage />} />
               <Route path="sanitization" element={<SanitizationPage />} />
 
               <Route path="activity" element={<ActivityPage />} />

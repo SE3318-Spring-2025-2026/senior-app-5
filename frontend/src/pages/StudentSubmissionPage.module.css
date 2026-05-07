@@ -1,0 +1,125 @@
+﻿/* -- Layout -- */
+.pageContainer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1e293b;
+}
+
+/* -- Card -- */
+.card {
+  background: #111827;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* -- Form -- */
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* -- Feedback texts -- */
+.infoText {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.successText {
+  font-size: 0.875rem;
+  color: #34d399;
+  font-weight: 500;
+}
+
+.errorText {
+  font-size: 0.875rem;
+  color: #f87171;
+  font-weight: 500;
+}
+
+/* -- Primary button -- */
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 20px;
+  background: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.primaryButton:hover {
+  background: #4f46e5;
+}
+
+.primaryButton:disabled {
+  background: #3730a3;
+  color: #a5b4fc;
+  cursor: not-allowed;
+}
+
+/* -- Submission window banner -- */
+.windowBanner {
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.open {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.upcoming {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.closed {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.unavailable {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.windowDetails {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}

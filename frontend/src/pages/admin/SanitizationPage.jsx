@@ -1,35 +1,13 @@
 import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
-import styles from '../GroupLifecyclePage.module.css'
+import { SectionCard, StatusBlock, Button, PageHeader } from '../../components/ui'
 
 const formatLocalDateTime = (isoString) => {
   const date = new Date(isoString)
   const tzOffset = date.getTimezoneOffset() * 60000
   const localIso = new Date(date - tzOffset).toISOString().slice(0, 16)
   return localIso
-}
-
-function SectionCard({ title, description, children }) {
-  return (
-    <div className={styles.sectionCard}>
-      <div className={styles.sectionHeader}>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </div>
-  )
-}
-
-function StatusBlock({ title, message, type }) {
-  if (!message) return null
-  return (
-    <div className={`${styles.statusBlock} ${type === 'error' ? styles.error : styles.success}`}>
-      <strong>{title}</strong>
-      <span>{message}</span>
-    </div>
-  )
 }
 
 function SanitizationPage() {
@@ -53,24 +31,35 @@ function SanitizationPage() {
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className="max-w-4xl mx-auto space-y-5 p-1">
+      <PageHeader title="Sanitization" />
+
       <SectionCard
         title="Execute Sanitization"
         description="Disband groups missing advisors and trigger notifications."
       >
-        <div className={styles.form}>
-          <label>
-            Run Date / Time
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Run Date / Time
+            </label>
             <input
               type="datetime-local"
               value={sanitizationDate}
               onChange={(e) => setSanitizationDate(e.target.value)}
               required
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
-          </label>
-          <button type="button" onClick={handleExecuteSanitization} disabled={adminStatus.loading}>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleExecuteSanitization}
+            loading={adminStatus.loading}
+            disabled={adminStatus.loading}
+          >
             {adminStatus.loading ? 'Executing…' : 'Run Sanitization'}
-          </button>
+          </Button>
         </div>
         <StatusBlock title="Sanitization" message={adminStatus.message} type="success" />
         <StatusBlock title="Sanitization" message={adminStatus.error} type="error" />

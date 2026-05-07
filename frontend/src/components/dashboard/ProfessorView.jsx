@@ -1,60 +1,68 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import styles from '../../pages/DashboardPage.module.css';
 import StoryPointsPanel from './StoryPointsPanel';
+import apiClient from '../../utils/apiClient';
 
-const ProfessorView = ({ user }) => {
-  // Bakkal Hesabı: Yarın Port 3001'den gelecek örnek veriler
-  const manageableGroups = [
-    { id: 1, name: 'Project Alpha', members: 4, progress: '85%' },
-    { id: 2, name: 'Project Beta', members: 5, progress: '40%' },
-    { id: 3, name: 'Project Gamma', members: 3, progress: '10%' }
-  ];
+const ProfessorView = () => {
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await apiClient.get('/requests', {
+          params: { status: 'APPROVED', limit: 100 },
+        });
+        const data = res.data?.data ?? res.data ?? [];
+        setGroups(Array.isArray(data) ? data : []);
+      } catch {
+        setGroups([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <div className={styles.roleContainer}>
       <h2 className={styles.sectionTitle}>Academic Management Portal</h2>
-      
-      {/* İstatistik Kartları */}
+
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <div className={styles.cardTitle}>Assigned Groups</div>
-          <div className={styles.cardValue}>{manageableGroups.length}</div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={styles.cardTitle}>Total Supervised Students</div>
-          <div className={styles.cardValue}>12</div>
+          <div className={styles.cardValue}>{loading ? '…' : groups.length}</div>
         </div>
       </div>
 
-      {/* Grup Takip Tablosu */}
       <div className={styles.tableWrapper}>
-        <h3 style={{ color: '#94a3b8', marginBottom: '15px' }}>Current Group Progress</h3>
-        <table className={styles.customTable}>
-          <thead>
-            <tr>
-              <th>Group Name</th>
-              <th>Members</th>
-              <th>Progress</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {manageableGroups.map((group) => (
-              <tr key={group.id}>
-                <td>{group.name}</td>
-                <td>{group.members}</td>
-                <td>
-                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>
-                    {group.progress}
-                  </span>
-                </td>
-                <td>
-                  <button className={styles.smallButton}>Review</button>
-                </td>
+        <h3 style={{ color: '#94a3b8', marginBottom: '15px' }}>Current Groups</h3>
+        {loading ? (
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Loading…</p>
+        ) : groups.length === 0 ? (
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>No assigned groups.</p>
+        ) : (
+          <table className={styles.customTable}>
+            <thead>
+              <tr>
+                <th>Group ID</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {groups.map((req) => (
+                <tr key={req.requestId ?? req.groupId}>
+                  <td>{req.groupId}</td>
+                  <td>
+                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                      {req.status ?? 'APPROVED'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
       <StoryPointsPanel canOverride={false} />
     </div>

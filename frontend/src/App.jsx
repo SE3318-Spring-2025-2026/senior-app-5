@@ -32,6 +32,9 @@ import CommitteeDetailPage from './pages/admin/CommitteeDetailPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
 import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
+import SprintEvaluationPage from './pages/SprintEvaluationPage';
+import RubricManagementPage from './pages/RubricManagementPage';
+import SprintConfigPage from './pages/SprintConfigPage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -77,7 +80,24 @@ function App() {
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
+            <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
             <Route path="/coordinator/advisor-schedule" element={<AdvisorSchedulePage />} />
+            <Route
+              path="/coordinator/rubrics"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <RubricManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coordinator/sprint-config"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <SprintConfigPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/phases/schedule"
               element={

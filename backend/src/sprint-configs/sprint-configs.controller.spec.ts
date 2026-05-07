@@ -19,7 +19,9 @@ const DELIVERABLE_ID = '22222222-2222-4222-8222-222222222221';
 const mockResponse: SprintConfigResponseDto = {
   sprintId: SPRINT_ID,
   targetStoryPoints: 40,
-  deliverableMappings: [{ deliverableId: DELIVERABLE_ID, contributionPercentage: 30 }],
+  deliverableMappings: [
+    { deliverableId: DELIVERABLE_ID, contributionPercentage: 30 },
+  ],
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };
@@ -37,9 +39,7 @@ describe('SprintConfigsController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SprintConfigsController],
-      providers: [
-        { provide: SprintConfigsService, useValue: mockService },
-      ],
+      providers: [{ provide: SprintConfigsService, useValue: mockService }],
     }).compile();
 
     controller = module.get(SprintConfigsController);
@@ -125,9 +125,7 @@ describe('SprintConfigsController', () => {
     });
 
     it('propagates NotFoundException from service', async () => {
-      mockService.update.mockRejectedValue(
-        new NotFoundException('not found'),
-      );
+      mockService.update.mockRejectedValue(new NotFoundException('not found'));
 
       await expect(
         controller.updateSprintConfig(SPRINT_ID, dto),

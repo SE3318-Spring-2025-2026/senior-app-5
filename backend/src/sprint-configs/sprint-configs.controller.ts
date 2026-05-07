@@ -1,12 +1,15 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -14,11 +17,13 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
@@ -51,11 +56,14 @@ export class SprintConfigsController {
     type: SprintConfigResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Validation failed, invalid sprintId, or deliverableId not found in D1.',
+    description:
+      'Validation failed, invalid sprintId, or deliverableId not found in D1.',
   })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT.' })
   @ApiForbiddenResponse({ description: 'Requires COORDINATOR role.' })
-  @ApiConflictResponse({ description: 'A config for this sprint already exists.' })
+  @ApiConflictResponse({
+    description: 'A config for this sprint already exists.',
+  })
   @ApiUnprocessableEntityResponse({
     description: 'Contribution percentage sum exceeds 100% for a deliverable.',
   })
@@ -92,5 +100,71 @@ export class SprintConfigsController {
     @Body() dto: UpdateSprintConfigDto,
   ): Promise<SprintConfigResponseDto> {
     return this.sprintConfigsService.update(sprintId, dto);
+  }
+
+  @Get()
+  @Roles(Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'listSprintConfigs',
+    summary: 'List all sprint configurations (Coordinator only)',
+  })
+  @ApiOkResponse({
+    description: 'Sprint configurations returned successfully.',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT.' })
+  @ApiForbiddenResponse({ description: 'Requires COORDINATOR role.' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected server error.' })
+  async listSprintConfigs(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.sprintConfigsService.findAll(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+    );
+  }
+
+  @Get(':sprintId')
+  @Roles(Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: 'getSprintConfig',
+    summary: 'Get a sprint configuration by sprintId (Coordinator only)',
+  })
+  @ApiOkResponse({
+    description: 'Sprint configuration found.',
+    type: SprintConfigResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT.' })
+  @ApiForbiddenResponse({ description: 'Requires COORDINATOR role.' })
+  @ApiNotFoundResponse({ description: 'Sprint config not found.' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected server error.' })
+  async getSprintConfig(
+    @Param('sprintId', new ParseUUIDPipe()) sprintId: string,
+  ): Promise<SprintConfigResponseDto> {
+    return this.sprintConfigsService.findOne(sprintId);
+  }
+
+  @Delete(':sprintId')
+  @Roles(Role.Coordinator)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    operationId: 'deleteSprintConfig',
+    summary: 'Delete a sprint configuration (Coordinator only)',
+  })
+  @ApiNoContentResponse({
+    description: 'Sprint configuration deleted successfully.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT.' })
+  @ApiForbiddenResponse({ description: 'Requires COORDINATOR role.' })
+  @ApiNotFoundResponse({ description: 'Sprint config not found.' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected server error.' })
+  async deleteSprintConfig(
+    @Param('sprintId', new ParseUUIDPipe()) sprintId: string,
+  ): Promise<void> {
+    return this.sprintConfigsService.remove(sprintId);
   }
 }

@@ -85,9 +85,7 @@ export class SprintConfigsService {
     dto: UpdateSprintConfigDto,
   ): Promise<SprintConfigResponseDto> {
     // 1. Find existing config (404 if not found)
-    const config = await this.sprintConfigModel
-      .findOne({ sprintId })
-      .exec();
+    const config = await this.sprintConfigModel.findOne({ sprintId }).exec();
     if (!config) {
       throw new NotFoundException(
         `Sprint config for sprintId '${sprintId}' not found.`,
@@ -120,6 +118,57 @@ export class SprintConfigsService {
     });
 
     return this.toResponseDto(updated);
+  }
+
+  async findAll(
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    data: SprintConfigResponseDto[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+      this.sprintConfigModel
+        .find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.sprintConfigModel.countDocuments().exec(),
+    ]);
+    return {
+      data: docs.map((d) => this.toResponseDto(d as SprintConfigDocument)),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async findOne(sprintId: string): Promise<SprintConfigResponseDto> {
+    const doc = await this.sprintConfigModel
+      .findOne({ sprintId })
+      .lean()
+      .exec();
+    if (!doc) {
+      throw new NotFoundException(
+        `Sprint config for sprintId '${sprintId}' not found.`,
+      );
+    }
+    return this.toResponseDto(doc as SprintConfigDocument);
+  }
+
+  async remove(sprintId: string): Promise<void> {
+    const result = await this.sprintConfigModel.deleteOne({ sprintId }).exec();
+    if (result.deletedCount === 0) {
+      throw new NotFoundException(
+        `Sprint config for sprintId '${sprintId}' not found.`,
+      );
+    }
+    this.logger.log({ event: 'sprint_config_deleted', sprintId });
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -160,7 +209,9 @@ export class SprintConfigsService {
    * Validates all deliverableIds exist in D1 (Deliverable collection).
    * Throws 400 if any are missing.
    */
-  private async validateDeliverableIds(deliverableIds: string[]): Promise<void> {
+  private async validateDeliverableIds(
+    deliverableIds: string[],
+  ): Promise<void> {
     const unique = [...new Set(deliverableIds)];
     const found = await this.deliverableModel
       .find({ deliverableId: { $in: unique } })
@@ -190,9 +241,7 @@ export class SprintConfigsService {
     excludeSprintId: string | null,
   ): Promise<void> {
     // Aggregate existing percentages per deliverable (excluding the current sprint if updating)
-    const query = excludeSprintId
-      ? { sprintId: { $ne: excludeSprintId } }
-      : {};
+    const query = excludeSprintId ? { sprintId: { $ne: excludeSprintId } } : {};
 
     const existingConfigs = await this.sprintConfigModel
       .find(query)
@@ -237,7 +286,9 @@ export class SprintConfigsService {
     }
   }
 
-  private toResponseDto(doc: SprintConfigDocument): SprintConfigResponseDto {
+  private toResponseDto(
+    doc: SprintConfigDocument & { createdAt?: Date; updatedAt?: Date },
+  ): SprintConfigResponseDto {
     return {
       sprintId: doc.sprintId,
       targetStoryPoints: doc.targetStoryPoints,
@@ -245,8 +296,8 @@ export class SprintConfigsService {
         deliverableId: m.deliverableId,
         contributionPercentage: m.contributionPercentage,
       })),
-      createdAt: (doc as any).createdAt,
-      updatedAt: (doc as any).updatedAt,
+      createdAt: doc.createdAt ?? new Date(),
+      updatedAt: doc.updatedAt ?? new Date(),
     };
   }
 }

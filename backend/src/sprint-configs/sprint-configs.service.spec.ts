@@ -83,8 +83,7 @@ describe('SprintConfigsService', () => {
     mockDeliverableModel.find.mockReturnValue({
       select: () => ({
         lean: () => ({
-          exec: () =>
-            Promise.resolve([{ deliverableId: DELIVERABLE_ID_1 }]),
+          exec: () => Promise.resolve([{ deliverableId: DELIVERABLE_ID_1 }]),
         }),
       }),
     });
@@ -141,7 +140,9 @@ describe('SprintConfigsService', () => {
 
     it('throws 400 when a deliverableId does not exist in D1', async () => {
       mockScheduleModel.findOne.mockReturnValue({
-        lean: () => ({ exec: () => Promise.resolve({ scheduleId: SPRINT_ID }) }),
+        lean: () => ({
+          exec: () => Promise.resolve({ scheduleId: SPRINT_ID }),
+        }),
       });
       // no deliverables found
       mockDeliverableModel.find.mockReturnValue({
@@ -155,7 +156,9 @@ describe('SprintConfigsService', () => {
 
     it('throws 409 when a config for the sprintId already exists', async () => {
       mockScheduleModel.findOne.mockReturnValue({
-        lean: () => ({ exec: () => Promise.resolve({ scheduleId: SPRINT_ID }) }),
+        lean: () => ({
+          exec: () => Promise.resolve({ scheduleId: SPRINT_ID }),
+        }),
       });
       mockDeliverableModel.find.mockReturnValue({
         select: () => ({
@@ -174,7 +177,9 @@ describe('SprintConfigsService', () => {
 
     it('throws 422 when contribution percentage sum exceeds 100', async () => {
       mockScheduleModel.findOne.mockReturnValue({
-        lean: () => ({ exec: () => Promise.resolve({ scheduleId: SPRINT_ID }) }),
+        lean: () => ({
+          exec: () => Promise.resolve({ scheduleId: SPRINT_ID }),
+        }),
       });
       mockDeliverableModel.find.mockReturnValue({
         select: () => ({
@@ -194,7 +199,10 @@ describe('SprintConfigsService', () => {
               Promise.resolve([
                 {
                   deliverableMappings: [
-                    { deliverableId: DELIVERABLE_ID_1, contributionPercentage: 80 },
+                    {
+                      deliverableId: DELIVERABLE_ID_1,
+                      contributionPercentage: 80,
+                    },
                   ],
                 },
               ]),
@@ -287,7 +295,10 @@ describe('SprintConfigsService', () => {
               Promise.resolve([
                 {
                   deliverableMappings: [
-                    { deliverableId: DELIVERABLE_ID_1, contributionPercentage: 80 },
+                    {
+                      deliverableId: DELIVERABLE_ID_1,
+                      contributionPercentage: 80,
+                    },
                   ],
                 },
               ]),

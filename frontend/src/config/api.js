@@ -69,7 +69,15 @@ export const apiConfig = {
       `/groups/${groupId}/sprints/${sprintId}/story-points`,
     overrideStoryPoints: (groupId, sprintId) =>
       `/groups/${groupId}/sprints/${sprintId}/story-points/override`,
-  },  
+    deliverables: '/deliverables',
+    rubrics: (deliverableId) => `/deliverables/${deliverableId}/rubrics`,
+    rubricById: (deliverableId, rubricId) => `/deliverables/${deliverableId}/rubrics/${rubricId}`,
+    sprints: '/sprints',
+    sprintById: (sprintId) => `/sprints/${sprintId}`,
+    deliverableEvaluations: '/deliverable-evaluations',
+    committeeGrades: (committeeId) => `/committees/${committeeId}/grades`,
+    sprintEvaluations: '/sprint-evaluations',
+  },
 };
 
 export default apiConfig;

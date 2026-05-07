@@ -16,6 +16,7 @@ import { DeliverableEvaluation } from './schemas/deliverable-evaluation.schema';
 import { SprintEvaluation } from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 import { SprintConfig } from '../story-points/schemas/sprint-config.schema';
 import { StoryPointRecord } from '../story-points/schemas/story-point-record.schema';
+import { Committee } from '../committees/schemas/committee.schema';
 import { StudentFinalGradeDto } from './dto/student-final-grade.dto';
 import { GroupFinalGradeDto } from './dto/group-final-grade.dto';
 import { ListGradeHistoryQueryDto } from './dto/list-grade-history-query.dto';
@@ -93,6 +94,10 @@ describe('GradesService', () => {
         {
           provide: getModelToken(StoryPointRecord.name),
           useValue: {},
+        },
+        {
+          provide: getModelToken(Committee.name),
+          useValue: { findOne: jest.fn() },
         },
       ],
     }).compile();
@@ -407,7 +412,9 @@ describe('GradesService', () => {
       // Note: The service uses `??` which doesn't normalize 0, so page=0 is returned as-is
       // skip = (0 - 1) * 20 = -20
       expect(result.page).toBe(0);
-      expect(mockGradeHistoryModel.find().sort().skip).toHaveBeenCalledWith(-20);
+      expect(mockGradeHistoryModel.find().sort().skip).toHaveBeenCalledWith(
+        -20,
+      );
     });
 
     it('should normalize pagination: limit=200 is not capped (uses provided value)', async () => {
@@ -852,7 +859,9 @@ describe('GradesService', () => {
       // Note: page=0 is returned as-is (service doesn't normalize to 1)
       // skip = (0 - 1) * 20 = -20
       expect(result.page).toBe(0);
-      expect(mockGradeHistoryModel.find().sort().skip).toHaveBeenCalledWith(-20);
+      expect(mockGradeHistoryModel.find().sort().skip).toHaveBeenCalledWith(
+        -20,
+      );
     });
   });
 });

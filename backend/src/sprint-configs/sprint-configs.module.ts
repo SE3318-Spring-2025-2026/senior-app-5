@@ -10,10 +10,7 @@ import {
   Deliverable,
   DeliverableSchema,
 } from '../deliverables/schemas/deliverable.schema';
-import {
-  Schedule,
-  ScheduleSchema,
-} from '../advisors/schemas/schedule.schema';
+import { Schedule, ScheduleSchema } from '../advisors/schemas/schedule.schema';
 
 @Module({
   imports: [

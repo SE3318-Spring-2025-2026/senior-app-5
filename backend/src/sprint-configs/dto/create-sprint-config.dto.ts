@@ -12,11 +12,18 @@ import {
 } from 'class-validator';
 
 export class DeliverableMappingDto {
-  @ApiProperty({ format: 'uuid', description: 'Deliverable ID (must exist in D1)' })
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Deliverable ID (must exist in D1)',
+  })
   @IsUUID()
   deliverableId!: string;
 
-  @ApiProperty({ minimum: 0, maximum: 100, description: 'Contribution percentage (0–100)' })
+  @ApiProperty({
+    minimum: 0,
+    maximum: 100,
+    description: 'Contribution percentage (0–100)',
+  })
   @IsNumber()
   @Min(0)
   @Max(100)
@@ -24,11 +31,17 @@ export class DeliverableMappingDto {
 }
 
 export class CreateSprintConfigDto {
-  @ApiProperty({ format: 'uuid', description: 'Sprint ID — must exist in the Schedule API' })
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Sprint ID — must exist in the Schedule API',
+  })
   @IsUUID()
   sprintId!: string;
 
-  @ApiProperty({ minimum: 0, description: 'Target story points for this sprint' })
+  @ApiProperty({
+    minimum: 0,
+    description: 'Target story points for this sprint',
+  })
   @IsInt()
   @Min(0)
   targetStoryPoints!: number;

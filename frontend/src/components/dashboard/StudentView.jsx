@@ -80,8 +80,18 @@ const StudentView = ({ user }) => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <StatCard icon={Users} label="My Group" value="1 Active" iconColor="text-blue-400" />
-        <StatCard icon={Mail} label="Pending Invites" value="3 New" iconColor="text-yellow-400" />
+        <StatCard
+          icon={Users}
+          label="My Group"
+          value={user?.teamId || user?.groupId ? 'Active' : 'None'}
+          iconColor="text-blue-400"
+        />
+        <StatCard
+          icon={Mail}
+          label="Group Status"
+          value={user?.teamId || user?.groupId ? 'Enrolled' : 'Not Enrolled'}
+          iconColor="text-yellow-400"
+        />
       </div>
 
       <SubmissionChecklist />

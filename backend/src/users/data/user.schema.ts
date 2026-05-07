@@ -6,7 +6,9 @@ export type UserDocument = HydratedDocument<User>;
 
 @Schema({ timestamps: true })
 export class User {
-  // TODO - Add name field and make it required once all users have a name in the database
+  @Prop({ trim: true })
+  name?: string;
+
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email!: string;
 
@@ -41,13 +43,12 @@ export class User {
 
   @Prop()
   passwordResetTokenExpiresAt?: Date;
-  
+
   @Prop()
   refreshTokenHash?: string;
 
   @Prop()
   refreshTokenExpiresAt?: Date;
-
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

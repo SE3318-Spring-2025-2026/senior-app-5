@@ -28,6 +28,10 @@ import {
 } from '../story-points/schemas/story-point-record.schema';
 import { DeliverablesModule } from '../deliverables/deliverables.module';
 import { Group, GroupSchema } from '../groups/group.entity';
+import {
+  Committee,
+  CommitteeSchema,
+} from '../committees/schemas/committee.schema';
 
 @Module({
   imports: [
@@ -41,6 +45,7 @@ import { Group, GroupSchema } from '../groups/group.entity';
       { name: SprintEvaluation.name, schema: SprintEvaluationSchema },
       { name: SprintConfig.name, schema: SprintConfigSchema },
       { name: StoryPointRecord.name, schema: StoryPointRecordSchema },
+      { name: Committee.name, schema: CommitteeSchema },
     ]),
   ],
   controllers: [GradesController],

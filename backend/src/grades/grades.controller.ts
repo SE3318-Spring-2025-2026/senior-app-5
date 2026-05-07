@@ -21,6 +21,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiConflictResponse,
@@ -129,6 +130,37 @@ export class GradesController {
   }
 
   @ApiOperation({
+    operationId: 'listDeliverableEvaluations',
+    summary: 'List deliverable evaluations with optional filters',
+  })
+  @ApiOkResponse({
+    description: 'Deliverable evaluations returned successfully.',
+  })
+  @ApiQuery({ name: 'groupId', required: false, type: String })
+  @ApiQuery({ name: 'deliverableId', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
+  @Get('deliverable-evaluations')
+  async listDeliverableEvaluations(
+    @Query('groupId') groupId?: string,
+    @Query('deliverableId') deliverableId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.gradesService.listDeliverableEvaluations(
+      { groupId, deliverableId },
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+    );
+  }
+
+  @ApiOperation({
     operationId: 'getDeliverableEvaluation',
     summary: 'Get deliverable evaluation by ID',
   })
@@ -213,13 +245,41 @@ export class GradesController {
     summary: 'Calculate and persist final grades for a group',
   })
   @ApiOkResponse({ type: GradeCalculationResultDto })
-  @ApiConflictResponse({ description: 'Final grade already exists and force=false' })
-  @ApiUnprocessableEntityResponse({ description: 'Missing preconditions (evaluations not complete, config missing, etc)' })
+  @ApiConflictResponse({
+    description: 'Final grade already exists and force=false',
+  })
+  @ApiUnprocessableEntityResponse({
+    description:
+      'Missing preconditions (evaluations not complete, config missing, etc)',
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   @ApiInternalServerErrorResponse({
     description: 'Unexpected internal failure',
   })
+  @ApiOperation({
+    operationId: 'aggregateCommitteeGrades',
+    summary:
+      'Aggregate all deliverable evaluation grades for groups in a committee',
+  })
+  @ApiOkResponse({
+    description: 'Committee grade aggregation returned successfully.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
+  @HttpCode(HttpStatus.OK)
+  @Get('committees/:committeeId/grades')
+  async aggregateCommitteeGrades(
+    @Param('committeeId', ParseUUIDPipe) committeeId: string,
+  ) {
+    return this.gradesService.aggregateCommitteeGrades(committeeId);
+  }
+
   @Roles(Role.Coordinator)
   @HttpCode(HttpStatus.OK)
   @Post('groups/:groupId/calculate')
@@ -228,17 +288,13 @@ export class GradesController {
     @Body() dto: CalculateGradeDto,
     @Req() req: RequestWithUser,
   ): Promise<GradeCalculationResultDto> {
-    const triggeredBy = this.getJwtStudentId(req);
+    const triggeredBy = this.getRequiredJwtUserId(req);
     const correlationId = this.getCorrelationId(req);
-    
-    // In a real scenario, this would use a proper user ID. For our MVP, we extract
-    // what we can or fall back to 'SYSTEM'
-    const finalTriggeredBy = triggeredBy ?? 'SYSTEM';
-    
+
     return this.gradesService.calculateGrade(
       groupId,
       dto,
-      finalTriggeredBy,
+      triggeredBy,
       correlationId,
     );
   }

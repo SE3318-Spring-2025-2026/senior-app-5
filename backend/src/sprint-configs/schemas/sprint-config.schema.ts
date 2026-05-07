@@ -12,8 +12,9 @@ export class SprintDeliverableMapping {
   contributionPercentage!: number;
 }
 
-export const SprintDeliverableMappingSchema =
-  SchemaFactory.createForClass(SprintDeliverableMapping);
+export const SprintDeliverableMappingSchema = SchemaFactory.createForClass(
+  SprintDeliverableMapping,
+);
 
 @Schema({ collection: 'sprintdefinitions', timestamps: true })
 export class SprintConfigEntry {

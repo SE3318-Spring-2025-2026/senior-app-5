@@ -38,7 +38,6 @@ import {
 } from '../groups/group.entity';
 import {
   DeliverableEvaluation,
-  DeliverableGrade,
   DeliverableEvaluationDocument,
   DeliverableEvaluationStatus,
   deliverableGradeValue,
@@ -57,6 +56,10 @@ import {
 } from '../story-points/schemas/story-point-record.schema';
 import { DeliverableEvaluationResponseDto } from './dto/deliverable-evaluation-response.dto';
 import { CreateDeliverableEvaluationDto } from './dto/create-deliverable-evaluation.dto';
+import {
+  Committee,
+  CommitteeDocument,
+} from '../committees/schemas/committee.schema';
 
 @Injectable()
 export class GradesService {
@@ -81,6 +84,8 @@ export class GradesService {
     private readonly sprintConfigModel: Model<SprintConfigDocument>,
     @InjectModel(StoryPointRecord.name)
     private readonly storyPointRecordModel: Model<StoryPointRecordDocument>,
+    @InjectModel(Committee.name)
+    private readonly committeeModel: Model<CommitteeDocument>,
   ) {}
 
   // ────────────────────────────────────────────────────────────────
@@ -187,6 +192,60 @@ export class GradesService {
     }
   }
 
+  async aggregateCommitteeGrades(committeeId: string): Promise<{
+    committeeId: string;
+    groups: {
+      groupId: string;
+      evaluations: DeliverableEvaluationResponseDto[];
+      averageGrade: number | null;
+    }[];
+  }> {
+    const committee = await this.committeeModel
+      .findOne({ id: committeeId })
+      .lean()
+      .exec();
+    if (!committee) {
+      throw new NotFoundException(
+        `Committee with ID '${committeeId}' not found.`,
+      );
+    }
+
+    const groupIds = (committee.groups as { groupId: string }[]).map(
+      (g) => g.groupId,
+    );
+
+    const groups = await Promise.all(
+      groupIds.map(async (groupId) => {
+        const evals = await this.deliverableEvaluationModel
+          .find({ groupId })
+          .sort({ createdAt: -1 })
+          .lean()
+          .exec();
+
+        const dtos = evals.map((e) =>
+          this.toDeliverableEvaluationResponseDto(
+            e as unknown as DeliverableEvaluation & {
+              createdAt: Date;
+              updatedAt: Date;
+            },
+          ),
+        );
+
+        const averageGrade =
+          dtos.length > 0
+            ? dtos.reduce(
+                (sum, e) => sum + deliverableGradeValue(e.deliverableGrade),
+                0,
+              ) / dtos.length
+            : null;
+
+        return { groupId, evaluations: dtos, averageGrade };
+      }),
+    );
+
+    return { committeeId, groups };
+  }
+
   async recordDeliverableEvaluation(
     dto: CreateDeliverableEvaluationDto,
     gradedBy: string,
@@ -201,7 +260,10 @@ export class GradesService {
       );
     }
 
-    const group = await this.groupModel.findOne({ groupId: dto.groupId }).lean().exec();
+    const group = await this.groupModel
+      .findOne({ groupId: dto.groupId })
+      .lean()
+      .exec();
     if (!group || group.assignmentStatus !== GroupAssignmentStatus.ASSIGNED) {
       throw new BadRequestException(
         `Group '${dto.groupId}' must exist and be in ASSIGNED state.`,
@@ -213,12 +275,17 @@ export class GradesService {
         groupId: dto.groupId,
         deliverableId: dto.deliverableId,
         deliverableGrade: dto.deliverableGrade,
-        rawGrade: deliverableGradeValue(dto.deliverableGrade as DeliverableGrade),
+        rawGrade: deliverableGradeValue(dto.deliverableGrade),
         status: DeliverableEvaluationStatus.GRADED,
         gradedBy,
       });
 
-      return this.toDeliverableEvaluationResponseDto(created.toObject() as unknown as DeliverableEvaluation & { createdAt: Date; updatedAt: Date });
+      return this.toDeliverableEvaluationResponseDto(
+        created.toObject() as unknown as DeliverableEvaluation & {
+          createdAt: Date;
+          updatedAt: Date;
+        },
+      );
     } catch (error) {
       const isDuplicateKey =
         typeof error === 'object' &&
@@ -238,6 +305,47 @@ export class GradesService {
     }
   }
 
+  async listDeliverableEvaluations(
+    filters: { groupId?: string; deliverableId?: string },
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    data: DeliverableEvaluationResponseDto[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const query: Record<string, string> = {};
+    if (filters.groupId) query.groupId = filters.groupId;
+    if (filters.deliverableId) query.deliverableId = filters.deliverableId;
+
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+      this.deliverableEvaluationModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.deliverableEvaluationModel.countDocuments(query).exec(),
+    ]);
+
+    return {
+      data: docs.map((d) =>
+        this.toDeliverableEvaluationResponseDto(
+          d as unknown as DeliverableEvaluation & {
+            createdAt: Date;
+            updatedAt: Date;
+          },
+        ),
+      ),
+      total,
+      page,
+      limit,
+    };
+  }
+
   async getDeliverableEvaluation(
     evaluationId: string,
   ): Promise<DeliverableEvaluationResponseDto> {
@@ -252,7 +360,12 @@ export class GradesService {
       );
     }
 
-    return this.toDeliverableEvaluationResponseDto(evaluation as unknown as DeliverableEvaluation & { createdAt: Date; updatedAt: Date });
+    return this.toDeliverableEvaluationResponseDto(
+      evaluation as unknown as DeliverableEvaluation & {
+        createdAt: Date;
+        updatedAt: Date;
+      },
+    );
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -334,7 +447,11 @@ export class GradesService {
     }
 
     this.logger.log(
-      JSON.stringify({ event: 'step_8_3_complete', groupId, correlationId: correlationId ?? null }),
+      JSON.stringify({
+        event: 'step_8_3_complete',
+        groupId,
+        correlationId: correlationId ?? null,
+      }),
     );
 
     // ── Step 8.4: Apply deliverable weights to raw committee grades ──
@@ -382,8 +499,11 @@ export class GradesService {
     let teamGradeRaw = 0;
 
     for (const deliverableEval of deliverableEvals) {
-      const deliverable = deliverableConfigMap.get(deliverableEval.deliverableId)!;
-      const teamScalar = deliverableScalarMap.get(deliverableEval.deliverableId) ?? 0;
+      const deliverable = deliverableConfigMap.get(
+        deliverableEval.deliverableId,
+      )!;
+      const teamScalar =
+        deliverableScalarMap.get(deliverableEval.deliverableId) ?? 0;
       const scaledGrade =
         deliverableEval.rawGrade *
         teamScalar *
@@ -405,7 +525,12 @@ export class GradesService {
     const teamGrade = Number(Math.min(100, teamGradeRaw).toFixed(2));
 
     this.logger.log(
-      JSON.stringify({ event: 'step_8_4_complete', groupId, teamGrade, correlationId: correlationId ?? null }),
+      JSON.stringify({
+        event: 'step_8_4_complete',
+        groupId,
+        teamGrade,
+        correlationId: correlationId ?? null,
+      }),
     );
 
     // ── Step 8.5: Compute per-student individual allowance ratio ────
@@ -424,16 +549,27 @@ export class GradesService {
     // Aggregate completed/target points per student across all sprints.
     // Priority (OVERRIDE > JIRA_GITHUB > MANUAL) is already enforced at write time
     // by StoryPointsService — so we simply sum all records per student.
-    const studentTotals = new Map<string, { completed: number; target: number }>();
+    const studentTotals = new Map<
+      string,
+      { completed: number; target: number }
+    >();
     for (const record of storyPointRecords) {
-      const totals = studentTotals.get(record.studentId) ?? { completed: 0, target: 0 };
+      const totals = studentTotals.get(record.studentId) ?? {
+        completed: 0,
+        target: 0,
+      };
       totals.completed += record.completedPoints;
       totals.target += record.targetPoints;
       studentTotals.set(record.studentId, totals);
     }
 
     this.logger.log(
-      JSON.stringify({ event: 'step_8_5_complete', groupId, studentCount: studentTotals.size, correlationId: correlationId ?? null }),
+      JSON.stringify({
+        event: 'step_8_5_complete',
+        groupId,
+        studentCount: studentTotals.size,
+        correlationId: correlationId ?? null,
+      }),
     );
 
     // ── Step 8.6: Combine and persist to D3 / D4 / D5 ─────────────
@@ -444,9 +580,7 @@ export class GradesService {
       // D3 – Upsert individual student grades (keyed by studentId + groupId)
       for (const [studentId, totals] of studentTotals) {
         const individualAllowanceRatio =
-          totals.target > 0
-            ? Math.min(1, totals.completed / totals.target)
-            : 0;
+          totals.target > 0 ? Math.min(1, totals.completed / totals.target) : 0;
         const finalGrade = Number(
           (teamGrade * individualAllowanceRatio).toFixed(2),
         );
@@ -454,7 +588,13 @@ export class GradesService {
         await this.studentFinalGradeModel
           .findOneAndUpdate(
             { studentId, groupId },
-            { studentId, groupId, individualAllowanceRatio, finalGrade, calculatedAt },
+            {
+              studentId,
+              groupId,
+              individualAllowanceRatio,
+              finalGrade,
+              calculatedAt,
+            },
             { upsert: true, new: true },
           )
           .exec();
@@ -491,7 +631,10 @@ export class GradesService {
       await this.gradeHistoryEntryModel.create({
         groupId,
         teamGrade,
-        gradeComponents: { scaledDeliverableGrades, teamScalar: overallTeamScalar },
+        gradeComponents: {
+          scaledDeliverableGrades,
+          teamScalar: overallTeamScalar,
+        },
         triggeredBy,
         changedAt: calculatedAt,
       });

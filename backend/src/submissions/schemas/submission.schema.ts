@@ -29,12 +29,14 @@ export class Submission {
       originalName: { type: String, required: true },
       mimeType: { type: String, required: true },
       uploadedAt: { type: Date, default: Date.now },
+      storagePath: { type: String, required: false },
     },
   ])
   documents?: Array<{
     originalName: string;
     mimeType: string;
     uploadedAt: Date;
+    storagePath?: string;
   }>;
 }
 

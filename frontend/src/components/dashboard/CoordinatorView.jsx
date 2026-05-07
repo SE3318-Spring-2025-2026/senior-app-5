@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from '../../pages/DashboardPage.module.css';
+import StoryPointsPanel from './StoryPointsPanel';
 
 const CoordinatorView = ({ user }) => {
   
@@ -43,6 +44,7 @@ const CoordinatorView = ({ user }) => {
           </button>
         </div>
       </div>
+      <StoryPointsPanel canOverride />
     </div>
   );
 };

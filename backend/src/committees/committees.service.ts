@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   HttpException,
   Injectable,
@@ -8,9 +9,10 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Committee, CommitteeDocument } from './schemas/committee.schema';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
+import { UpdateCommitteeDto } from './dto/update-committee.dto';
 import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
 import {
   CommitteeGroupListItemDto,
@@ -35,6 +37,16 @@ import {
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
 import { Submission, SubmissionDocument } from '../submissions/schemas/submission.schema';
+import { AddJuryMemberDto } from './dto/add-jury-member.dto';
+import { JuryMemberResponseDto } from './dto/jury-member-response.dto';
+import { User, UserDocument } from '../users/data/user.schema';
+import { JuryMemberPageDto } from './dto/jury-member-page.dto';
+import { AddCommitteeAdvisorDto } from './dto/add-committee-advisor.dto';
+import { AddCommitteeAdvisorResponseDto } from './dto/add-committee-advisor-response.dto';
+import {
+  AdvisorGradingScopeItemDto,
+  AdvisorGradingScopePageDto,
+} from './dto/advisor-grading-scope-page.dto';
 
 @Injectable()
 export class CommitteesService {
@@ -61,6 +73,16 @@ export class CommitteesService {
     coordinatorId: string,
     correlationId?: string,
   ): Promise<void> {
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
+  ) {}
+
+  async addJuryMember(
+    committeeId: string,
+    dto: AddJuryMemberDto,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<JuryMemberResponseDto> {
     try {
       const committee = await this.committeeModel
         .findOne({ id: committeeId })
@@ -112,6 +134,56 @@ export class CommitteesService {
         cascadedGroupCount: ((committee.groups as unknown[]) ?? []).length,
         correlationId,
       });
+      const userFilter = Types.ObjectId.isValid(dto.userId)
+        ? { _id: new Types.ObjectId(dto.userId) }
+        : { id: dto.userId };
+      const userExists = await this.userModel
+        .exists(userFilter)
+        .then((result) => result !== null);
+      if (!userExists) {
+        throw new NotFoundException(`User with ID '${dto.userId}' not found.`);
+      }
+
+      const juryList = (committee.jury as Array<{ userId?: string }>) ?? [];
+      const alreadyAssigned = juryList.some((jury) => jury.userId === dto.userId);
+      if (alreadyAssigned) {
+        throw new ConflictException('User is already assigned as a jury member.');
+      }
+
+      const assignedAt = dto.assignedAt ? new Date(dto.assignedAt) : new Date();
+
+      const updateResult = await this.committeeModel
+        .updateOne(
+          { id: committeeId, 'jury.userId': { $ne: dto.userId } },
+          {
+            $push: {
+              jury: {
+                userId: dto.userId,
+                assignedAt,
+                assignedByUserId: coordinatorId,
+              },
+            },
+          },
+        )
+        .exec();
+
+      if (updateResult.modifiedCount === 0) {
+        throw new ConflictException('User is already assigned as a jury member.');
+      }
+
+      this.logger.log({
+        event: 'jury_member_added',
+        committeeId,
+        addedUserId: dto.userId,
+        coordinatorId,
+        correlationId,
+      });
+
+      return {
+        userId: dto.userId,
+        assignedAt,
+        assignedByUserId: coordinatorId,
+      };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) {
         throw error;
@@ -120,12 +192,16 @@ export class CommitteesService {
       this.logger.error({
         event: 'committee_delete_failed',
         committeeId,
+        event: 'jury_member_add_failed',
+        committeeId,
+        userId: dto.userId,
         coordinatorId,
         correlationId,
         error: (error as Error).message,
       });
       throw new InternalServerErrorException(
         'Failed to delete committee due to an unexpected error.',
+        'Failed to add jury member due to an unexpected error.',
       );
     }
   }
@@ -711,6 +787,218 @@ export class CommitteesService {
       throw new InternalServerErrorException(
         'Failed to remove group from committee due to an unexpected error.',
       );
+    }
+  }
+
+  async updateCommittee(
+    committeeId: string,
+    dto: UpdateCommitteeDto,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<CommitteeDocument> {
+    if (!dto.name) {
+      throw new BadRequestException('At least one field must be provided for update.');
+    }
+    try {
+      const committee = await this.committeeModel
+        .findOneAndUpdate(
+          { id: committeeId },
+          { $set: { name: dto.name } },
+          { new: true },
+        )
+        .exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+      this.logger.log({ event: 'committee_updated', committeeId, coordinatorId, correlationId });
+      return committee;
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) throw error;
+      this.logger.error({ event: 'committee_update_failed', committeeId, correlationId, error: (error as Error).message });
+      throw new InternalServerErrorException('Failed to update committee due to an unexpected error.');
+    }
+  }
+
+  async deleteCommittee(
+    committeeId: string,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<void> {
+    try {
+      const result = await this.committeeModel.deleteOne({ id: committeeId }).exec();
+      if (result.deletedCount === 0) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+      this.logger.log({ event: 'committee_deleted', committeeId, coordinatorId, correlationId });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({ event: 'committee_delete_failed', committeeId, correlationId, error: (error as Error).message });
+      throw new InternalServerErrorException('Failed to delete committee due to an unexpected error.');
+    }
+  }
+
+  async listJuryMembers(
+    committeeId: string,
+    query: ListCommitteeAdvisorsQueryDto,
+    correlationId?: string,
+  ): Promise<JuryMemberPageDto> {
+    try {
+      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+      const skip = (page - 1) * limit;
+
+      const allJury = (committee.jury as any[]) ?? [];
+      const total = allJury.length;
+      const data: JuryMemberResponseDto[] = allJury.slice(skip, skip + limit).map((j) => ({
+        userId: j.userId as string,
+        assignedAt: j.assignedAt as Date,
+        assignedByUserId: j.assignedByUserId as string,
+      }));
+
+      this.logger.log({ event: 'jury_members_listed', committeeId, page, limit, resultCount: data.length, correlationId });
+      return { data, total, page, limit };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({ event: 'jury_members_list_failed', committeeId, correlationId, error: (error as Error).message });
+      throw new InternalServerErrorException('Failed to list jury members due to an unexpected error.');
+    }
+  }
+
+  async addJuryMember(
+    committeeId: string,
+    dto: AddJuryMemberDto,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<JuryMemberResponseDto> {
+    try {
+      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+
+      const alreadyMember = ((committee.jury as any[]) ?? []).some((j) => j.userId === dto.userId);
+      if (alreadyMember) {
+        throw new ConflictException(`User '${dto.userId}' is already a jury member on this committee.`);
+      }
+
+      const assignedAt = dto.assignedAt ? new Date(dto.assignedAt) : new Date();
+      const entry = { userId: dto.userId, assignedAt, assignedByUserId: coordinatorId };
+
+      await this.committeeModel
+        .updateOne({ id: committeeId }, { $push: { jury: entry } })
+        .exec();
+
+      this.logger.log({ event: 'jury_member_added', committeeId, userId: dto.userId, coordinatorId, correlationId });
+      return { userId: dto.userId, assignedAt, assignedByUserId: coordinatorId };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
+      this.logger.error({ event: 'jury_member_add_failed', committeeId, userId: dto.userId, correlationId, error: (error as Error).message });
+      throw new InternalServerErrorException('Failed to add jury member due to an unexpected error.');
+    }
+  }
+
+  async addCommitteeAdvisor(
+    committeeId: string,
+    dto: AddCommitteeAdvisorDto,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<AddCommitteeAdvisorResponseDto> {
+    try {
+      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+
+      type AdvisorEntry = { advisorId?: string; userId?: string; advisorUserId?: string };
+      const advisors = (committee.advisors as AdvisorEntry[]) ?? [];
+      const alreadyLinked = advisors.some(
+        (a) => a.advisorId === dto.advisorId || a.userId === dto.advisorId || a.advisorUserId === dto.advisorId,
+      );
+      if (alreadyLinked) {
+        throw new ConflictException(`Advisor '${dto.advisorId}' is already linked to this committee.`);
+      }
+
+      const assignedAt = new Date();
+      const entry = {
+        advisorId: dto.advisorId,
+        assignmentSource: dto.assignmentSource,
+        assignedAt,
+        assignedByUserId: coordinatorId,
+      };
+
+      await this.committeeModel
+        .updateOne({ id: committeeId }, { $push: { advisors: entry } })
+        .exec();
+
+      this.logger.log({ event: 'committee_advisor_added', committeeId, advisorId: dto.advisorId, coordinatorId, correlationId });
+      return { advisorId: dto.advisorId, assignmentSource: dto.assignmentSource, assignedAt, assignedByUserId: coordinatorId };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
+      this.logger.error({ event: 'committee_advisor_add_failed', committeeId, advisorId: dto.advisorId, correlationId, error: (error as Error).message });
+      throw new InternalServerErrorException('Failed to add committee advisor due to an unexpected error.');
+    }
+  }
+
+  async getAdvisorGradingScope(
+    committeeId: string,
+    advisorUserId: string,
+    query: ListCommitteeAdvisorsQueryDto,
+    correlationId?: string,
+  ): Promise<AdvisorGradingScopePageDto> {
+    try {
+      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+
+      type AdvisorEntry = { advisorId?: string; userId?: string; advisorUserId?: string };
+      const advisorLinked = ((committee.advisors as AdvisorEntry[]) ?? []).some(
+        (a) => a.advisorId === advisorUserId || a.userId === advisorUserId || a.advisorUserId === advisorUserId,
+      );
+      if (!advisorLinked) {
+        throw new NotFoundException(`Advisor '${advisorUserId}' is not a member of committee '${committeeId}'.`);
+      }
+
+      const committeeGroups = (committee.groups as any[]) ?? [];
+      const groupIds = committeeGroups.map((g) => g.groupId as string);
+
+      const groupDocs = groupIds.length > 0
+        ? await this.groupModel.find({ groupId: { $in: groupIds } }).lean<Group[]>().exec()
+        : [];
+
+      const advisorMap = new Map<string, string | null>(
+        groupDocs.map((g) => [g.groupId, g.assignedAdvisorId ?? null]),
+      );
+
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+      const skip = (page - 1) * limit;
+      const total = committeeGroups.length;
+
+      const data: AdvisorGradingScopeItemDto[] = committeeGroups
+        .slice(skip, skip + limit)
+        .map((g) => {
+          const primaryAdvisor = advisorMap.get(g.groupId as string) ?? null;
+          const isOwnGroup = primaryAdvisor === advisorUserId;
+          return {
+            groupId: g.groupId as string,
+            assignedAt: g.assignedAt as Date,
+            isOwnGroup,
+            originalAdvisorUserId: isOwnGroup ? null : primaryAdvisor,
+          };
+        });
+
+      this.logger.log({ event: 'advisor_grading_scope_listed', committeeId, advisorUserId, page, limit, resultCount: data.length, correlationId });
+      return { data, total, page, limit };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error({ event: 'advisor_grading_scope_failed', committeeId, advisorUserId, correlationId, error: (error as Error).message });
+      throw new InternalServerErrorException('Failed to retrieve advisor grading scope due to an unexpected error.');
     }
   }
 }

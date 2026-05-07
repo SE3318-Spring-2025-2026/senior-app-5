@@ -9,7 +9,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Committee, CommitteeDocument } from './schemas/committee.schema';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
 import { UpdateCommitteeDto } from './dto/update-committee.dto';
@@ -38,6 +38,7 @@ import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
 import { AddJuryMemberDto } from './dto/add-jury-member.dto';
 import { JuryMemberResponseDto } from './dto/jury-member-response.dto';
+import { User, UserDocument } from '../users/data/user.schema';
 import { JuryMemberPageDto } from './dto/jury-member-page.dto';
 import { AddCommitteeAdvisorDto } from './dto/add-committee-advisor.dto';
 import { AddCommitteeAdvisorResponseDto } from './dto/add-committee-advisor-response.dto';
@@ -57,7 +58,95 @@ export class CommitteesService {
     private readonly groupModel: Model<GroupDocument>,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
+
+  async addJuryMember(
+    committeeId: string,
+    dto: AddJuryMemberDto,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<JuryMemberResponseDto> {
+    try {
+      const committee = await this.committeeModel
+        .findOne({ id: committeeId })
+        .exec();
+
+      if (!committee) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      const userFilter = Types.ObjectId.isValid(dto.userId)
+        ? { _id: new Types.ObjectId(dto.userId) }
+        : { id: dto.userId };
+      const userExists = await this.userModel
+        .exists(userFilter)
+        .then((result) => result !== null);
+      if (!userExists) {
+        throw new NotFoundException(`User with ID '${dto.userId}' not found.`);
+      }
+
+      const juryList = (committee.jury as Array<{ userId?: string }>) ?? [];
+      const alreadyAssigned = juryList.some((jury) => jury.userId === dto.userId);
+      if (alreadyAssigned) {
+        throw new ConflictException('User is already assigned as a jury member.');
+      }
+
+      const assignedAt = dto.assignedAt ? new Date(dto.assignedAt) : new Date();
+
+      const updateResult = await this.committeeModel
+        .updateOne(
+          { id: committeeId, 'jury.userId': { $ne: dto.userId } },
+          {
+            $push: {
+              jury: {
+                userId: dto.userId,
+                assignedAt,
+                assignedByUserId: coordinatorId,
+              },
+            },
+          },
+        )
+        .exec();
+
+      if (updateResult.modifiedCount === 0) {
+        throw new ConflictException('User is already assigned as a jury member.');
+      }
+
+      this.logger.log({
+        event: 'jury_member_added',
+        committeeId,
+        addedUserId: dto.userId,
+        coordinatorId,
+        correlationId,
+      });
+
+      return {
+        userId: dto.userId,
+        assignedAt,
+        assignedByUserId: coordinatorId,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ConflictException) {
+        throw error;
+      }
+
+      this.logger.error({
+        event: 'jury_member_add_failed',
+        committeeId,
+        userId: dto.userId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to add jury member due to an unexpected error.',
+      );
+    }
+  }
 
   async listCommittees(
     query: ListCommitteesQueryDto,

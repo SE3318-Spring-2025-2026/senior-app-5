@@ -5,6 +5,7 @@ import { CommitteesService } from './committees.service';
 import { CommitteesController } from './committees.controller';
 import { Group, GroupSchema } from '../groups/group.entity';
 import { Schedule, ScheduleSchema } from '../advisors/schemas/schedule.schema';
+import { User, UserSchema } from '../users/data/user.schema';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { Schedule, ScheduleSchema } from '../advisors/schemas/schedule.schema';
       { name: Committee.name, schema: CommitteeSchema },
       { name: Group.name, schema: GroupSchema },
       { name: Schedule.name, schema: ScheduleSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   controllers: [CommitteesController],

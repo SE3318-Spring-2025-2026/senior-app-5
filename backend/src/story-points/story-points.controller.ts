@@ -87,7 +87,7 @@ export class StoryPointsController {
     return this.storyPointsService.getRecords(groupId, sprintId);
   }
 
-  @Patch('override')
+  @Patch(':studentId')
   @Roles(Role.Coordinator)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -104,10 +104,11 @@ export class StoryPointsController {
   async overrideStoryPoints(
     @Param('groupId', new ParseUUIDPipe()) groupId: string,
     @Param('sprintId', new ParseUUIDPipe()) sprintId: string,
+    @Param('studentId', new ParseUUIDPipe()) studentId: string,
     @Body() dto: OverrideStoryPointsDto,
     @Request() req: RequestWithUser,
   ): Promise<StudentStoryPointRecordDto> {
     const requestedBy = req.user.userId ?? req.user.sub ?? 'unknown';
-    return this.storyPointsService.override(groupId, sprintId, dto, requestedBy);
+    return this.storyPointsService.override(groupId, sprintId, studentId, dto, requestedBy);
   }
 }

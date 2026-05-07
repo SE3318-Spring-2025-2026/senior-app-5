@@ -11,9 +11,10 @@ export async function createSchedule(payload) {
   }
 }
 
-export async function getActiveSchedule() {
+export async function getActiveSchedule(phase) {
   try {
-    const response = await apiClient.get(apiConfig.endpoints.schedulesActive)
+    const params = phase ? { phase } : {}
+    const response = await apiClient.get(apiConfig.endpoints.schedulesActive, { params })
     return response.data
   } catch (error) {
     throw getHttpErrorDetails(error, 'Unable to fetch active schedule.')

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import authService from '../utils/authService';
 import GithubConnect from '../components/GithubConnect';
+import { PageHeader } from '../components/ui';
 
 const IntegrationsPage = () => {
   const [userId, setUserId] = useState(null);
@@ -25,48 +26,31 @@ const IntegrationsPage = () => {
   }, []);
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Integrations</h1>
-        <p style={styles.subtitle}>
-          Connect external services to your account.
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        title="Integrations"
+        subtitle="Connect external services to your account."
+      />
 
-      {loadError && <div style={styles.errorBox}>{loadError}</div>}
+      {loadError && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mb-4">
+          {loadError}
+        </div>
+      )}
 
-      <div style={styles.grid}>
+      <div className="max-w-lg">
         {userId ? (
           <GithubConnect userId={userId} />
         ) : (
-          !loadError && <div style={styles.skeleton}>Loading…</div>
+          !loadError && (
+            <div className="rounded-2xl border border-[#1e293b] bg-[#111827] px-5 py-8 text-center text-sm text-slate-500">
+              Loading…
+            </div>
+          )
         )}
       </div>
     </div>
   );
-};
-
-const styles = {
-  wrapper: { color: '#e2e8f0' },
-  header: { marginBottom: 24 },
-  title: { fontSize: 28, fontWeight: 700, margin: 0, color: '#f8fafc' },
-  subtitle: { color: '#94a3b8', marginTop: 6, fontSize: 14 },
-  grid: { display: 'grid', gridTemplateColumns: 'minmax(0, 480px)', gap: 16 },
-  skeleton: {
-    border: '1px solid #1e293b',
-    borderRadius: 12,
-    padding: 20,
-    backgroundColor: '#0f172a',
-    color: '#94a3b8',
-  },
-  errorBox: {
-    backgroundColor: '#450a0a',
-    color: '#fca5a5',
-    border: '1px solid #7f1d1d',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
 };
 
 export default IntegrationsPage;

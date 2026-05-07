@@ -1,71 +1,251 @@
-.container {
-  padding: 20px;
-  animation: fadeIn 0.5s ease-in;
+/* ── Layout ──────────────────────────────────────────────── */
+.roleContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
 }
 
-.title {
-  color: #38bdf8; 
-  font-size: 2rem;
-  font-weight: 800;
-  margin-bottom: 10px;
-  letter-spacing: -0.5px;
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 12px;
 }
 
-.welcomeText {
-  color: #94a3b8;
-  font-size: 1.1rem;
-  margin-bottom: 30px;
-}
-
+/* ── Stats grid ──────────────────────────────────────────── */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
 }
 
 .statCard {
-  background-color: #1e293b;
-  border: 1px solid #334155;
+  background: #111827;
+  border: 1px solid #1e293b;
   border-radius: 12px;
-  padding: 24px;
-  transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-.statCard:hover {
-  transform: translateY(-5px);
-  border-color: #38bdf8;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .cardTitle {
+  font-size: 0.72rem;
   color: #64748b;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
   margin-bottom: 8px;
-}
-
-.cardValue {
-  color: #f8fafc;
-  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   font-weight: 700;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.cardValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #f1f5f9;
 }
-.sectionTitle { color: #f8fafc; margin-bottom: 20px; font-size: 1.5rem; }
-.infoBox { background: #0f172a; padding: 20px; border-radius: 12px; margin-top: 30px; border: 1px dashed #334155; }
-.actionButton { background: #38bdf8; color: #0f172a; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-.customTable { width: 100%; border-collapse: collapse; margin-top: 15px; color: #94a3b8; }
-.customTable th, .customTable td { padding: 12px; text-align: left; border-bottom: 1px solid #1e293b; }
-.smallButton { background: #1e293b; color: #38bdf8; border: 1px solid #38bdf8; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-.errorBox { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 1.5rem; border-radius: 8px; text-align: center; margin-top: 2rem; }
-.headerSection { border-bottom: 1px solid #1e293b; padding-bottom: 1.5rem; margin-bottom: 2rem; }
-.contentSection { margin-top: 2rem; }
-.highlight { color: #38bdf8; font-weight: 700; }
-.roleContainer { display: flex; flex-direction: column; gap: 1.5rem; }
-.tableWrapper { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; overflow-x: auto; }
-.secondaryButton { background: transparent; border: 1px solid #334155; color: #94a3b8; }
-.secondaryButton:hover { background: rgba(51, 65, 85, 0.4); color: #f8fafc; }
+
+/* ── Info box ────────────────────────────────────────────── */
+.infoBox {
+  background: #111827;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infoBox h3 {
+  color: #f1f5f9;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.infoBox p {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  background: #6366f1;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.actionButton:hover {
+  background: #4f46e5;
+}
+
+.actionButton:disabled {
+  background: #3730a3;
+  color: #a5b4fc;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+
+.secondaryButton:hover {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.smallButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.smallButton:hover {
+  background: #273549;
+  color: #f1f5f9;
+}
+
+.smallButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Table ───────────────────────────────────────────────── */
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #1e293b;
+  background: #111827;
+}
+
+.customTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+.customTable th,
+.customTable td {
+  padding: 11px 16px;
+  text-align: left;
+  border-bottom: 1px solid #1e293b;
+}
+
+.customTable th {
+  background: #0f172a;
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.customTable tr:last-child td {
+  border-bottom: none;
+}
+
+.customTable tbody tr:hover td {
+  background: #1a2535;
+}
+
+/* ── Story Points Panel ──────────────────────────────────── */
+.storyPointControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+
+.storyPointInput {
+  padding: 7px 12px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+  background: #1e293b;
+  color: #f1f5f9;
+  transition: border-color 0.15s;
+}
+
+.storyPointInput::placeholder {
+  color: #475569;
+}
+
+.storyPointInput:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.storyPointNumberInput {
+  width: 72px;
+  padding: 5px 8px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.storyPointNumberInput:focus {
+  border-color: #6366f1;
+}
+
+.overrideInlineForm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Source badges ───────────────────────────────────────── */
+.sourceBadge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sourceWarning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.sourceSuccess {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.sourceNeutral {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}

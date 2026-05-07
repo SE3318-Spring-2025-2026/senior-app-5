@@ -107,22 +107,23 @@ export class StoryPointsService {
   async override(
     groupId: string,
     sprintId: string,
+    studentId: string,
     dto: OverrideStoryPointsDto,
     requestedBy: string,
   ): Promise<StudentStoryPointRecordDto> {
     const sprintConfig = await this.requireSprintConfig(groupId, sprintId);
 
     const existing = await this.recordModel
-      .findOne({ studentId: dto.studentId, sprintId })
+      .findOne({ studentId, sprintId })
       .exec();
 
     const oldSource = existing?.source ?? 'NONE';
 
     const updated = await this.recordModel
       .findOneAndUpdate(
-        { studentId: dto.studentId, sprintId },
+        { studentId, sprintId },
         {
-          studentId: dto.studentId,
+          studentId,
           groupId,
           sprintId,
           completedPoints: dto.completedPoints,
@@ -138,7 +139,7 @@ export class StoryPointsService {
     }
 
     this.logger.log(
-      `override studentId=${dto.studentId} sprintId=${sprintId} oldSource=${oldSource} newSource=COORDINATOR_OVERRIDE triggeredBy=${requestedBy}`,
+      `override studentId=${studentId} sprintId=${sprintId} oldSource=${oldSource} newSource=COORDINATOR_OVERRIDE triggeredBy=${requestedBy}`,
     );
 
     return this.toRecordDto(updated);

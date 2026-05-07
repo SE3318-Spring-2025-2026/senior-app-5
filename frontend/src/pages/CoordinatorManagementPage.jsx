@@ -120,11 +120,15 @@ function CoordinatorManagementPage() {
   const [advisorInput, setAdvisorInput] = useState('')
   const [groupInput, setGroupInput] = useState('')
 
-  const loadActiveSchedule = useCallback(async () => {
+  const loadActiveSchedule = useCallback(async (phase) => {
+    if (!phase) {
+      setActiveSchedule(null)
+      return
+    }
     setScheduleLoading(true)
     setScheduleStatus(emptyStatus())
     try {
-      const data = await getActiveSchedule()
+      const data = await getActiveSchedule(phase)
       setActiveSchedule(data)
       setScheduleStatus({ message: 'Active schedule loaded successfully.', error: '' })
     } catch (error) {
@@ -207,7 +211,7 @@ function CoordinatorManagementPage() {
     event.preventDefault()
     setScheduleStatus(emptyStatus())
 
-    if (!scheduleForm.phase.trim()) {
+    if (!scheduleForm.phase) {
       setScheduleStatus({ message: '', error: 'Phase is required.' })
       return
     }
@@ -223,12 +227,12 @@ function CoordinatorManagementPage() {
     setScheduleLoading(true)
     try {
       await createSchedule({
-        phase: scheduleForm.phase.trim(),
-        startAt: fromDateInput(scheduleForm.startAt),
-        endAt: fromDateInput(scheduleForm.endAt),
+        phase: scheduleForm.phase,
+        startDatetime: fromDateInput(scheduleForm.startAt),
+        endDatetime: fromDateInput(scheduleForm.endAt),
       })
       setScheduleStatus({ message: 'Schedule created successfully.', error: '' })
-      await loadActiveSchedule()
+      await loadActiveSchedule(scheduleForm.phase)
     } catch (error) {
       setScheduleStatus({ message: '', error: `(${error.status ?? 'N/A'}) ${error.message}` })
     } finally {
@@ -381,13 +385,17 @@ function CoordinatorManagementPage() {
           <form className={styles.form} onSubmit={onCreateSchedule}>
             <label htmlFor="phaseInput">
               Phase
-              <input
+              <select
                 id="phaseInput"
                 value={scheduleForm.phase}
                 onChange={(event) => setScheduleForm((prev) => ({ ...prev, phase: event.target.value }))}
-                placeholder="e.g. COMMITTEE_ASSIGNMENT"
                 required
-              />
+              >
+                <option value="" disabled>Select a phase...</option>
+                <option value="ADVISOR_SELECTION">Advisor Selection</option>
+                <option value="COMMITTEE_ASSIGNMENT">Committee Assignment</option>
+                <option value="SPRINT">Sprint</option>
+              </select>
             </label>
             <label htmlFor="startAtInput">
               Start Date
@@ -413,7 +421,7 @@ function CoordinatorManagementPage() {
               <button type="submit" disabled={scheduleLoading}>
                 {scheduleLoading ? 'Saving...' : 'Create Schedule'}
               </button>
-              <button type="button" onClick={loadActiveSchedule} disabled={scheduleLoading}>
+              <button type="button" onClick={() => loadActiveSchedule(scheduleForm.phase)} disabled={scheduleLoading}>
                 {scheduleLoading ? 'Loading...' : 'Refresh Active Window'}
               </button>
             </div>
@@ -616,13 +624,17 @@ function CoordinatorManagementPage() {
             />
           ) : null}
           {activeTab === 'groups' ? (
-            <label htmlFor="groupInput">
-              Group ID
-              <input id="groupInput" value={groupInput} onChange={(event) => setGroupInput(event.target.value)} placeholder="group id" />
-              <small className={styles.note}>
-                Group search is blocked until a backend group-search endpoint is available.
-              </small>
-            </label>
+            <EntitySearchSelect
+              label="Group"
+              endpoint={apiConfig.endpoints.groups}
+              buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+              getItems={(res) => res.data}
+              returnField="groupId"
+              displayField="groupName"
+              value={groupInput}
+              onChange={setGroupInput}
+              placeholder="Search group by name"
+            />
           ) : null}
 
           <div className={styles.inlineActions}>

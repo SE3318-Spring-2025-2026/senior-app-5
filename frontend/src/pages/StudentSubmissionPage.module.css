@@ -1,136 +1,125 @@
+﻿/* -- Layout -- */
 .pageContainer {
-  display: grid;
-  gap: 1.5rem;
-  color: #e2e8f0;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .hero {
-  background: #14532d;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1e293b;
 }
 
-.hero h1 {
-  margin: 0;
-  color: #38bdf8;
-  font-size: 2rem;
-}
-
-.hero p {
-  margin-top: 0.5rem;
-  color: #94a3b8;
-}
-
+/* -- Card -- */
 .card {
-  background: #0f172a;
+  background: #111827;
   border: 1px solid #1e293b;
-  border-radius: 0.75rem;
-  padding: 1.25rem;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
-.card h2 {
-  margin: 0 0 1rem;
-  color: #f8fafc;
-  font-size: 1.15rem;
-}
-
+/* -- Form -- */
 .formGrid {
-  display: grid;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .formRow {
-  display: grid;
-  gap: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.formRow label {
-  font-size: 0.9rem;
-  color: #cbd5e1;
+/* -- Feedback texts -- */
+.infoText {
+  font-size: 0.8rem;
+  color: #64748b;
 }
 
-.formRow input,
-.formRow select {
-  border: 1px solid #334155;
-  border-radius: 0.5rem;
-  background: #020617;
-  color: #f8fafc;
-  padding: 0.6rem 0.7rem;
+.successText {
+  font-size: 0.875rem;
+  color: #34d399;
+  font-weight: 500;
 }
 
-.formRow input:disabled,
-.formRow select:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.errorText {
+  font-size: 0.875rem;
+  color: #f87171;
+  font-weight: 500;
 }
 
+/* -- Primary button -- */
 .primaryButton {
-  background: #38bdf8;
-  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 20px;
+  background: #6366f1;
+  color: #ffffff;
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.65rem 1rem;
-  font-weight: 700;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s;
+}
+
+.primaryButton:hover {
+  background: #4f46e5;
 }
 
 .primaryButton:disabled {
-  opacity: 0.6;
+  background: #3730a3;
+  color: #a5b4fc;
   cursor: not-allowed;
 }
 
+/* -- Submission window banner -- */
 .windowBanner {
-  display: grid;
-  gap: 0.25rem;
-  margin-top: 1rem;
-  padding: 0.9rem;
-  border-radius: 0.6rem;
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
   border: 1px solid transparent;
 }
 
 .open {
-  background: rgba(22, 163, 74, 0.15);
-  border-color: #16a34a;
-  color: #bbf7d0;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
 .upcoming {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: #f59e0b;
-  color: #fde68a;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
 }
 
 .closed {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: #ef4444;
-  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .unavailable {
-  background: rgba(148, 163, 184, 0.14);
-  border-color: #64748b;
-  color: #cbd5e1;
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.3);
 }
 
 .windowDetails {
-  margin-top: 0.75rem;
-  color: #cbd5e1;
-  font-size: 0.9rem;
-}
-
-.windowDetails p {
-  margin: 0.25rem 0;
-}
-
-.infoText {
-  margin-top: 0.9rem;
-  color: #cbd5e1;
-}
-
-.successText {
-  margin-top: 0.8rem;
-  color: #4ade80;
-}
-
-.errorText {
-  margin-top: 0.8rem;
-  color: #fca5a5;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 4px;
 }

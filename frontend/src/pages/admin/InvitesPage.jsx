@@ -42,18 +42,18 @@ function InvitesPage() {
     <div className={styles.pageContainer}>
       <SectionCard title="Deliver Invite" description="Send a group invite notification to a student.">
         <form className={styles.form} onSubmit={handleDeliverInvite}>
-          <label>
-            Group ID
-            <input
-              value={inviteGroupId}
-              onChange={(e) => setInviteGroupId(e.target.value)}
-              placeholder="UUID of group"
-              required
-            />
-            <small className={styles.note}>
-              Group search is blocked until a backend group-search endpoint is available.
-            </small>
-          </label>
+          <EntitySearchSelect
+            label="Group"
+            endpoint={apiConfig.endpoints.groups}
+            buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+            getItems={(res) => res.data}
+            returnField="groupId"
+            displayField="groupName"
+            value={inviteGroupId}
+            onChange={setInviteGroupId}
+            placeholder="Search group by name"
+            required
+          />
           <EntitySearchSelect
             label="Recipient"
             endpoint={apiConfig.endpoints.userSearch}

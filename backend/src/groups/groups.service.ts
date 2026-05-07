@@ -57,6 +57,82 @@ export class GroupsService {
     return this.groupModel.findOne({ groupId }).exec();
   }
 
+  async findGroupWithDetails(groupId: string) {
+    const group = await this.groupModel.findOne({ groupId }).lean().exec();
+    if (!group) {
+      throw new NotFoundException(`Group not found: ${groupId}`);
+    }
+
+    const [members, leader, advisor] = await Promise.all([
+      this.userModel
+        .find({ teamId: groupId })
+        .select('_id name email role -passwordHash')
+        .lean()
+        .exec(),
+      group.leaderUserId
+        ? this.userModel
+            .findById(group.leaderUserId)
+            .select('_id name email')
+            .lean()
+            .exec()
+        : null,
+      group.advisorUserId
+        ? this.userModel
+            .findById(group.advisorUserId)
+            .select('_id name email')
+            .lean()
+            .exec()
+        : null,
+    ]);
+
+    return {
+      groupId: group.groupId,
+      groupName: group.groupName,
+      status: group.status,
+      assignmentStatus: group.assignmentStatus,
+      leader: leader ?? null,
+      advisor: advisor ?? null,
+      members: members as Array<{ _id: unknown; name?: string; email: string; role: string }>,
+    };
+  }
+
+  async findAll(
+    page: number,
+    limit: number,
+    name?: string,
+  ): Promise<{
+    data: Array<{
+      groupId: string;
+      groupName: string;
+      leaderUserId: string;
+      advisorUserId?: string;
+      status: string;
+      assignmentStatus: string;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const filter: Record<string, unknown> = {};
+    if (name?.trim()) {
+      const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.groupName = { $regex: escaped, $options: 'i' };
+    }
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+      this.groupModel
+        .find(filter)
+        .select('groupId groupName leaderUserId advisorUserId status assignmentStatus -_id')
+        .sort({ groupName: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.groupModel.countDocuments(filter).exec(),
+    ]);
+    return { data: docs as any[], total, page, limit };
+  }
+
   async addMember(groupId: string, memberUserId: string) {
     const group = await this.findGroupById(groupId);
     if (!group) {

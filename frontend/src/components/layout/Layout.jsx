@@ -1,60 +1,19 @@
-import { useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
 export const Layout = () => {
-  const navigate = useNavigate();
-
-  
-
-
   return (
-    <div style={styles.container}>
-      
+    <div className="flex flex-col h-screen w-screen bg-[#060d1a] overflow-hidden">
       <Header />
-
-      <div style={styles.mainWrapper}>
-        
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-
-        <main style={styles.content}>
-          <div style={styles.pageCard}>
+        <main className="flex-1 p-7 overflow-y-auto">
+          <div className="bg-[#0d1729] rounded-2xl p-6 min-h-full border border-[#1e293b] shadow-xl">
             <Outlet />
           </div>
         </main>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100vh',
-    width: '100vw',
-    backgroundColor: '#020617', 
-    overflow: 'hidden', 
-  },
-  mainWrapper: {
-    display: 'flex',
-    flex: 1, 
-    overflow: 'hidden',
-  },
-  content: {
-    flex: 1,
-    padding: '30px',
-    overflowY: 'auto', 
-    backgroundColor: '#020617',
-  },
-  pageCard: {
-    backgroundColor: '#0f172a', 
-    borderRadius: '16px',
-    padding: '24px',
-    minHeight: '100%',
-    border: '1px solid #1e293b',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-    color: '#f8fafc',
-  }
 };

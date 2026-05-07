@@ -36,6 +36,7 @@ import {
 } from '../advisors/schemas/schedule.schema';
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
+import { Submission, SubmissionDocument } from '../submissions/schemas/submission.schema';
 import { AddJuryMemberDto } from './dto/add-jury-member.dto';
 import { JuryMemberResponseDto } from './dto/jury-member-response.dto';
 import { User, UserDocument } from '../users/data/user.schema';
@@ -50,6 +51,11 @@ import {
 @Injectable()
 export class CommitteesService {
   private readonly logger = new Logger(CommitteesService.name);
+  private static readonly ACTIVE_GRADING_STATUSES = [
+    'GRADING',
+    'IN_REVIEW',
+    'UNDER_REVIEW',
+  ];
 
   constructor(
     @InjectModel(Committee.name)
@@ -58,6 +64,15 @@ export class CommitteesService {
     private readonly groupModel: Model<GroupDocument>,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
+    @InjectModel(Submission.name)
+    private readonly submissionModel: Model<SubmissionDocument>,
+  ) {}
+
+  async deleteCommittee(
+    committeeId: string,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<void> {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
   ) {}
@@ -79,6 +94,46 @@ export class CommitteesService {
         );
       }
 
+      const groupIds = ((committee.groups as Array<{ groupId?: string }>) ?? [])
+        .map((group) => group.groupId)
+        .filter((groupId): groupId is string => typeof groupId === 'string');
+
+      if (groupIds.length > 0) {
+        const activeGradingCount = await this.submissionModel
+          .countDocuments({
+            groupId: { $in: groupIds },
+            status: {
+              $in: CommitteesService.ACTIVE_GRADING_STATUSES,
+            },
+          })
+          .exec();
+
+        if (activeGradingCount > 0) {
+          throw new ConflictException(
+            'Committee has active grading in progress and cannot be deleted.',
+          );
+        }
+      }
+
+      const deleteResult = await this.committeeModel
+        .deleteOne({ id: committeeId })
+        .exec();
+
+      if (deleteResult.deletedCount === 0) {
+        throw new NotFoundException(
+          `Committee with ID '${committeeId}' not found.`,
+        );
+      }
+
+      this.logger.log({
+        event: 'committee_deleted',
+        committeeId,
+        coordinatorId,
+        cascadedJuryCount: ((committee.jury as unknown[]) ?? []).length,
+        cascadedAdvisorCount: ((committee.advisors as unknown[]) ?? []).length,
+        cascadedGroupCount: ((committee.groups as unknown[]) ?? []).length,
+        correlationId,
+      });
       const userFilter = Types.ObjectId.isValid(dto.userId)
         ? { _id: new Types.ObjectId(dto.userId) }
         : { id: dto.userId };
@@ -135,6 +190,8 @@ export class CommitteesService {
       }
 
       this.logger.error({
+        event: 'committee_delete_failed',
+        committeeId,
         event: 'jury_member_add_failed',
         committeeId,
         userId: dto.userId,
@@ -143,6 +200,7 @@ export class CommitteesService {
         error: (error as Error).message,
       });
       throw new InternalServerErrorException(
+        'Failed to delete committee due to an unexpected error.',
         'Failed to add jury member due to an unexpected error.',
       );
     }

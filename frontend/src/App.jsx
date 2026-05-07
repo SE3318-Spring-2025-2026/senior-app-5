@@ -24,6 +24,7 @@ import SanitizationPage from './pages/admin/SanitizationPage';
 
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
+import GradeDisplayPage from './pages/GradeDisplayPage';
 import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
 import CommitteesPage from './pages/admin/CommitteesPage';
@@ -62,6 +63,8 @@ function App() {
             <Route path="/documents/upload" element={<StudentSubmissionPage />} />
             <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
+            <Route path="/documents" element={<StudentSubmissionPage />} />
+            <Route path="/grades" element={<GradeDisplayPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route
               path="/review"

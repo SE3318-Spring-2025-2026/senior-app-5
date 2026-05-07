@@ -62,6 +62,9 @@ export const apiConfig = {
     committeeAdvisorGradingScope: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}/groups`,
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
+    groupFinalGrade: (groupId) => `/groups/${groupId}/final-grade`,
+    studentFinalGrade: (studentId) => `/students/${studentId}/final-grade`,
+    groupGradeHistory: (groupId) => `/groups/${groupId}/grade-history`,
     storyPoints: (groupId, sprintId) =>
       `/groups/${groupId}/sprints/${sprintId}/story-points`,
     overrideStoryPoints: (groupId, sprintId) =>

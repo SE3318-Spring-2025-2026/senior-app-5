@@ -26,6 +26,15 @@ describe('RubricsService', () => {
     updateMany: jest.fn(),
     create: jest.fn(),
     deleteOne: jest.fn(),
+    exists: jest.fn(),
+  };
+
+  const mockDeliverableModel = {
+    exists: jest.fn(),
+  };
+
+  const mockEvaluationModel = {
+    exists: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -37,6 +46,14 @@ describe('RubricsService', () => {
         {
           provide: getModelToken(Rubric.name),
           useValue: mockRubricModel,
+        },
+        {
+          provide: getModelToken('Deliverable'),
+          useValue: mockDeliverableModel,
+        },
+        {
+          provide: getModelToken('SprintEvaluation'),
+          useValue: mockEvaluationModel,
         },
         {
           provide: getConnectionToken(),
@@ -52,35 +69,29 @@ describe('RubricsService', () => {
     const createdAt = new Date('2026-05-01T10:00:00.000Z');
     const updatedAt = new Date('2026-05-02T10:00:00.000Z');
 
+    mockDeliverableModel.exists.mockResolvedValue(true);
     mockRubricModel.find.mockReturnValue({
       sort: jest.fn().mockReturnValue({
-        skip: jest.fn().mockReturnValue({
-          limit: jest.fn().mockReturnValue({
-            lean: jest.fn().mockReturnValue({
-              exec: jest.fn().mockResolvedValue([
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([
+            {
+              rubricId: '44444444-4444-4444-8444-444444444441',
+              deliverableId: '33333333-3333-4333-8333-333333333333',
+              name: 'Sprint 1 SCRUM Rubric',
+              isActive: true,
+              questions: [
                 {
-                  rubricId: '44444444-4444-4444-8444-444444444441',
-                  deliverableId: '33333333-3333-4333-8333-333333333333',
-                  name: 'Sprint 1 SCRUM Rubric',
-                  isActive: true,
-                  questions: [
-                    {
-                      questionId: '55555555-5555-4555-8555-555555555551',
-                      criteriaName: 'Team planning quality',
-                      criteriaWeight: 0.4,
-                    },
-                  ],
-                  createdAt,
-                  updatedAt,
+                  questionId: '55555555-5555-4555-8555-555555555551',
+                  criteriaName: 'Team planning quality',
+                  criteriaWeight: 0.4,
                 },
-              ]),
-            }),
-          }),
+              ],
+              createdAt,
+              updatedAt,
+            },
+          ]),
         }),
       }),
-    });
-    mockRubricModel.countDocuments.mockReturnValue({
-      exec: jest.fn().mockResolvedValue(1),
     });
 
     const result = await service.listRubrics(
@@ -88,12 +99,12 @@ describe('RubricsService', () => {
       { page: 1, limit: 20 },
     );
 
-    expect(result.total).toBe(1);
-    expect(result.data).toHaveLength(1);
-    expect(result.data[0].name).toBe('Sprint 1 SCRUM Rubric');
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('Sprint 1 SCRUM Rubric');
   });
 
   it('creates a rubric and deactivates the previous active rubric', async () => {
+    mockDeliverableModel.exists.mockResolvedValue(true);
     mockRubricModel.updateMany.mockReturnValue({
       exec: jest.fn().mockResolvedValue({ acknowledged: true }),
     });
@@ -162,6 +173,7 @@ describe('RubricsService', () => {
   });
 
   it('rejects create when weights do not sum to 1', async () => {
+    mockDeliverableModel.exists.mockResolvedValue(true);
     await expect(
       service.createRubric(
         {
@@ -194,30 +206,50 @@ describe('RubricsService', () => {
   });
 
   it('deletes a rubric by id', async () => {
+    mockDeliverableModel.exists.mockResolvedValue(true);
     mockRubricModel.findOne.mockReturnValue({
       exec: jest.fn().mockResolvedValue({ rubricId: 'rubric-1' }),
     });
+    mockEvaluationModel.exists.mockResolvedValue(false);
     mockRubricModel.deleteOne.mockReturnValue({
       exec: jest.fn().mockResolvedValue({ deletedCount: 1 }),
     });
 
-    await expect(service.deleteRubric('rubric-1')).resolves.toBeUndefined();
+    await expect(
+      service.deleteRubric('deliverable-1', 'rubric-1'),
+    ).resolves.toBeUndefined();
     expect(mockRubricModel.deleteOne).toHaveBeenCalledWith({
       rubricId: 'rubric-1',
     });
   });
 
   it('throws not found when deleting a missing rubric', async () => {
+    mockDeliverableModel.exists.mockResolvedValue(true);
     mockRubricModel.findOne.mockReturnValue({
       exec: jest.fn().mockResolvedValue(null),
     });
 
-    await expect(service.deleteRubric('rubric-missing')).rejects.toBeInstanceOf(
-      NotFoundException,
+    await expect(
+      service.deleteRubric('deliverable-1', 'rubric-missing'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws conflict when deleting a rubric used in evaluations', async () => {
+    mockDeliverableModel.exists.mockResolvedValue(true);
+    mockRubricModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ rubricId: 'rubric-1' }),
+    });
+    mockEvaluationModel.exists.mockResolvedValue(true);
+
+    await expect(
+      service.deleteRubric('deliverable-1', 'rubric-1'),
+    ).rejects.toThrow(
+      "Rubric with ID 'rubric-1' is used in evaluations and cannot be deleted.",
     );
   });
 
   it('maps unexpected errors to 500', async () => {
+    mockDeliverableModel.exists.mockResolvedValue(true);
     mockConnection.startSession.mockRejectedValueOnce(new Error('boom'));
 
     await expect(

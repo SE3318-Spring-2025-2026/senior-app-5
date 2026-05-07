@@ -49,6 +49,7 @@ describe('CommitteesController', () => {
       removeJuryMember: jest.fn(),
       assignGroupToCommittee: jest.fn(),
       removeCommitteeAdvisor: jest.fn(),
+      addCommitteeAdvisor: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -1027,6 +1028,44 @@ describe('CommitteesController', () => {
         await expect(
           controller.removeCommitteeAdvisor(committeeId, advisorUserId, req),
         ).rejects.toBeInstanceOf(InternalServerErrorException);
+      });
+    });
+    // ─── POST :committeeId/advisors ─────────────────────────────────────────
+
+    describe('POST :committeeId/advisors', () => {
+      const committeeId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      const advisorUserId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+      const payload = { advisorUserId };
+
+      it('happy path: valid COORDINATOR + valid payload → 201 with response', async () => {
+        const responseData = {
+          advisorUserId,
+          assignedAt: new Date(),
+          assignedByUserId: coordinatorUser.userId,
+        };
+        jest.spyOn(service, 'addCommitteeAdvisor').mockResolvedValue(responseData);
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        const result = await controller.addCommitteeAdvisor(committeeId, payload, req);
+
+        expect(result).toMatchObject(responseData);
+        expect(service.addCommitteeAdvisor).toHaveBeenCalledWith(
+          committeeId,
+          payload,
+          coordinatorUser.userId,
+          undefined,
+        );
+      });
+
+      it('service throws ConflictException → propagates', async () => {
+        jest.spyOn(service, 'addCommitteeAdvisor').mockRejectedValue(
+          new ConflictException('Advisor is already assigned to this committee.'),
+        );
+
+        const req = { user: coordinatorUser, headers: {} } as any;
+        await expect(
+          controller.addCommitteeAdvisor(committeeId, payload, req),
+        ).rejects.toBeInstanceOf(ConflictException);
       });
     });
   });

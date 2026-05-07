@@ -19,6 +19,8 @@ import {
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiNoContentResponse,
+  ApiConflictResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -63,7 +65,7 @@ export class RubricsController {
     operationId: 'listRubrics',
     summary: 'List rubrics for a deliverable',
   })
-  @ApiOkResponse({ type: PaginatedRubricsDto as never })
+  @ApiOkResponse({ type: [RubricResponseDto] })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   @ApiInternalServerErrorResponse({
@@ -76,7 +78,7 @@ export class RubricsController {
     @Param('deliverableId', new ParseUUIDPipe()) deliverableId: string,
     @Query() query: ListRubricsQueryDto,
     @Req() req: Request,
-  ): Promise<PaginatedRubricsDto> {
+  ): Promise<RubricResponseDto[]> {
     return this.rubricsService.listRubrics(
       deliverableId,
       query,
@@ -121,8 +123,9 @@ export class RubricsController {
     operationId: 'deleteRubric',
     summary: 'Delete a rubric',
   })
-  @ApiOkResponse()
+  @ApiNoContentResponse({ description: 'Rubric deleted successfully' })
   @ApiNotFoundResponse({ description: 'Rubric not found' })
+  @ApiConflictResponse({ description: 'Rubric used in evaluations' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   @ApiInternalServerErrorResponse({
@@ -130,13 +133,14 @@ export class RubricsController {
   })
   @Roles(Role.Coordinator)
   @Delete(':rubricId')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteRubric(
     @Param('deliverableId', new ParseUUIDPipe()) deliverableId: string,
     @Param('rubricId', new ParseUUIDPipe()) rubricId: string,
     @Req() req: Request,
   ): Promise<void> {
     await this.rubricsService.deleteRubric(
+      deliverableId,
       rubricId,
       this.getCorrelationId(req),
     );

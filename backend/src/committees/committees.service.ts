@@ -35,6 +35,11 @@ import {
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
 
+import { User, UserDocument } from '../users/data/user.schema';
+import { AddCommitteeAdvisorDto } from './dto/add-committee-advisor.dto';
+import { CommitteeAdvisorResponseDto } from './dto/committee-advisor-response.dto';
+import { Role } from '../auth/enums/role.enum';
+
 @Injectable()
 export class CommitteesService {
   private readonly logger = new Logger(CommitteesService.name);
@@ -46,6 +51,8 @@ export class CommitteesService {
     private readonly groupModel: Model<GroupDocument>,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   async listCommittees(
@@ -628,6 +635,88 @@ export class CommitteesService {
       });
       throw new InternalServerErrorException(
         'Failed to remove group from committee due to an unexpected error.',
+      );
+    }
+  }
+
+  async addCommitteeAdvisor(
+    committeeId: string,
+    dto: AddCommitteeAdvisorDto,
+    coordinatorId: string,
+    correlationId?: string,
+  ): Promise<CommitteeAdvisorResponseDto> {
+    try {
+      const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+      if (!committee) {
+        throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+      }
+
+      const advisor = await this.userModel.findById(dto.advisorUserId).exec();
+      if (!advisor || advisor.role !== Role.Professor) {
+        throw new NotFoundException(`User with ID '${dto.advisorUserId}' not found or is not an ADVISOR.`);
+      }
+
+      const advisorAlreadyLinked = ((committee.advisors as any[]) ?? []).some(
+        (a) =>
+          a.advisorId === dto.advisorUserId ||
+          a.userId === dto.advisorUserId ||
+          a.advisorUserId === dto.advisorUserId,
+      );
+
+      if (advisorAlreadyLinked) {
+        throw new ConflictException('Advisor is already assigned to this committee.');
+      }
+
+      const assignedAt = dto.assignedAt ? new Date(dto.assignedAt) : new Date();
+
+      const newAdvisorLink = {
+        advisorUserId: dto.advisorUserId,
+        assignedAt,
+        assignedByUserId: coordinatorId,
+        assignmentSource: 'MANUAL',
+      };
+
+      const updateResult = await this.committeeModel
+        .updateOne(
+          { id: committeeId },
+          { $push: { advisors: newAdvisorLink } },
+        )
+        .exec();
+
+      if (updateResult.modifiedCount === 0) {
+        throw new InternalServerErrorException('Failed to assign advisor to committee.');
+      }
+
+      this.logger.log({
+        event: 'committee_advisor_linked',
+        committeeId,
+        advisorUserId: dto.advisorUserId,
+        coordinatorId,
+        correlationId,
+      });
+
+      return {
+        advisorUserId: dto.advisorUserId,
+        assignedAt,
+        assignedByUserId: coordinatorId,
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      this.logger.error({
+        event: 'committee_advisor_link_failed',
+        committeeId,
+        advisorUserId: dto.advisorUserId,
+        coordinatorId,
+        correlationId,
+        error: (error as Error).message,
+      });
+      throw new InternalServerErrorException(
+        'Failed to assign advisor to committee due to an unexpected error.',
       );
     }
   }

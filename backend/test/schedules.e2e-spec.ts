@@ -189,6 +189,81 @@ describe('Schedules (e2e)', () => {
       .expect(404);
   });
 
+  it('POST /schedules should return 400 when body is empty', () => {
+    const token = createToken('coordinator-id');
+
+    return request(app.getHttpServer())
+      .post('/schedules')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(400);
+  });
+
+  it('POST /schedules should return 400 when phase is missing', () => {
+    const token = createToken('coordinator-id');
+
+    return request(app.getHttpServer())
+      .post('/schedules')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        startDatetime: '2026-04-14T10:00:00.000Z',
+        endDatetime: '2026-04-14T12:00:00.000Z',
+      })
+      .expect(400);
+  });
+
+  it('POST /schedules should return 400 when phase is invalid', () => {
+    const token = createToken('coordinator-id');
+
+    return request(app.getHttpServer())
+      .post('/schedules')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        phase: 'INVALID_PHASE',
+        startDatetime: '2026-04-14T10:00:00.000Z',
+        endDatetime: '2026-04-14T12:00:00.000Z',
+      })
+      .expect(400);
+  });
+
+  it('POST /schedules should return 201 for COMMITTEE_ASSIGNMENT phase', async () => {
+    const token = createToken('coordinator-id');
+    mockAdvisorsService.setSchedule.mockResolvedValueOnce({
+      scheduleId: 'schedule-2',
+      coordinatorId: 'coordinator-id',
+      phase: SchedulePhase.COMMITTEE_ASSIGNMENT,
+      startDatetime: '2026-05-01T08:00:00.000Z',
+      endDatetime: '2026-05-01T18:00:00.000Z',
+      createdAt: '2026-04-30T10:00:00.000Z',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/schedules')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        phase: SchedulePhase.COMMITTEE_ASSIGNMENT,
+        startDatetime: '2026-05-01T08:00:00.000Z',
+        endDatetime: '2026-05-01T18:00:00.000Z',
+      })
+      .expect(201);
+
+    expect(response.body).toEqual({
+      scheduleId: 'schedule-2',
+      coordinatorId: 'coordinator-id',
+      phase: SchedulePhase.COMMITTEE_ASSIGNMENT,
+      startDatetime: '2026-05-01T08:00:00.000Z',
+      endDatetime: '2026-05-01T18:00:00.000Z',
+      createdAt: '2026-04-30T10:00:00.000Z',
+    });
+
+    expect(mockAdvisorsService.setSchedule).toHaveBeenCalledWith({
+      phase: SchedulePhase.COMMITTEE_ASSIGNMENT,
+      startDatetime: '2026-05-01T08:00:00.000Z',
+      endDatetime: '2026-05-01T18:00:00.000Z',
+      coordinatorId: 'coordinator-id',
+    });
+  });
+
   it('POST /schedules should return 500 on unexpected errors', async () => {
     const token = createToken('coordinator-id');
     mockAdvisorsService.setSchedule.mockRejectedValueOnce(new Error('boom'));

@@ -1,12 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { FileText, ChevronLeft } from 'lucide-react';
 import apiClient from '../utils/apiClient';
-import styles from './DocumentsPage.module.css';
+import { Badge, Button, PageHeader } from '../components/ui';
+
+const statusColor = (status) => {
+  if (!status) return 'slate';
+  const s = status.toLowerCase().replace(/\s+/g, '');
+  if (s === 'approved') return 'green';
+  if (s === 'rejected') return 'red';
+  if (s === 'underreview' || s === 'pending' || s === 'needsrevision') return 'yellow';
+  return 'slate';
+};
 
 const SubmissionDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const [submission, setSubmission] = useState(null);
   const [status, setStatus] = useState({ loading: true, error: '' });
 
@@ -37,19 +47,21 @@ const SubmissionDetailsPage = () => {
 
   if (status.loading) {
     return (
-      <div className={styles.pageContainer}>
-        <div className={styles.loading}>Loading details...</div>
+      <div className="flex items-center justify-center py-20">
+        <span className="text-slate-500 text-sm">Loading details...</span>
       </div>
     );
   }
 
   if (status.error) {
     return (
-      <div className={styles.pageContainer}>
-        <div className={styles.errorBox}>{status.error}</div>
-        <button 
-          onClick={() => navigate('/login')} 
-          className={styles.smallButton}
+      <div className="space-y-4">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {status.error}
+        </div>
+        <button
+          onClick={() => navigate('/login')}
+          className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100"
         >
           Go to Login
         </button>
@@ -60,49 +72,62 @@ const SubmissionDetailsPage = () => {
   if (!submission) return null;
 
   return (
-    <div className={styles.pageContainer}>
-      <button 
-        onClick={() => navigate('/documents')} 
-        className={styles.smallButton} 
-        style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+    <div>
+      <button
+        onClick={() => navigate('/documents')}
+        className="mb-4 flex items-center gap-1.5 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100"
       >
-        &larr; Back to List
+        <ChevronLeft size={16} />
+        Back to List
       </button>
 
-      <div className={styles.headerSection}>
-        <h1 className={styles.title}>SUBMISSION DETAILS</h1>
-        <p className={styles.description}>Viewing details for: {submission.title}</p>
-      </div>
+      <PageHeader title="Submission Details" subtitle={submission.title} />
 
-      <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1fr 1fr' }}>
-        
-        <div className={styles.infoBox} style={{ textAlign: 'left' }}>
-          <h3 style={{ color: '#f8fafc', marginBottom: '15px' }}>General Information</h3>
-          <p><strong>Type:</strong> {submission.type ?? '—'}</p>
-          <p>
-            <strong>Status:</strong> 
-            <span className={`${styles.badge} ${styles[submission.status?.toLowerCase().replace(/\s+/g, '')] || ''}`}>
-              {submission.status}
-            </span>
-          </p>
-          <p><strong>Group ID:</strong> {submission.groupId}</p>
-          <p>
-            <strong>Submitted On:</strong> {new Date(submission.submittedAt || submission.createdAt).toLocaleString()}
-          </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* General Information */}
+        <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+          <h3 className="text-sm font-bold text-slate-200 mb-4">General Information</h3>
+          <dl className="space-y-2 text-sm">
+            <div className="flex gap-2">
+              <dt className="text-slate-500 shrink-0">Type:</dt>
+              <dd className="text-slate-200">{submission.type ?? '—'}</dd>
+            </div>
+            <div className="flex gap-2 items-center">
+              <dt className="text-slate-500 shrink-0">Status:</dt>
+              <dd>
+                <Badge color={statusColor(submission.status)}>
+                  {submission.status}
+                </Badge>
+              </dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-slate-500 shrink-0">Group ID:</dt>
+              <dd className="text-slate-200">{submission.groupId}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-slate-500 shrink-0">Submitted On:</dt>
+              <dd className="text-slate-200">
+                {new Date(submission.submittedAt || submission.createdAt).toLocaleString()}
+              </dd>
+            </div>
+          </dl>
         </div>
 
+        {/* Attached Documents */}
+        <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+          <h3 className="text-sm font-bold text-slate-200 mb-4">Attached Documents</h3>
 
-        <div className={styles.infoBox} style={{ textAlign: 'left' }}>
-          <h3 style={{ color: '#f8fafc', marginBottom: '15px' }}>Attached Documents</h3>
-          
           {!submission.documents || submission.documents.length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>No files have been uploaded yet.</p>
+            <p className="text-sm text-slate-500">No files have been uploaded yet.</p>
           ) : (
-            <ul style={{ listStyleType: 'none', padding: 0 }}>
+            <ul className="divide-y divide-[#1e293b]">
               {submission.documents.map((doc, index) => (
-                <li key={index} style={{ padding: '10px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>📄 {doc.originalName}</span>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                <li key={index} className="flex items-center justify-between py-2">
+                  <span className="flex items-center gap-2 text-sm text-slate-300">
+                    <FileText size={14} className="text-slate-500 shrink-0" />
+                    {doc.originalName}
+                  </span>
+                  <span className="text-xs text-slate-500">
                     {new Date(doc.uploadedAt).toLocaleDateString()}
                   </span>
                 </li>

@@ -1,47 +1,47 @@
-/* frontend/src/components/EntitySearchSelect.module.css */
 .wrapper {
   position: relative;
-  display: grid;
-  gap: 6px;
-  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .label {
-  color: #000000;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
+  color: #374151;
 }
 
 .inputRow {
   display: flex;
-  gap: 8px;
-  align-items: stretch;
+  align-items: center;
+  gap: 6px;
 }
 
 .input {
   flex: 1;
-  padding: 12px 14px;
-  border-radius: 12px;
+  padding: 8px 12px;
   border: 1px solid #d1d5db;
-  font-size: 15px;
-  color: #111827;
-  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s;
 }
 
 .input:focus {
-  outline: none;
-  border-color: #4338ca;
-  background: #ffffff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .clearButton {
-  padding: 0 14px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: none;
   border: 1px solid #d1d5db;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #4b5563;
-  font-size: 13px;
+  border-radius: 6px;
   cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
 }
 
 .clearButton:hover {
@@ -50,57 +50,55 @@
 
 .dropdown {
   position: absolute;
-  z-index: 20;
   top: 100%;
   left: 0;
   right: 0;
-  margin: 6px 0 0;
-  padding: 6px;
-  list-style: none;
+  z-index: 100;
+  margin-top: 4px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
-  max-height: 260px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  padding: 4px 0;
+  max-height: 220px;
   overflow-y: auto;
 }
 
+.status {
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.errorStatus {
+  color: #ef4444;
+}
+
 .option {
-  padding: 10px 12px;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 14px;
   cursor: pointer;
-  display: grid;
-  gap: 2px;
+  transition: background 0.12s;
 }
 
 .option:hover {
-  background: #eef2ff;
+  background: #f0f0ff;
 }
 
 .optionPrimary {
+  font-size: 0.875rem;
   color: #111827;
-  font-size: 14px;
   font-weight: 500;
 }
 
 .optionSecondary {
+  font-size: 0.75rem;
   color: #6b7280;
-  font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-.status {
-  padding: 10px 12px;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.errorStatus {
-  color: #b91c1c;
 }
 
 .hint {
+  font-size: 0.75rem;
   color: #6b7280;
-  font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }

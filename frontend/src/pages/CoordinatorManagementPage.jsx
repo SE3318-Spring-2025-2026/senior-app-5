@@ -20,6 +20,9 @@ import {
 
 import { useAuth } from '../context/AuthContext'
 import { CreateCoordinatorForm } from '../components/CreateCoordinatorForm'
+import EntitySearchSelect from '../components/EntitySearchSelect'
+import apiConfig from '../config/api'
+import apiClient from '../utils/apiClient'
 
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
@@ -38,6 +41,8 @@ const toPagination = (payload) => ({
 })
 
 const fromDateInput = (value) => new Date(value).toISOString()
+const getListItems = (payload) => toList(payload)
+const buildCommitteeSearchParams = (query) => ({ page: 1, limit: 10, name: query })
 
 function StatusMessage({ status }) {
   if (!status.message && !status.error) return null
@@ -116,11 +121,21 @@ function CoordinatorManagementPage() {
   const [advisorInput, setAdvisorInput] = useState('')
   const [groupInput, setGroupInput] = useState('')
 
-  const loadActiveSchedule = useCallback(async () => {
+  // Assign student to group state
+  const [assignStudentId, setAssignStudentId] = useState('')
+  const [assignGroupId, setAssignGroupId] = useState('')
+  const [assignStatus, setAssignStatus] = useState(emptyStatus())
+  const [assignLoading, setAssignLoading] = useState(false)
+
+  const loadActiveSchedule = useCallback(async (phase) => {
+    if (!phase) {
+      setActiveSchedule(null)
+      return
+    }
     setScheduleLoading(true)
     setScheduleStatus(emptyStatus())
     try {
-      const data = await getActiveSchedule()
+      const data = await getActiveSchedule(phase)
       setActiveSchedule(data)
       setScheduleStatus({ message: 'Active schedule loaded successfully.', error: '' })
     } catch (error) {
@@ -203,7 +218,7 @@ function CoordinatorManagementPage() {
     event.preventDefault()
     setScheduleStatus(emptyStatus())
 
-    if (!scheduleForm.phase.trim()) {
+    if (!scheduleForm.phase) {
       setScheduleStatus({ message: '', error: 'Phase is required.' })
       return
     }
@@ -219,12 +234,12 @@ function CoordinatorManagementPage() {
     setScheduleLoading(true)
     try {
       await createSchedule({
-        phase: scheduleForm.phase.trim(),
-        startAt: fromDateInput(scheduleForm.startAt),
-        endAt: fromDateInput(scheduleForm.endAt),
+        phase: scheduleForm.phase,
+        startDatetime: fromDateInput(scheduleForm.startAt),
+        endDatetime: fromDateInput(scheduleForm.endAt),
       })
       setScheduleStatus({ message: 'Schedule created successfully.', error: '' })
-      await loadActiveSchedule()
+      await loadActiveSchedule(scheduleForm.phase)
     } catch (error) {
       setScheduleStatus({ message: '', error: `(${error.status ?? 'N/A'}) ${error.message}` })
     } finally {
@@ -340,6 +355,35 @@ function CoordinatorManagementPage() {
     }
   }
 
+  const onAssignStudentToGroup = async (event) => {
+    event.preventDefault()
+    if (!assignStudentId.trim()) {
+      setAssignStatus({ message: '', error: 'Student is required.' })
+      return
+    }
+    if (!assignGroupId.trim()) {
+      setAssignStatus({ message: '', error: 'Group is required.' })
+      return
+    }
+    setAssignStatus(emptyStatus())
+    setAssignLoading(true)
+    try {
+      await apiClient.patch(apiConfig.endpoints.adminAssignStudentGroup(assignStudentId.trim()), {
+        groupId: assignGroupId.trim(),
+      })
+      setAssignStatus({ message: `Student successfully assigned to group "${assignGroupId}".`, error: '' })
+      setAssignStudentId('')
+      setAssignGroupId('')
+    } catch (error) {
+      const status = error?.response?.status
+      const msg = error?.response?.data?.message
+      const normalized = Array.isArray(msg) ? msg.join(', ') : msg
+      setAssignStatus({ message: '', error: `(${status ?? 'N/A'}) ${normalized || error.message}` })
+    } finally {
+      setAssignLoading(false)
+    }
+  }
+
   const activeCollection = useMemo(() => {
     if (activeTab === 'jury') return juryMembers
     if (activeTab === 'advisors') return advisors
@@ -377,13 +421,17 @@ function CoordinatorManagementPage() {
           <form className={styles.form} onSubmit={onCreateSchedule}>
             <label htmlFor="phaseInput">
               Phase
-              <input
+              <select
                 id="phaseInput"
                 value={scheduleForm.phase}
                 onChange={(event) => setScheduleForm((prev) => ({ ...prev, phase: event.target.value }))}
-                placeholder="e.g. COMMITTEE_ASSIGNMENT"
                 required
-              />
+              >
+                <option value="" disabled>Select a phase...</option>
+                <option value="ADVISOR_SELECTION">Advisor Selection</option>
+                <option value="COMMITTEE_ASSIGNMENT">Committee Assignment</option>
+                <option value="SPRINT">Sprint</option>
+              </select>
             </label>
             <label htmlFor="startAtInput">
               Start Date
@@ -409,7 +457,7 @@ function CoordinatorManagementPage() {
               <button type="submit" disabled={scheduleLoading}>
                 {scheduleLoading ? 'Saving...' : 'Create Schedule'}
               </button>
-              <button type="button" onClick={loadActiveSchedule} disabled={scheduleLoading}>
+              <button type="button" onClick={() => loadActiveSchedule(scheduleForm.phase)} disabled={scheduleLoading}>
                 {scheduleLoading ? 'Loading...' : 'Refresh Active Window'}
               </button>
             </div>
@@ -540,17 +588,56 @@ function CoordinatorManagementPage() {
         </SectionCard>
       </div>
 
+      <SectionCard title="Assign Student to Group" subtitle="Search for a student by email and assign them to a group.">
+        <form className={styles.form} onSubmit={onAssignStudentToGroup}>
+          <EntitySearchSelect
+            label="Student"
+            endpoint={apiConfig.endpoints.userSearch}
+            buildParams={(q) => ({ field: 'email', value: q, limit: 10 })}
+            getItems={(res) => (Array.isArray(res) ? res : res?.data ?? [])}
+            returnField="_id"
+            displayField="email"
+            value={assignStudentId}
+            onChange={setAssignStudentId}
+            placeholder="Search student by email"
+          />
+          <EntitySearchSelect
+            label="Group"
+            endpoint={apiConfig.endpoints.groups}
+            buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+            getItems={(res) => res?.data ?? []}
+            returnField="groupId"
+            displayField="groupName"
+            value={assignGroupId}
+            onChange={setAssignGroupId}
+            placeholder="Search group by name"
+          />
+          <div className={styles.inlineActions}>
+            <button type="submit" disabled={assignLoading}>
+              {assignLoading ? 'Assigning...' : 'Assign Student'}
+            </button>
+          </div>
+        </form>
+        <StatusMessage status={assignStatus} />
+      </SectionCard>
+
       <SectionCard title="Committee Details" subtitle="Jury, advisors and groups management tabs.">
         <div className={styles.selectRow}>
-          <label htmlFor="committeeSelect">
-            Selected Committee
-            <input
-              id="committeeSelect"
+          <div className={styles.searchControl}>
+            <EntitySearchSelect
+              label="Selected Committee"
+              endpoint={apiConfig.endpoints.committees}
+              searchField="name"
+              returnField="id"
+              displayField="name"
               value={selectedCommitteeId}
-              onChange={(event) => setSelectedCommitteeId(event.target.value)}
-              placeholder="Committee ID"
+              onChange={setSelectedCommitteeId}
+              onSelect={(committee) => setSelectedCommittee(committee)}
+              placeholder="Search committee by name"
+              buildParams={buildCommitteeSearchParams}
+              getItems={getListItems}
             />
-          </label>
+          </div>
           <button type="button" onClick={() => loadCommitteeDetails(selectedCommitteeId)} disabled={detailLoading || !selectedCommitteeId}>
             {detailLoading ? 'Loading...' : 'Load Details'}
           </button>
@@ -582,22 +669,41 @@ function CoordinatorManagementPage() {
 
         <form className={styles.form} onSubmit={onAddRelation}>
           {activeTab === 'jury' ? (
-            <label htmlFor="juryInput">
-              Jury User ID
-              <input id="juryInput" value={juryInput} onChange={(event) => setJuryInput(event.target.value)} placeholder="user id" />
-            </label>
+            <EntitySearchSelect
+              label="Jury User"
+              endpoint={apiConfig.endpoints.userSearch}
+              searchField="email"
+              returnField="_id"
+              displayField="email"
+              value={juryInput}
+              onChange={setJuryInput}
+              placeholder="Search jury user by email"
+            />
           ) : null}
           {activeTab === 'advisors' ? (
-            <label htmlFor="advisorInput">
-              Advisor User ID
-              <input id="advisorInput" value={advisorInput} onChange={(event) => setAdvisorInput(event.target.value)} placeholder="advisor user id" />
-            </label>
+            <EntitySearchSelect
+              label="Advisor User"
+              endpoint={apiConfig.endpoints.userSearch}
+              searchField="email"
+              returnField="_id"
+              displayField="email"
+              value={advisorInput}
+              onChange={setAdvisorInput}
+              placeholder="Search advisor by email"
+            />
           ) : null}
           {activeTab === 'groups' ? (
-            <label htmlFor="groupInput">
-              Group ID
-              <input id="groupInput" value={groupInput} onChange={(event) => setGroupInput(event.target.value)} placeholder="group id" />
-            </label>
+            <EntitySearchSelect
+              label="Group"
+              endpoint={apiConfig.endpoints.groups}
+              buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+              getItems={(res) => res.data}
+              returnField="groupId"
+              displayField="groupName"
+              value={groupInput}
+              onChange={setGroupInput}
+              placeholder="Search group by name"
+            />
           ) : null}
 
           <div className={styles.inlineActions}>

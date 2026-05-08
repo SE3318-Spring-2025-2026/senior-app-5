@@ -6,10 +6,10 @@ import {
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Committee } from '../committees/schemas/committee.schema';
+import { Role } from '../auth/enums/role.enum';
 import { Group, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User } from '../users/data/user.schema';
-import { Role } from '../auth/enums/role.enum';
 import {
   MAX_DOCUMENTS_PER_SUBMISSION,
   SubmissionsService,
@@ -34,24 +34,67 @@ describe('SubmissionsService', () => {
   let service: SubmissionsService;
   let phasesService: { findByPhaseId: jest.Mock; getPhaseById: jest.Mock };
 
+  const validId = '507f1f77bcf86cd799439011';
+  const otherValidId = '507f1f77bcf86cd799439012';
   const mockSave = jest.fn();
-  const mockSubmissionModel: any = jest.fn((payload) => ({
-    ...payload,
-    save: mockSave,
-  }));
-  mockSubmissionModel.findById = jest.fn();
+  const mockFindById = jest.fn();
+
+  const mockSubmissionModel: any = jest
+    .fn()
+    .mockImplementation((payload: Record<string, unknown>) => ({
+      ...payload,
+      save: mockSave,
+    }));
+
+  mockSubmissionModel.findById = mockFindById;
   mockSubmissionModel.find = jest.fn();
+  mockSubmissionModel.findOne = jest.fn();
+  mockSubmissionModel.sort = jest.fn().mockReturnThis();
+  mockSubmissionModel.exec = jest.fn();
 
   const mockGroupModel = { findOne: jest.fn() };
   const mockUserModel = { findById: jest.fn() };
   const mockCommitteeModel = { findOne: jest.fn() };
 
+  const oneHour = 60 * 60 * 1000;
+  const mockFile = {
+    originalname: 'test-document.pdf',
+    mimetype: 'application/pdf',
+    buffer: Buffer.from('test content'),
+    size: 1024,
+  } as Express.Multer.File;
+
+  const openPhase = () => ({
+    submissionStart: new Date(Date.now() - oneHour),
+    submissionEnd: new Date(Date.now() + oneHour),
+  });
+
+  const makeSubmission = (overrides = {}) => {
+    const submission: any = {
+      _id: validId,
+      title: 'Test Proposal',
+      groupId: 'group-1',
+      type: 'INITIAL',
+      phaseId: 'phase-1',
+      documents: [],
+      save: mockSave,
+      ...overrides,
+    };
+
+    submission.get = jest.fn((field: string) => submission[field]);
+
+    return submission;
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     mockSave.mockReset();
     mockSubmissionModel.mockClear();
-    mockSubmissionModel.findById.mockReset();
+    mockFindById.mockReset();
     mockSubmissionModel.find.mockReset();
+    mockSubmissionModel.findOne.mockReset();
+    mockSubmissionModel.sort.mockReset();
+    mockSubmissionModel.exec.mockReset();
     mockGroupModel.findOne.mockReset();
     mockUserModel.findById.mockReset();
     mockCommitteeModel.findOne.mockReset();
@@ -80,23 +123,17 @@ describe('SubmissionsService', () => {
   });
 
   describe('createSubmission', () => {
-    it('saves submission when request time is within configured window', async () => {
-      const now = new Date();
-      const oneHour = 60 * 60 * 1000;
+    it('should save submission when request time is within configured window', async () => {
       const savedSubmission = {
-        _id: 'submission-1',
+        _id: validId,
         title: 'Proposal',
         groupId: 'group-1',
         type: 'INITIAL',
         phaseId: 'phase-1',
         status: 'Pending',
-        submittedAt: now,
       };
-      phasesService.findByPhaseId.mockResolvedValue({
-        phaseId: 'phase-1',
-        submissionStart: new Date(now.getTime() - oneHour),
-        submissionEnd: new Date(now.getTime() + oneHour),
-      });
+
+      phasesService.findByPhaseId.mockResolvedValue(openPhase());
       mockSave.mockResolvedValue(savedSubmission);
 
       const result = await service.createSubmission({
@@ -113,6 +150,7 @@ describe('SubmissionsService', () => {
 
     it('rejects submissions outside the configured window', async () => {
       const now = new Date();
+
       phasesService.findByPhaseId.mockResolvedValue({
         phaseId: 'phase-1',
         submissionStart: new Date(now.getTime() - 120_000),
@@ -130,22 +168,47 @@ describe('SubmissionsService', () => {
     });
   });
 
-  describe('findById/findOne', () => {
-    it('returns a submission when found', async () => {
-      const submissionId = '64f1a2b3c4d5e6f7a8b9c0d3';
-      const submission = { _id: submissionId, title: 'Test' };
-      mockSubmissionModel.findById.mockReturnValue(execResult(submission));
+  describe('findOne', () => {
+    it('should return a submission for a valid ObjectId when found', async () => {
+      const mockSubmission = { _id: validId, title: 'Test Proposal' };
+      mockFindById.mockReturnValue(execResult(mockSubmission));
 
-      await expect(service.findOne(submissionId)).resolves.toEqual(submission);
-      expect(mockSubmissionModel.findById).toHaveBeenCalledWith(submissionId);
+      const result = await service.findOne(validId);
+
+      expect(mockFindById).toHaveBeenCalledWith(validId);
+      expect(result).toEqual(mockSubmission);
     });
 
-    it('throws NotFoundException when submission is missing', async () => {
-      mockSubmissionModel.findById.mockReturnValue(execResult(null));
+    it('should throw BadRequestException for invalid ObjectId format', async () => {
+      await expect(service.findOne('not-an-objectid')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
 
-      await expect(
-        service.findById('64f1a2b3c4d5e6f7a8b9c0d1'),
-      ).rejects.toThrow(NotFoundException);
+  describe('findById', () => {
+    it('should return submission when found with a valid ObjectId', async () => {
+      const submission = { _id: validId, title: 'Test' };
+      mockFindById.mockReturnValue(execResult(submission));
+
+      const result = await service.findById(validId);
+
+      expect(mockFindById).toHaveBeenCalledWith(validId);
+      expect(result).toEqual(submission);
+    });
+
+    it('should throw NotFoundException when valid ObjectId is not found', async () => {
+      mockFindById.mockReturnValue(execResult(null));
+
+      await expect(service.findById(otherValidId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw BadRequestException for invalid ObjectId format', async () => {
+      await expect(service.findById('submission-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -206,18 +269,73 @@ describe('SubmissionsService', () => {
     });
   });
 
+  describe('getCompleteness', () => {
+    it('should return completeness when all required fields are present', async () => {
+      const submission = makeSubmission({
+        documents: [
+          {
+            originalName: 'doc.pdf',
+            mimeType: 'application/pdf',
+            uploadedAt: new Date(),
+          },
+        ],
+      });
+
+      mockFindById.mockReturnValue(execResult(submission));
+      phasesService.findByPhaseId.mockResolvedValue({
+        phaseId: 'phase-1',
+        requiredFields: ['title', 'documents'],
+      });
+
+      const result = await service.getCompleteness(validId);
+
+      expect(result).toEqual({
+        submissionId: validId,
+        isComplete: true,
+        missingFields: [],
+        requiredFields: ['title', 'documents'],
+        phaseId: 'phase-1',
+      });
+    });
+
+    it('should return incompleteness when required fields are missing', async () => {
+      const submission = makeSubmission({
+        _id: otherValidId,
+        title: '',
+        documents: [],
+      });
+
+      mockFindById.mockReturnValue(execResult(submission));
+      phasesService.findByPhaseId.mockResolvedValue({
+        phaseId: 'phase-1',
+        requiredFields: ['title', 'documents'],
+      });
+
+      const result = await service.getCompleteness(otherValidId);
+
+      expect(result).toEqual({
+        submissionId: otherValidId,
+        isComplete: false,
+        missingFields: ['title', 'documents'],
+        requiredFields: ['title', 'documents'],
+        phaseId: 'phase-1',
+      });
+    });
+  });
+
   describe('assertAuthorizedGroupMember', () => {
-    it('allows admin users without membership lookup', async () => {
+    it('should allow admin users without membership lookup', async () => {
       await expect(
         service.assertAuthorizedGroupMember(
           { userId: 'admin-id', role: Role.Admin },
           'group-1',
         ),
       ).resolves.toBeUndefined();
+
       expect(mockGroupModel.findOne).not.toHaveBeenCalled();
     });
 
-    it('throws NotFoundException when group does not exist', async () => {
+    it('should throw NotFoundException when group does not exist', async () => {
       mockGroupModel.findOne.mockReturnValue(execResult(null));
 
       await expect(
@@ -228,7 +346,7 @@ describe('SubmissionsService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('throws ForbiddenException when group is not active', async () => {
+    it('should throw ForbiddenException when group is not active', async () => {
       mockGroupModel.findOne.mockReturnValue(
         execResult({ groupId: 'group-1', status: GroupStatus.DISBANDED }),
       );
@@ -243,31 +361,10 @@ describe('SubmissionsService', () => {
   });
 
   describe('uploadDocument', () => {
-    const validId = '507f1f77bcf86cd799439011';
-    const oneHour = 60 * 60 * 1000;
-    const mockFile = {
-      originalname: 'test-document.pdf',
-      mimetype: 'application/pdf',
-      buffer: Buffer.from('test content'),
-      size: 1024,
-    } as Express.Multer.File;
-
-    const openPhase = () => ({
-      submissionStart: new Date(Date.now() - oneHour),
-      submissionEnd: new Date(Date.now() + oneHour),
-    });
-
-    const makeSubmission = (overrides = {}) => ({
-      _id: validId,
-      phaseId: 'phase-1',
-      documents: [] as any[],
-      save: mockSave,
-      ...overrides,
-    });
-
-    it('adds document metadata to submission on valid upload', async () => {
+    it('should add document metadata to submission on valid upload', async () => {
       const submission = makeSubmission();
-      mockSubmissionModel.findById.mockReturnValue(execResult(submission));
+
+      mockFindById.mockReturnValue(execResult(submission));
       phasesService.getPhaseById.mockResolvedValue(openPhase());
       mockSave.mockResolvedValue(submission);
 
@@ -275,24 +372,91 @@ describe('SubmissionsService', () => {
 
       expect(result.message).toBe('Document uploaded successfully.');
       expect(submission.documents).toHaveLength(1);
+      expect(submission.documents[0].originalName).toBe('test-document.pdf');
+      expect(submission.documents[0].mimeType).toBe('application/pdf');
+      expect(submission.documents[0].uploadedAt).toBeInstanceOf(Date);
+      expect(submission.documents[0].storagePath).toContain(validId);
+    });
+
+    it('should persist document by calling save once', async () => {
+      const submission = makeSubmission();
+
+      mockFindById.mockReturnValue(execResult(submission));
+      phasesService.getPhaseById.mockResolvedValue(openPhase());
+      mockSave.mockResolvedValue(submission);
+
+      await service.uploadDocument(validId, mockFile);
+
       expect(mockSave).toHaveBeenCalledTimes(1);
     });
 
-    it('rejects invalid submissionId format', async () => {
-      await expect(
-        service.uploadDocument('not-an-objectid', mockFile),
-      ).rejects.toThrow(BadRequestException);
+    it('should decode latin1-encoded filename to UTF-8', async () => {
+      const latin1EncodedName = Buffer.from('test.pdf', 'utf8').toString('latin1');
+      const submission = makeSubmission();
+
+      mockFindById.mockReturnValue(execResult(submission));
+      phasesService.getPhaseById.mockResolvedValue(openPhase());
+      mockSave.mockResolvedValue(submission);
+
+      const fileWithLatin1 = { ...mockFile, originalname: latin1EncodedName };
+      await service.uploadDocument(validId, fileWithLatin1 as Express.Multer.File);
+
+      expect(submission.documents[0].originalName).toBe(
+        Buffer.from(latin1EncodedName, 'latin1').toString('utf8'),
+      );
     });
 
-    it('rejects when maximum document count is reached', async () => {
+    it('should throw BadRequestException for invalid submission ID format', async () => {
+      await expect(service.uploadDocument('not-an-objectid', mockFile)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw NotFoundException when submission does not exist', async () => {
+      mockFindById.mockReturnValue(execResult(null));
+
+      await expect(service.uploadDocument(validId, mockFile)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw NotFoundException when phase does not exist', async () => {
+      const submission = makeSubmission();
+
+      mockFindById.mockReturnValue(execResult(submission));
+      phasesService.getPhaseById.mockRejectedValue(
+        new NotFoundException('Phase not found'),
+      );
+
+      await expect(service.uploadDocument(validId, mockFile)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw BadRequestException when phase has no submission window configured', async () => {
+      const submission = makeSubmission();
+
+      mockFindById.mockReturnValue(execResult(submission));
+      phasesService.getPhaseById.mockResolvedValue({
+        submissionStart: null,
+        submissionEnd: null,
+      });
+
+      await expect(service.uploadDocument(validId, mockFile)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should reject upload when maximum document count is reached', async () => {
       const submission = makeSubmission({
         documents: Array.from({ length: MAX_DOCUMENTS_PER_SUBMISSION }, () => ({
-          originalName: 'doc.pdf',
+          originalName: 'existing.pdf',
           mimeType: 'application/pdf',
           uploadedAt: new Date(),
         })),
       });
-      mockSubmissionModel.findById.mockReturnValue(execResult(submission));
+
+      mockFindById.mockReturnValue(execResult(submission));
       phasesService.getPhaseById.mockResolvedValue(openPhase());
 
       await expect(service.uploadDocument(validId, mockFile)).rejects.toThrow(
@@ -302,7 +466,8 @@ describe('SubmissionsService', () => {
 
     it('rejects upload when submission window has closed', async () => {
       const submission = makeSubmission();
-      mockSubmissionModel.findById.mockReturnValue(execResult(submission));
+
+      mockFindById.mockReturnValue(execResult(submission));
       phasesService.getPhaseById.mockResolvedValue({
         submissionStart: new Date(Date.now() - 2 * oneHour),
         submissionEnd: new Date(Date.now() - oneHour),
@@ -310,6 +475,119 @@ describe('SubmissionsService', () => {
 
       await expect(service.uploadDocument(validId, mockFile)).rejects.toThrow(
         /Submission window has closed/,
+      );
+    });
+  });
+
+  describe('Jury Member Operations (assertJuryMember)', () => {
+    const mockCommittee = {
+      groups: [{ groupId: 'group-1' }],
+      jury: [{ userId: 'prof-1' }],
+    };
+
+    beforeEach(() => {
+      mockCommitteeModel.findOne.mockReset();
+    });
+
+    it('should pass if professor is in the committee jury for the group', async () => {
+      mockCommitteeModel.findOne.mockReturnValue(execResult(mockCommittee));
+
+      await expect(
+        service.assertJuryMember('prof-1', 'group-1'),
+      ).resolves.toBeUndefined();
+
+      expect(mockCommitteeModel.findOne).toHaveBeenCalledWith({
+        'groups.groupId': 'group-1',
+      });
+    });
+
+    it('should throw NotFoundException if no committee is assigned to the group', async () => {
+      mockCommitteeModel.findOne.mockReturnValue(execResult(null));
+
+      await expect(service.assertJuryMember('prof-1', 'group-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException if professor is NOT in the committee jury', async () => {
+      mockCommitteeModel.findOne.mockReturnValue(execResult(mockCommittee));
+
+      await expect(
+        service.assertJuryMember('prof-unknown', 'group-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('validateSowEligibility (Process 6.6)', () => {
+    it('should return canProceed true for Group C (Approved Revised Proposal)', async () => {
+      mockGroupModel.findOne.mockReturnValue(execResult({ groupId: 'group-C' }));
+
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue(
+          execResult({ status: 'APPROVED', type: 'REVISED_PROPOSAL' }),
+        ),
+      });
+
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue(execResult(null)),
+      });
+
+      const result = await service.validateSowEligibility('group-C');
+
+      expect(result).toEqual({
+        sowStatus: 'NOT_SUBMITTED',
+        revisedProposalStatus: 'APPROVED',
+        canProceed: true,
+      });
+    });
+
+    it('should return canProceed false for Group A (Missing Proposal)', async () => {
+      mockGroupModel.findOne.mockReturnValue(execResult({ groupId: 'group-A' }));
+
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue(execResult(null)),
+      });
+
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue(execResult(null)),
+      });
+
+      const result = await service.validateSowEligibility('group-A');
+
+      expect(result).toEqual({
+        sowStatus: 'NOT_SUBMITTED',
+        revisedProposalStatus: 'MISSING',
+        canProceed: false,
+      });
+    });
+
+    it('should return canProceed false for Group B (Pending/Rejected)', async () => {
+      mockGroupModel.findOne.mockReturnValue(execResult({ groupId: 'group-B' }));
+
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue(
+          execResult({ status: 'REJECTED', type: 'REVISED_PROPOSAL' }),
+        ),
+      });
+
+      mockSubmissionModel.findOne.mockReturnValueOnce({
+        sort: jest.fn().mockReturnValue(execResult(null)),
+      });
+
+      const result = await service.validateSowEligibility('group-B');
+
+      expect(result).toEqual({
+        sowStatus: 'NOT_SUBMITTED',
+        revisedProposalStatus: 'REJECTED',
+        canProceed: false,
+      });
+    });
+
+    it('should throw NotFoundException for non-existent group ID', async () => {
+      mockGroupModel.findOne.mockReturnValue(execResult(null));
+
+      await expect(service.validateSowEligibility('invalid-uuid')).rejects.toThrow(
+        NotFoundException,
       );
     });
   });

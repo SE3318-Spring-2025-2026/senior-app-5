@@ -122,7 +122,8 @@ describe('StoryPointsController', () => {
       const result = await controller.overrideStoryPoints(
         GROUP_ID,
         SPRINT_ID,
-        { studentId: STUDENT_A, completedPoints: 15 },
+        STUDENT_A,
+        { completedPoints: 15 },
         coordinatorReq,
       );
 
@@ -134,7 +135,7 @@ describe('StoryPointsController', () => {
       mockService.override.mockRejectedValue(new ForbiddenException('Insufficient permissions'));
 
       await expect(
-        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, { studentId: STUDENT_A, completedPoints: 5 }, professorReq),
+        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, professorReq),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -142,7 +143,7 @@ describe('StoryPointsController', () => {
       mockService.override.mockRejectedValue(new UnprocessableEntityException('Sprint config missing'));
 
       await expect(
-        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, { studentId: STUDENT_A, completedPoints: 5 }, coordinatorReq),
+        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, coordinatorReq),
       ).rejects.toThrow(UnprocessableEntityException);
     });
   });
@@ -168,7 +169,7 @@ describe('StoryPointsController', () => {
     it('overrideStoryPoints rejects when service throws UnauthorizedException', async () => {
       mockService.override.mockRejectedValue(new UnauthorizedException());
       await expect(
-        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, { studentId: STUDENT_A, completedPoints: 5 }, coordinatorReq),
+        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, coordinatorReq),
       ).rejects.toThrow(UnauthorizedException);
     });
   });
@@ -184,7 +185,8 @@ describe('StoryPointsController', () => {
         controller.overrideStoryPoints(
           GROUP_ID,
           SPRINT_ID,
-          { studentId: STUDENT_A, completedPoints: -1 },
+          STUDENT_A,
+          { completedPoints: -1 },
           coordinatorReq,
         ),
       ).rejects.toThrow(BadRequestException);

@@ -1,8 +1,9 @@
-import { BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RubricsService } from './rubrics.service';
 import { Rubric } from './schemas/rubric.schema';
+import { SprintEvaluation } from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 
 describe('RubricsService', () => {
   let service: RubricsService;
@@ -28,6 +29,10 @@ describe('RubricsService', () => {
     deleteOne: jest.fn(),
   };
 
+  const mockSprintEvaluationModel = {
+    exists: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -37,6 +42,10 @@ describe('RubricsService', () => {
         {
           provide: getModelToken(Rubric.name),
           useValue: mockRubricModel,
+        },
+        {
+          provide: getModelToken(SprintEvaluation.name),
+          useValue: mockSprintEvaluationModel,
         },
         {
           provide: getConnectionToken(),
@@ -197,6 +206,9 @@ describe('RubricsService', () => {
     mockRubricModel.findOne.mockReturnValue({
       exec: jest.fn().mockResolvedValue({ rubricId: 'rubric-1' }),
     });
+    mockSprintEvaluationModel.exists.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
     mockRubricModel.deleteOne.mockReturnValue({
       exec: jest.fn().mockResolvedValue({ deletedCount: 1 }),
     });
@@ -205,6 +217,20 @@ describe('RubricsService', () => {
     expect(mockRubricModel.deleteOne).toHaveBeenCalledWith({
       rubricId: 'rubric-1',
     });
+  });
+
+  it('throws 409 when deleting a rubric in use by sprint evaluations', async () => {
+    mockRubricModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ rubricId: 'rubric-1' }),
+    });
+    mockSprintEvaluationModel.exists.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ _id: 'eval-1' }),
+    });
+
+    await expect(service.deleteRubric('rubric-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(mockRubricModel.deleteOne).not.toHaveBeenCalled();
   });
 
   it('throws not found when deleting a missing rubric', async () => {

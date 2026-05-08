@@ -1,116 +1,99 @@
+﻿/* -- Layout -- */
 .pageContainer {
-  padding: 20px;
-  animation: fadeIn 0.5s ease-in;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .headerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   border-bottom: 1px solid #1e293b;
-  padding-bottom: 1.5rem;
-  margin-bottom: 2rem;
+  padding-bottom: 16px;
 }
 
 .title {
-  color: #38bdf8;
-  font-size: 2rem;
-  font-weight: 800;
-  margin-bottom: 10px;
-  letter-spacing: -0.5px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.02em;
+  margin: 0;
 }
 
 .description {
-  color: #94a3b8;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0;
 }
 
+/* -- States -- */
 .loading {
-  color: #38bdf8;
-  font-size: 1.2rem;
+  padding: 20px;
   text-align: center;
-  margin-top: 50px;
-  font-weight: 600;
+  color: #64748b;
+  font-size: 0.875rem;
 }
 
 .errorBox {
-  background: #fee2e2;
-  border: 1px solid #ef4444;
-  color: #991b1b;
-  padding: 1.5rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
   border-radius: 8px;
-  margin-bottom: 2rem;
+  padding: 14px 18px;
+  font-size: 0.875rem;
 }
 
 .infoBox {
-  background: #0f172a;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
   padding: 20px;
-  border-radius: 12px;
-  border: 1px dashed #334155;
-  color: #94a3b8;
-  text-align: center;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
+/* -- Table -- */
 .tableWrapper {
-  background: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
   overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #1e293b;
+  background: #111827;
 }
 
 .customTable {
   width: 100%;
   border-collapse: collapse;
-  color: #94a3b8;
+  font-size: 0.875rem;
+  color: #cbd5e1;
 }
 
-.customTable th, .customTable td {
-  padding: 15px 12px;
+.customTable th,
+.customTable td {
+  padding: 11px 16px;
   text-align: left;
   border-bottom: 1px solid #1e293b;
 }
 
 .customTable th {
-  color: #f8fafc;
+  background: #0f172a;
   font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.78rem;
   text-transform: uppercase;
-  font-size: 0.85rem;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
 }
 
-.highlight {
-  color: #f8fafc;
-  font-weight: 500;
+.customTable tr:last-child td {
+  border-bottom: none;
 }
 
-
-.badge {
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  background: #334155;
-  color: #f8fafc;
-}
-.badge.approved { background: #064e3b; color: #34d399; border: 1px solid #059669; }
-.badge.pending { background: #78350f; color: #fbbf24; border: 1px solid #d97706; }
-.badge.needsrevision { background: #7f1d1d; color: #f87171; border: 1px solid #dc2626; }
-
-.smallButton {
-  background: #1e293b;
-  color: #38bdf8;
-  border: 1px solid #38bdf8;
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.smallButton:hover {
-  background: #38bdf8;
-  color: #0f172a;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.customTable tbody tr:hover td {
+  background: #1a2535;
 }

@@ -6,7 +6,9 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -25,7 +27,11 @@ import { Request as ExpressRequest } from 'express';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { ListGroupsQueryDto } from './dto/list-groups-query.dto';
 import { CommitteeGradeResultDto } from './dto/committee-grade-result.dto';
+import { CreateMyTeamDto } from './dto/create-my-team.dto';
+import { SendInviteDto } from './dto/send-invite.dto';
+import { RespondToInviteDto } from './dto/respond-to-invite.dto';
 import { CommitteesService } from '../committees/committees.service';
 import { CommitteeResponseDto } from '../committees/dto/committee-response.dto';
 import { CommitteeDocument } from '../committees/schemas/committee.schema';
@@ -33,7 +39,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
-
+import { ForbiddenException } from '@nestjs/common';
+import { SubmissionsService } from '../submissions/submissions.service';
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
 }
@@ -46,9 +53,54 @@ export class GroupsController {
   constructor(
     private readonly groupsService: GroupsService,
     private readonly committeesService: CommitteesService,
+    private readonly submissionsService: SubmissionsService,
   ) {}
 
-  @ApiOperation({ summary: 'Create a new group' })
+  @ApiOperation({ summary: 'List groups with optional name filter (Admin, Coordinator)' })
+  @ApiOkResponse({ description: 'Paginated list of groups' })
+  @Get()
+  @Roles(Role.Admin, Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  async listGroups(@Query() query: ListGroupsQueryDto) {
+    return this.groupsService.findAll(query.page, query.limit, query.name);
+  }
+
+  // ─── Student: create own team ─────────────────────────────────────────────
+  @ApiOperation({ summary: 'Student creates their own team and becomes TeamLeader' })
+  @ApiCreatedResponse({ description: 'Team created, caller promoted to TeamLeader' })
+  @Post('my-team')
+  @Roles(Role.Student)
+  @HttpCode(HttpStatus.CREATED)
+  async createMyTeam(
+    @Body() dto: CreateMyTeamDto,
+    @Request() req: RequestWithUser,
+  ) {
+    const userId = req.user.userId ?? req.user.sub ?? req.user._id ?? '';
+    return this.groupsService.createGroupByStudent(userId, dto.groupName);
+  }
+
+  // ─── Student: view pending invites ────────────────────────────────────────
+  @ApiOperation({ summary: 'Student views their pending team invites' })
+  @ApiOkResponse({ description: 'List of pending invites for the logged-in student' })
+  @Get('my-invites')
+  @Roles(Role.Student, Role.TeamLeader)
+  @HttpCode(HttpStatus.OK)
+  async getMyInvites(@Request() req: RequestWithUser) {
+    const userId = req.user.userId ?? req.user.sub ?? req.user._id ?? '';
+    return this.groupsService.getPendingInvitesForUser(userId);
+  }
+
+  @ApiOperation({ summary: 'Get group details with leader, advisor and members' })
+  @ApiOkResponse({ description: 'Group details returned' })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  @Get(':groupId')
+  @Roles(Role.Admin, Role.Coordinator)
+  @HttpCode(HttpStatus.OK)
+  async getGroupDetails(@Param('groupId') groupId: string) {
+    return this.groupsService.findGroupWithDetails(groupId);
+  }
+
+  @ApiOperation({ summary: 'Create a new group (Admin/Coordinator only)' })
   @ApiCreatedResponse({ description: 'Group created successfully' })
   @Post()
   @Roles(Role.Admin, Role.Coordinator)
@@ -56,6 +108,51 @@ export class GroupsController {
   async createGroup(@Body() createGroupDto: CreateGroupDto) {
     return this.groupsService.createGroup(createGroupDto);
   }
+
+  // ─── Student: respond to an invite ────────────────────────────────────────
+  @ApiOperation({ summary: 'Student accepts or rejects a team invite' })
+  @ApiOkResponse({ description: 'Invite response recorded' })
+  @Patch('invites/:inviteId/respond')
+  @Roles(Role.Student, Role.TeamLeader)
+  @HttpCode(HttpStatus.OK)
+  async respondToInvite(
+    @Param('inviteId') inviteId: string,
+    @Body() dto: RespondToInviteDto,
+    @Request() req: RequestWithUser,
+  ) {
+    const userId = req.user.userId ?? req.user.sub ?? req.user._id ?? '';
+    return this.groupsService.respondToInvite(inviteId, userId, dto.accept);
+  }
+
+  // ─── TeamLeader: send invite ───────────────────────────────────────────────
+  @ApiOperation({ summary: 'TeamLeader sends a team invite to a student by email' })
+  @ApiCreatedResponse({ description: 'Invite sent' })
+  @Post(':groupId/invites')
+  @Roles(Role.TeamLeader)
+  @HttpCode(HttpStatus.CREATED)
+  async sendInvite(
+    @Param('groupId') groupId: string,
+    @Body() dto: SendInviteDto,
+    @Request() req: RequestWithUser,
+  ) {
+    const userId = req.user.userId ?? req.user.sub ?? req.user._id ?? '';
+    return this.groupsService.sendInvite(groupId, userId, dto.invitedUserEmail);
+  }
+
+  // ─── TeamLeader: list invites with status ─────────────────────────────────
+  @ApiOperation({ summary: 'TeamLeader views all invites for their group with statuses' })
+  @ApiOkResponse({ description: 'Invite list with statuses' })
+  @Get(':groupId/invites')
+  @Roles(Role.TeamLeader)
+  @HttpCode(HttpStatus.OK)
+  async getGroupInvites(
+    @Param('groupId') groupId: string,
+    @Request() req: RequestWithUser,
+  ) {
+    const userId = req.user.userId ?? req.user.sub ?? req.user._id ?? '';
+    return this.groupsService.getInvitesByGroup(groupId, userId);
+  }
+
 
   @ApiOperation({ summary: 'Add a member to a group (by groupId UUID)' })
   @ApiCreatedResponse({ description: 'Member added to group successfully' })
@@ -69,11 +166,19 @@ export class GroupsController {
     return this.groupsService.addMember(groupId, body.memberUserId);
   }
 
-  @Get(':groupId/validate-statement-of-work')
-  @ApiOperation({ summary: 'Check SoW status for a group' })
+  @Get(':groupId/validate-sow')
+  @ApiOperation({ summary: 'Check SoW status and eligibility for a group' })
   @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
-  async validateSow(@Param('groupId') groupId: string) {
-    return this.groupsService.validateStatementOfWork(groupId);
+  async validateSow(
+    @Param('groupId') groupId: string,
+    @Request() req: RequestWithUser & { user: { groupId?: string } } 
+  ) {
+    const userRole = req.user.role;
+    const userGroupId = req.user.groupId;
+    if ((userRole === Role.Student || userRole === Role.TeamLeader) && String(userGroupId) !== String(groupId)) {
+      throw new ForbiddenException('You cannot validate SOW status for another group.');
+    }
+    return this.submissionsService.validateSowEligibility(groupId);
   }
 
   @ApiOperation({
@@ -141,4 +246,7 @@ export class GroupsController {
       })),
     };
   }
+  
+
+
 }

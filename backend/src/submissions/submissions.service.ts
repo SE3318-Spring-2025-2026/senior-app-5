@@ -15,7 +15,7 @@ import { PhasesService } from '../phases/phases.service';
 import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument } from './schemas/submission.schema';
-
+import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
 type SubmissionActor = { userId?: string; role?: string; groupId?: string };
 type UploadedSubmissionFile = {
   originalname: string;
@@ -79,6 +79,14 @@ export class SubmissionsService {
   }
 
   async createSubmission(createSubmissionDto: CreateSubmissionDto) {
+    if (createSubmissionDto.type === 'SOW') {
+      const eligibility = await this.validateSowEligibility(createSubmissionDto.groupId);
+      if (!eligibility.canProceed) {
+         throw new ForbiddenException(
+          `The SOW cannot be created. Prerequisites are not met. Revised Proposal Status: ${eligibility.revisedProposalStatus}`,
+        );
+      }
+    }
     const phase = await this.phasesService.findByPhaseId(
       createSubmissionDto.phaseId,
     );
@@ -257,6 +265,15 @@ export class SubmissionsService {
     const submission =
       submissionFromGuard ?? (await this.findById(submissionId));
 
+    if (submission.type === 'SOW') {
+      const eligibility = await this.validateSowEligibility(submission.groupId);
+      if (!eligibility.canProceed) {
+        throw new ForbiddenException(
+          `The SOW document cannot be uploaded. Prerequisites are not met. Revised Proposal Status.: ${eligibility.revisedProposalStatus}`,
+        );
+      }
+    }  
+
     // SECURITY: Validate Window (Missing from main, added from current PR)
     const phase = await this.phasesService.getPhaseById(submission.phaseId);
     if (!phase.submissionStart || !phase.submissionEnd) {
@@ -366,6 +383,8 @@ export class SubmissionsService {
       }
     }
 
+    
+
     return {
       submissionId,
       isComplete: missingFields.length === 0,
@@ -374,4 +393,75 @@ export class SubmissionsService {
       phaseId: submission.phaseId,
     };
   }
+
+  async assertJuryMember(userId: string, groupId: string): Promise<void> {
+    const committee = await this.committeeModel.findOne({ 'groups.groupId': groupId }).exec();
+    
+    if (!committee) {
+      throw new NotFoundException('No committee assigned to this group.');
+    }
+
+    const isJury = committee.jury?.some((member: any) => String(member.userId) === String(userId));
+    if (!isJury) {
+      throw new ForbiddenException('You are not a jury member for this group.');
+    }
+  }
+
+
+  async listSubmissionsForJury(userId: string, groupId: string) {
+    await this.assertJuryMember(userId, groupId);
+
+    // Mongoose projection ({ 'documents.storagePath': 0 })  with this we delete storage path safely from response
+    return this.submissionModel
+      .find({ groupId }, { 'documents.storagePath': 0 })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+
+   async getSubmissionForJury(userId: string, submissionId: string) {
+    if (!isValidObjectId(submissionId)) {
+      throw new BadRequestException('Invalid Submission ID format.');
+    }
+
+    const submission = await this.submissionModel
+      .findById(submissionId, { 'documents.storagePath': 0 })
+      .exec();
+
+    if (!submission) {
+      throw new NotFoundException('Submission not found.');
+    }
+
+    await this.assertJuryMember(userId, submission.groupId);
+    return submission;
+  }
+  
+   async validateSowEligibility(groupId: string) {
+    // 1. Group Not Found Check 
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found.`);
+    }
+   // Find Revised Proposal
+    const revisedProposal = await this.submissionModel
+      .findOne({ groupId, type: 'REVISED_PROPOSAL' })
+      .sort({ createdAt: -1 }) // En güncel olanı al
+      .exec();
+    //
+    const sow = await this.submissionModel
+      .findOne({ groupId, type: 'SOW' })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    const revisedProposalStatus = revisedProposal ? revisedProposal.status : 'MISSING';
+    const sowStatus = sow ? sow.status : 'NOT_SUBMITTED';
+    const canProceed = revisedProposalStatus === 'APPROVED';
+
+    return {
+      sowStatus,
+      revisedProposalStatus,
+      canProceed,
+    };
+
+   }
 }

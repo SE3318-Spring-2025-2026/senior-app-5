@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AdvisorsController } from './advisors.controller';
 import { AdvisorsService } from './advisors.service';
 import { AdvisorRequestsController } from './advisor-requests.controller';
+import { GroupsAdvisorController } from './groups-advisor.controller';
 import { SchedulesController } from './schedules.controller';
 import { User, UserSchema } from '../users/data/user.schema';
 import { Group, GroupSchema } from '../groups/group.entity';
@@ -26,6 +27,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
   controllers: [
     AdvisorsController,
     AdvisorRequestsController,
+    GroupsAdvisorController,
     SchedulesController,
   ],
   providers: [AdvisorsService],

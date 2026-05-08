@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
-import { SectionCard, StatusBlock } from '../../components/ui'
-import styles from '../GroupLifecyclePage.module.css'
+import { SectionCard, StatusBlock, Button, PageHeader } from '../../components/ui'
 
 const formatLocalDateTime = (isoString) => {
   const date = new Date(isoString)
@@ -32,24 +31,35 @@ function SanitizationPage() {
   }
 
   return (
-    <div className={styles.pageContainer}>
+    <div className="max-w-4xl mx-auto space-y-5 p-1">
+      <PageHeader title="Sanitization" />
+
       <SectionCard
         title="Execute Sanitization"
         description="Disband groups missing advisors and trigger notifications."
       >
-        <div className={styles.form}>
-          <label>
-            Run Date / Time
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Run Date / Time
+            </label>
             <input
               type="datetime-local"
               value={sanitizationDate}
               onChange={(e) => setSanitizationDate(e.target.value)}
               required
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
             />
-          </label>
-          <button type="button" onClick={handleExecuteSanitization} disabled={adminStatus.loading}>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleExecuteSanitization}
+            loading={adminStatus.loading}
+            disabled={adminStatus.loading}
+          >
             {adminStatus.loading ? 'Executing…' : 'Run Sanitization'}
-          </button>
+          </Button>
         </div>
         <StatusBlock title="Sanitization" message={adminStatus.message} type="success" />
         <StatusBlock title="Sanitization" message={adminStatus.error} type="error" />

@@ -1,4 +1,7 @@
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -24,6 +27,8 @@ import {
   CommitteeMemberGradeDto,
 } from './dto/committee-grade-result.dto';
 import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
+import { TeamInvite, TeamInviteDocument, InviteStatus } from './schemas/team-invite.schema';
+import { Role } from '../auth/enums/role.enum';
 
 const GRADE_NUMERIC: Record<EvaluationGrade, number> = {
   [EvaluationGrade.A]: 100,
@@ -45,6 +50,8 @@ export class GroupsService {
     private evaluationModel: Model<CommitteeEvaluationDocument>,
     @InjectModel(Committee.name)
     private committeeModel: Model<CommitteeDocument>,
+    @InjectModel(TeamInvite.name)
+    private teamInviteModel: Model<TeamInviteDocument>,
   ) {}
 
   async createGroup(createGroupDto: CreateGroupDto): Promise<Group> {
@@ -58,6 +65,79 @@ export class GroupsService {
 
   async findGroupById(groupId: string): Promise<Group | null> {
     return this.groupModel.findOne({ groupId }).exec();
+  }
+
+  async findGroupWithDetails(groupId: string) {
+    const group = await this.groupModel.findOne({ groupId }).lean().exec();
+    if (!group) {
+      throw new NotFoundException(`Group not found: ${groupId}`);
+    }
+
+    const safeFind = async (id: string | null | undefined) => {
+      if (!id) return null;
+      try {
+        return await this.userModel.findById(id).select('_id name email').lean().exec();
+      } catch {
+        return null;
+      }
+    };
+
+    const [members, leader, advisor] = await Promise.all([
+      this.userModel
+        .find({ teamId: groupId })
+        .select('_id name email role')
+        .lean()
+        .exec(),
+      safeFind(group.leaderUserId),
+      safeFind(group.assignedAdvisorId ?? group.advisorUserId),
+    ]);
+
+    return {
+      groupId: group.groupId,
+      groupName: group.groupName,
+      status: group.status,
+      assignmentStatus: group.assignmentStatus,
+      leader: leader ?? null,
+      advisor: advisor ?? null,
+      members: members as Array<{ _id: unknown; name?: string; email: string; role: string }>,
+    };
+  }
+
+  async findAll(
+    page: number,
+    limit: number,
+    name?: string,
+  ): Promise<{
+    data: Array<{
+      groupId: string;
+      groupName: string;
+      leaderUserId: string;
+      advisorUserId?: string;
+      status: string;
+      assignmentStatus: string;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const filter: Record<string, unknown> = {};
+    if (name?.trim()) {
+      const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.groupName = { $regex: escaped, $options: 'i' };
+    }
+    const skip = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+      this.groupModel
+        .find(filter)
+        .select('groupId groupName leaderUserId advisorUserId status assignmentStatus -_id')
+        .sort({ groupName: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.groupModel.countDocuments(filter).exec(),
+    ]);
+    return { data: docs as any[], total, page, limit };
   }
 
   async addMember(groupId: string, memberUserId: string) {
@@ -216,6 +296,147 @@ export class GroupsService {
       throw new InternalServerErrorException(
         'Failed to aggregate committee grades due to an unexpected error.',
       );
+    }
+  }
+
+  // ─── Team Creation & Invite System ────────────────────────────────────────
+
+  async createGroupByStudent(userId: string, groupName: string): Promise<Group> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new NotFoundException('User not found');
+    if (user.teamId) throw new ConflictException('You are already in a team');
+
+    const group = new this.groupModel({
+      groupName,
+      leaderUserId: userId,
+      status: GroupStatus.ACTIVE,
+    });
+    const saved = await group.save();
+
+    await this.userModel.findByIdAndUpdate(userId, {
+      role: Role.TeamLeader,
+      teamId: saved.groupId,
+    }).exec();
+
+    return saved;
+  }
+
+  async sendInvite(groupId: string, leaderId: string, invitedUserEmail: string) {
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) throw new NotFoundException('Group not found');
+    if (group.leaderUserId !== leaderId) {
+      throw new ForbiddenException('Only the group leader can send invites');
+    }
+
+    const invitedUser = await this.userModel
+      .findOne({ email: invitedUserEmail.toLowerCase() })
+      .exec();
+    if (!invitedUser) throw new NotFoundException('No user found with that email');
+    if (invitedUser.role !== Role.Student) {
+      throw new BadRequestException('You can only invite users with the Student role');
+    }
+    if (invitedUser.teamId) {
+      throw new ConflictException('This student is already in a team');
+    }
+
+    const existing = await this.teamInviteModel
+      .findOne({ groupId, invitedUserId: String(invitedUser._id), status: InviteStatus.PENDING })
+      .exec();
+    if (existing) throw new ConflictException('A pending invite already exists for this student');
+
+    const invite = new this.teamInviteModel({
+      groupId,
+      invitedUserId: String(invitedUser._id),
+      invitedByUserId: leaderId,
+    });
+    const saved = await invite.save();
+
+    return {
+      inviteId: saved.inviteId,
+      groupId: saved.groupId,
+      invitedUser: { id: String(invitedUser._id), email: invitedUser.email, name: invitedUser.name },
+      status: saved.status,
+    };
+  }
+
+  async getInvitesByGroup(groupId: string, requesterId: string) {
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) throw new NotFoundException('Group not found');
+    if (group.leaderUserId !== requesterId) {
+      throw new ForbiddenException('Only the group leader can view invites');
+    }
+
+    const invites = await this.teamInviteModel.find({ groupId }).lean().exec();
+    const userIds = invites.map((i) => i.invitedUserId);
+    const users = await this.userModel
+      .find({ _id: { $in: userIds } })
+      .select('_id name email')
+      .lean()
+      .exec();
+    const userMap = Object.fromEntries(users.map((u: any) => [String(u._id), u]));
+
+    return invites.map((inv) => ({
+      inviteId: inv.inviteId,
+      groupId: inv.groupId,
+      status: inv.status,
+      createdAt: (inv as any).createdAt,
+      invitedUser: userMap[inv.invitedUserId]
+        ? {
+            id: inv.invitedUserId,
+            name: userMap[inv.invitedUserId].name ?? null,
+            email: userMap[inv.invitedUserId].email,
+          }
+        : { id: inv.invitedUserId, name: null, email: null },
+    }));
+  }
+
+  async getPendingInvitesForUser(userId: string) {
+    const invites = await this.teamInviteModel
+      .find({ invitedUserId: userId, status: InviteStatus.PENDING })
+      .lean()
+      .exec();
+
+    const groupIds = invites.map((i) => i.groupId);
+    const groups = await this.groupModel
+      .find({ groupId: { $in: groupIds } })
+      .lean()
+      .exec();
+    const groupMap = Object.fromEntries(groups.map((g: any) => [g.groupId, g]));
+
+    return invites.map((inv) => ({
+      inviteId: inv.inviteId,
+      groupId: inv.groupId,
+      groupName: groupMap[inv.groupId]?.groupName ?? null,
+      status: inv.status,
+      createdAt: (inv as any).createdAt,
+    }));
+  }
+
+  async respondToInvite(inviteId: string, userId: string, accept: boolean) {
+    const invite = await this.teamInviteModel.findOne({ inviteId }).exec();
+    if (!invite) throw new NotFoundException('Invite not found');
+    if (invite.invitedUserId !== userId) {
+      throw new ForbiddenException('This invite is not addressed to you');
+    }
+    if (invite.status !== InviteStatus.PENDING) {
+      throw new ConflictException('This invite has already been responded to');
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new NotFoundException('User not found');
+    if (user.teamId) throw new ConflictException('You are already in a team');
+
+    if (accept) {
+      invite.status = InviteStatus.ACCEPTED;
+      await Promise.all([
+        invite.save(),
+        this.userModel.findByIdAndUpdate(userId, { teamId: invite.groupId }).exec(),
+      ]);
+      return { inviteId, status: InviteStatus.ACCEPTED, groupId: invite.groupId };
+    } else {
+      invite.status = InviteStatus.REJECTED;
+      await invite.save();
+      return { inviteId, status: InviteStatus.REJECTED };
     }
   }
 }

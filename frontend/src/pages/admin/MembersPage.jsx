@@ -42,15 +42,18 @@ function MembersPage() {
     <div className={styles.pageContainer}>
       <SectionCard title="Add Member" description="Assign a student to the created or existing group.">
         <form className={styles.form} onSubmit={handleAddMember}>
-          <label>
-            Group ID
-            <input
-              value={groupIdForMembers}
-              onChange={(e) => setGroupIdForMembers(e.target.value)}
-              placeholder="UUID of group"
-              required
-            />
-          </label>
+          <EntitySearchSelect
+            label="Group"
+            endpoint={apiConfig.endpoints.groups}
+            buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+            getItems={(res) => res.data}
+            returnField="groupId"
+            displayField="groupName"
+            value={groupIdForMembers}
+            onChange={setGroupIdForMembers}
+            placeholder="Search group by name"
+            required
+          />
           <EntitySearchSelect
             label="Member"
             endpoint={apiConfig.endpoints.userSearch}

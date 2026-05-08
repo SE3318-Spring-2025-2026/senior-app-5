@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Request,
@@ -26,6 +27,7 @@ import {
   ApiTags,
   ApiUnprocessableEntityResponse,
   ApiUnauthorizedResponse,
+  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -33,6 +35,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { CommitteesService } from './committees.service';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
+import { UpdateCommitteeDto } from './dto/update-committee.dto';
 import { CommitteeResponseDto } from './dto/committee-response.dto';
 import { CommitteeDocument } from './schemas/committee.schema';
 import { ListCommitteeGroupsQueryDto } from './dto/list-committee-groups-query.dto';
@@ -43,6 +46,12 @@ import { ListCommitteesQueryDto } from './dto/list-committees-query.dto';
 import { CommitteePageDto } from './dto/committee-page.dto';
 import { AssignCommitteeGroupDto } from './dto/assign-committee-group.dto';
 import { CommitteeGroupResponseDto } from './dto/committee-group-response.dto';
+import { AddJuryMemberDto } from './dto/add-jury-member.dto';
+import { JuryMemberResponseDto } from './dto/jury-member-response.dto';
+import { JuryMemberPageDto } from './dto/jury-member-page.dto';
+import { AddCommitteeAdvisorDto } from './dto/add-committee-advisor.dto';
+import { AddCommitteeAdvisorResponseDto } from './dto/add-committee-advisor-response.dto';
+import { AdvisorGradingScopePageDto } from './dto/advisor-grading-scope-page.dto';
 
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
@@ -119,6 +128,45 @@ export class CommitteesController {
     );
 
     return this.toResponseDto(committee);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'deleteCommittee',
+    summary: 'Delete a committee (COORDINATOR only)',
+  })
+  @ApiNoContentResponse({
+    description: 'Committee and assignment links deleted successfully',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiConflictResponse({
+    description: 'Committee has active grading in progress and cannot be deleted',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected internal failure',
+  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Delete(':committeeId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteCommittee(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Request() req: RequestWithUser,
+  ): Promise<void> {
+    const coordinatorId =
+      req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+
+    await this.committeesService.deleteCommittee(
+      committeeId,
+      coordinatorId,
+      correlationId,
+    );
   }
 
   @ApiBearerAuth('access-token')
@@ -218,6 +266,44 @@ export class CommitteesController {
     return this.committeesService.listCommitteeGroups(
       committeeId,
       query,
+      correlationId,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'addJuryMember',
+    summary: 'Add a jury member to a committee (COORDINATOR only)',
+  })
+  @ApiCreatedResponse({
+    description: 'Jury member assignment created successfully',
+    type: JuryMemberResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({
+    description: 'Valid token but insufficient permissions',
+  })
+  @ApiNotFoundResponse({ description: 'Committee or user not found' })
+  @ApiConflictResponse({ description: 'User is already assigned as jury member' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Post(':committeeId/jury-members')
+  @HttpCode(HttpStatus.CREATED)
+  async addJuryMember(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Body() dto: AddJuryMemberDto,
+    @Request() req: RequestWithUser,
+  ): Promise<JuryMemberResponseDto> {
+    const coordinatorId =
+      req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ?? undefined;
+
+    return this.committeesService.addJuryMember(
+      committeeId,
+      dto,
+      coordinatorId,
       correlationId,
     );
   }
@@ -377,6 +463,105 @@ export class CommitteesController {
       coordinatorId,
       correlationId,
     );
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'updateCommittee',
+    summary: 'Update committee details (COORDINATOR only)',
+  })
+  @ApiOkResponse({ description: 'Committee updated successfully', type: CommitteeResponseDto })
+  @ApiBadRequestResponse({ description: 'No update fields provided' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Patch(':committeeId')
+  @HttpCode(HttpStatus.OK)
+  async updateCommittee(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Body() dto: UpdateCommitteeDto,
+    @Request() req: RequestWithUser,
+  ): Promise<CommitteeResponseDto> {
+    const coordinatorId = req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    const committee = await this.committeesService.updateCommittee(committeeId, dto, coordinatorId, correlationId);
+    return this.toResponseDto(committee);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'listJuryMembers',
+    summary: 'List jury members of a committee (COORDINATOR only)',
+  })
+  @ApiOkResponse({ description: 'Jury members returned successfully', type: JuryMemberPageDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Get(':committeeId/jury-members')
+  @HttpCode(HttpStatus.OK)
+  async listJuryMembers(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Query() query: ListCommitteeAdvisorsQueryDto,
+    @Request() req: RequestWithUser,
+  ): Promise<JuryMemberPageDto> {
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.listJuryMembers(committeeId, query, correlationId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'addCommitteeAdvisor',
+    summary: 'Manually add an advisor to a committee (COORDINATOR only)',
+  })
+  @ApiCreatedResponse({ description: 'Advisor assigned successfully', type: AddCommitteeAdvisorResponseDto })
+  @ApiConflictResponse({ description: 'Advisor is already linked to this committee' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Committee not found' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator)
+  @Post(':committeeId/advisors')
+  @HttpCode(HttpStatus.CREATED)
+  async addCommitteeAdvisor(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Body() dto: AddCommitteeAdvisorDto,
+    @Request() req: RequestWithUser,
+  ): Promise<AddCommitteeAdvisorResponseDto> {
+    const coordinatorId = req.user.userId ?? req.user.sub ?? req.user._id ?? 'unknown';
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.addCommitteeAdvisor(committeeId, dto, coordinatorId, correlationId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'listAdvisorGradingScope',
+    summary: "List groups an advisor is responsible for grading in a committee (COORDINATOR, ADVISOR)",
+    description: 'Returns all groups in the committee. isOwnGroup=true when the group is directly advised by this advisor; false for cross-grading assignments.',
+  })
+  @ApiOkResponse({ description: 'Grading scope returned successfully', type: AdvisorGradingScopePageDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Valid token but insufficient permissions' })
+  @ApiNotFoundResponse({ description: 'Committee or advisor link not found' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Coordinator, Role.Professor)
+  @Get(':committeeId/advisors/:advisorUserId/groups')
+  @HttpCode(HttpStatus.OK)
+  async listAdvisorGradingScope(
+    @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
+    @Param('advisorUserId', new ParseUUIDPipe()) advisorUserId: string,
+    @Query() query: ListCommitteeAdvisorsQueryDto,
+    @Request() req: RequestWithUser,
+  ): Promise<AdvisorGradingScopePageDto> {
+    const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
+    return this.committeesService.getAdvisorGradingScope(committeeId, advisorUserId, query, correlationId);
   }
 
   private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {

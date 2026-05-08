@@ -24,7 +24,14 @@ export class TeamLeaderGuard implements CanActivate {
       );
     }
 
-    const team = await this.teamModel.findOne({ groupId: teamId });
+    // Accept either Mongo _id or groupId UUID in the URL.
+    let team = null as any;
+    if (/^[0-9a-fA-F]{24}$/.test(teamId)) {
+      team = await this.teamModel.findById(teamId);
+    }
+    if (!team) {
+      team = await this.teamModel.findOne({ groupId: teamId });
+    }
     if (!team) {
       throw new NotFoundException('Team not found.');
     }

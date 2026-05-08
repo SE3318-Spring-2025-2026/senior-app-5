@@ -114,22 +114,40 @@ function ScrumManagementPage() {
 
     try {
       const response = await apiClient.get(apiConfig.endpoints.teamSync(teamId));
-      const data = response.data || {};
+      const raw = response.data;
 
-      const summary = {
-        syncRunId: data.syncRunId || data.lastSyncRunId || '',
-        totalIssues: data.totalIssues ?? 0,
-        linkedCount: data.linkedCount ?? 0,
-        syncedAt: data.syncedAt || data.lastSyncedAt || null,
-      };
-
-      const issueRows = Array.isArray(data.issues)
-        ? data.issues
-        : Array.isArray(data.data)
-        ? data.data
+      // Backend GET /teams/:id/sync returns the sprint-stories array directly
+      // (no envelope). Derive summary fields from it; preserve any prior
+      // syncRunId since GET does not expose it.
+      const issueRows = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.issues)
+        ? raw.issues
+        : Array.isArray(raw?.data)
+        ? raw.data
         : [];
 
-      setSyncSummary(summary);
+      const latestSyncedAt = issueRows.reduce((latest, row) => {
+        if (!row?.syncedAt) return latest;
+        const t = new Date(row.syncedAt).getTime();
+        return Number.isFinite(t) && t > latest ? t : latest;
+      }, 0);
+
+      const linkedCount = issueRows.filter(
+        (r) => r && r.githubStatus && r.githubStatus !== 'no_branch',
+      ).length;
+
+      setSyncSummary((prev) => ({
+        syncRunId: prev?.syncRunId || raw?.syncRunId || raw?.lastSyncRunId || '',
+        totalIssues: issueRows.length || raw?.totalIssues || 0,
+        linkedCount: linkedCount || raw?.linkedCount || 0,
+        syncedAt:
+          (latestSyncedAt && new Date(latestSyncedAt).toISOString()) ||
+          raw?.syncedAt ||
+          raw?.lastSyncedAt ||
+          prev?.syncedAt ||
+          null,
+      }));
       setIssues(issueRows);
     } catch (error) {
       const status = error?.response?.status;
@@ -351,27 +369,47 @@ function ScrumManagementPage() {
                         <th className="px-4 py-2.5">Issue key</th>
                         <th className="px-4 py-2.5">Summary</th>
                         <th className="px-4 py-2.5">Status</th>
+                        <th className="px-4 py-2.5">Points</th>
                         <th className="px-4 py-2.5">Branch</th>
                         <th className="px-4 py-2.5">PR</th>
+                        <th className="px-4 py-2.5">GitHub</th>
+                        <th className="px-4 py-2.5">Complete</th>
                       </tr>
                     </thead>
                     <tbody>
                       {issues.map((issue) => {
-                        const branchFound = Boolean(issue.githubBranchFound);
-                        const prFound = Boolean(issue.githubPrFound);
-                        const warn = !branchFound || !prFound;
+                        // Derive branch/PR booleans from githubStatus enum, not the
+                        // legacy boolean fields that GET /sync no longer returns.
+                        const gh = issue.githubStatus || 'no_branch';
+                        const branchFound = gh !== 'no_branch';
+                        const prFound = gh !== 'no_branch' && gh !== 'no_pr';
+                        const complete = !!issue.isComplete;
+                        const ghLabel = {
+                          no_branch: { text: 'No Branch', color: 'text-zinc-500' },
+                          no_pr: { text: 'No PR', color: 'text-amber-400' },
+                          pr_not_merged: { text: 'PR Open', color: 'text-sky-400' },
+                          author_mismatch: { text: 'Author Mismatch', color: 'text-fuchsia-400' },
+                          verified: { text: 'Verified ✓', color: 'text-emerald-400' },
+                        }[gh] || { text: gh, color: 'text-zinc-300' };
+                        const rowBg = complete
+                          ? 'bg-emerald-500/[0.04]'
+                          : !branchFound || !prFound
+                          ? 'bg-amber-500/[0.04]'
+                          : '';
+
                         return (
                           <tr
                             key={issue.issueKey || issue.key}
-                            className={`border-b border-[#1c1c20] last:border-b-0 ${
-                              warn ? 'bg-amber-500/[0.04]' : ''
-                            }`}
+                            className={`border-b border-[#1c1c20] last:border-b-0 ${rowBg}`}
                           >
                             <td className="px-4 py-2.5 font-mono text-[12px] text-zinc-100">
                               {issue.issueKey || issue.key || '—'}
                             </td>
                             <td className="px-4 py-2.5 text-zinc-300">{issue.summary || '—'}</td>
-                            <td className="px-4 py-2.5 text-zinc-400">{issue.status || '—'}</td>
+                            <td className="px-4 py-2.5 text-zinc-400">
+                              {issue.resolution || issue.status || '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-zinc-300">{issue.work ?? 0}</td>
                             <td className="px-4 py-2.5">
                               <span
                                 className={`inline-flex h-1.5 w-1.5 rounded-full ${
@@ -387,6 +425,10 @@ function ScrumManagementPage() {
                                 }`}
                               />
                               <span className="ml-2 text-zinc-300">{prFound ? 'Yes' : 'No'}</span>
+                            </td>
+                            <td className={`px-4 py-2.5 ${ghLabel.color}`}>{ghLabel.text}</td>
+                            <td className={`px-4 py-2.5 ${complete ? 'text-emerald-400 font-bold' : 'text-zinc-500'}`}>
+                              {complete ? '✓ YES' : 'no'}
                             </td>
                           </tr>
                         );

@@ -247,9 +247,28 @@ function SprintBuilderPage() {
   const handleSaveDeliverableMappings = async (deliverableId) => {
     setSavingDeliverable(deliverableId)
     try {
+      // Ensure every schedule has a matching sprint config (creates one if missing).
+      // This bridges old schedules that were created without a paired sprint config.
+      let liveConfigs = [...sprintConfigs]
+      for (const sch of schedules) {
+        const alreadyLinked = liveConfigs.some((c) => c.sprintId === sch.scheduleId)
+        if (!alreadyLinked) {
+          try {
+            const res = await apiClient.post('/sprints', {
+              sprintId: sch.scheduleId,
+              targetStoryPoints: 0,
+              deliverableMappings: [],
+            })
+            liveConfigs = [...liveConfigs, res.data]
+          } catch {
+            // 409 = config already exists with this id in a concurrent request; re-fetch below
+          }
+        }
+      }
+
       await Promise.all(
         schedules.map(async (sch) => {
-          const cfg = sprintConfigs.find((c) => c.sprintId === sch.scheduleId)
+          const cfg = liveConfigs.find((c) => c.sprintId === sch.scheduleId)
           if (!cfg) return
           const entry = mappings[deliverableId]?.[sch.scheduleId]
           const pct = entry?.checked ? parseFloat(entry.pct) : null

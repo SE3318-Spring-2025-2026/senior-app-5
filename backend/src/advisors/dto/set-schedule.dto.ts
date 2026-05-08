@@ -40,8 +40,10 @@ export function validateSprintDateWindow(
     );
   }
 
-  const diffMs = end.getTime() - start.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  // Strip time component before diffing so start/end times don't skew the count.
+  const startDate = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+  const endDate = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  const diffDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
   if (diffDays !== 11) {
     throw new BadRequestException(
       `Sprint must be exactly 11 days (Mon → Fri two weeks later). Got ${diffDays} day(s).`,

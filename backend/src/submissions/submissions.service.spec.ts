@@ -37,6 +37,7 @@ describe('SubmissionsService', () => {
 
   mockSubmissionModel.findById = mockFindById;
   mockSubmissionModel.find = jest.fn().mockReturnThis();
+  mockSubmissionModel.findOne = jest.fn();
   mockSubmissionModel.sort = jest.fn().mockReturnThis();
   mockSubmissionModel.exec = jest.fn();
 
@@ -73,6 +74,7 @@ describe('SubmissionsService', () => {
     jest.clearAllMocks();
     mockSave.mockReset();
     mockSubmissionModel.mockClear();
+    mockSubmissionModel.findOne.mockReset();
     mockFindById.mockReset();
     mockGroupModel.findOne.mockReset();
     mockUserModel.findById.mockReset();

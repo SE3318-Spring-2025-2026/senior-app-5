@@ -40,7 +40,6 @@ const toPagination = (payload) => ({
   limit: payload?.limit ?? payload?.meta?.limit ?? null,
 })
 
-const fromDateInput = (value) => new Date(value).toISOString()
 const getListItems = (payload) => toList(payload)
 const buildCommitteeSearchParams = (query) => ({ page: 1, limit: 10, name: query })
 
@@ -214,6 +213,7 @@ function CoordinatorManagementPage() {
     loadTabData(selectedCommitteeId, activeTab)
   }, [selectedCommitteeId, activeTab, loadCommitteeDetails, loadTabData])
 
+  // 🔥 1. PAYLOAD VE VALIDASYON DÜZELTMESİ (ISSUE #1 AŞAMASI)
   const onCreateSchedule = async (event) => {
     event.preventDefault()
     setScheduleStatus(emptyStatus())
@@ -226,18 +226,26 @@ function CoordinatorManagementPage() {
       setScheduleStatus({ message: '', error: 'Start and end date are required.' })
       return
     }
-    if (new Date(scheduleForm.startAt) >= new Date(scheduleForm.endAt)) {
+
+    const startDate = new Date(scheduleForm.startAt)
+    const endDate = new Date(scheduleForm.endAt)
+
+    // Backend validasyonu öncesi Client-side güvenlik (End date > Start Date)
+    if (endDate <= startDate) {
       setScheduleStatus({ message: '', error: 'End date must be after start date.' })
       return
     }
 
     setScheduleLoading(true)
     try {
-      await createSchedule({
+      // Backend'in tam olarak beklediği DTO yapısı
+      const payload = {
         phase: scheduleForm.phase,
-        startDatetime: fromDateInput(scheduleForm.startAt),
-        endDatetime: fromDateInput(scheduleForm.endAt),
-      })
+        startDatetime: startDate.toISOString(),
+        endDatetime: endDate.toISOString()
+      }
+
+      await createSchedule(payload)
       setScheduleStatus({ message: 'Schedule created successfully.', error: '' })
       await loadActiveSchedule(scheduleForm.phase)
     } catch (error) {
@@ -453,6 +461,12 @@ function CoordinatorManagementPage() {
                 required
               />
             </label>
+            
+            {/* 🔥 UX İYİLEŞTİRMESİ: Kullanıcıya ISO 8601 uyarısı eklendi */}
+            <p className={styles.meta} style={{ marginTop: '-5px', marginBottom: '10px' }}>
+               * Dates are securely converted to UTC (ISO 8601) format before saving.
+            </p>
+
             <div className={styles.inlineActions}>
               <button type="submit" disabled={scheduleLoading}>
                 {scheduleLoading ? 'Saving...' : 'Create Schedule'}

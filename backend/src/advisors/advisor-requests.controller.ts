@@ -50,7 +50,7 @@ export class AdvisorRequestsController {
   }
 
   @Get()
-  @Roles(Role.Coordinator, Role.Professor, Role.TeamLeader)
+  @Roles(Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
   async listRequests(
     @Req() req: RequestWithUser,
     @Query() query: ListRequestsQueryDto,

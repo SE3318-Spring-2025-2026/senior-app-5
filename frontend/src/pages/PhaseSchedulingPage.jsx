@@ -29,19 +29,24 @@ const formatUtcDate = (value) => {
   return Number.isNaN(date.getTime()) ? 'Invalid UTC value' : date.toISOString();
 };
 
-const formatErrorMessages = (message) => {
+const formatErrorMessages = (message, defaultMessage = 'Failed to update phase schedule.') => {
   if (Array.isArray(message)) return message;
   if (typeof message === 'string' && message.trim()) return [message];
-  return ['Failed to update phase schedule.'];
+  return [defaultMessage];
 };
+
+const getPhaseOptionLabel = (phase) =>
+  phase.name ? `${phase.name} (${phase.phaseId})` : phase.phaseId;
 
 function PhaseSchedulingPage() {
   const [phases, setPhases] = useState([]);
   const [phaseId, setPhaseId] = useState('');
+  const [phaseName, setPhaseName] = useState('');
   const [submissionStart, setSubmissionStart] = useState('');
   const [submissionEnd, setSubmissionEnd] = useState('');
   const [result, setResult] = useState(null);
   const [status, setStatus] = useState({ loading: false, loadingPhases: true, message: '', errors: [] });
+  const [creatingPhase, setCreatingPhase] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
   // Create phase state
@@ -92,6 +97,63 @@ function PhaseSchedulingPage() {
 
     setPhaseId(nextPhaseId);
     applyPhaseSchedule(nextPhase);
+  };
+
+  const handleCreatePhase = async (event) => {
+    event.preventDefault();
+
+    const trimmedName = phaseName.trim();
+    if (!trimmedName) {
+      setFieldErrors((current) => ({ ...current, phaseName: 'Phase name is required.' }));
+      setStatus((current) => ({ ...current, message: '', errors: [] }));
+      return;
+    }
+
+    setCreatingPhase(true);
+    setResult(null);
+    setFieldErrors((current) => ({ ...current, phaseName: '' }));
+    setStatus({ loading: false, loadingPhases: false, message: '', errors: [] });
+
+    try {
+      const response = await apiClient.post(apiConfig.endpoints.phasesCreate, {
+        name: trimmedName,
+      });
+      const createdPhase = response.data;
+
+      setPhases((currentPhases) => {
+        const withoutDuplicate = currentPhases.filter(
+          (phase) => phase.phaseId !== createdPhase.phaseId,
+        );
+        return [...withoutDuplicate, createdPhase].sort((a, b) => 
+          (a.name || a.phaseId || '').localeCompare(b.name || b.phaseId || '')
+        );
+      });
+      setPhaseId(createdPhase.phaseId);
+      setSubmissionStart(toInputValue(createdPhase.submissionStart));
+      setSubmissionEnd(toInputValue(createdPhase.submissionEnd));
+      setPhaseName('');
+      setFieldErrors({});
+      setStatus({
+        loading: false,
+        loadingPhases: false,
+        message: `Phase ${createdPhase.name || createdPhase.phaseId} created successfully.`,
+        errors: [],
+      });
+    } catch (error) {
+      const details =
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to create phase.';
+
+      setStatus({
+        loading: false,
+        loadingPhases: false,
+        message: '',
+        errors: formatErrorMessages(details, 'Failed to create phase.'),
+      });
+    } finally {
+      setCreatingPhase(false);
+    }
   };
 
   const validateForm = () => {
@@ -231,51 +293,50 @@ function PhaseSchedulingPage() {
         subtitle={`Date fields use ${timezoneName}; saved as UTC.`}
       />
 
-      {/* Create New Phase */}
-      <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5 mb-6">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Create New Phase</h2>
-        <form onSubmit={handleCreatePhase} className="flex gap-3 items-end">
-          <div className="flex-1">
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+      <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5 mb-4">
+        <form onSubmit={handleCreatePhase} className="flex flex-col gap-4">
+          <div>
+            <label htmlFor="phaseName" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Phase Name
             </label>
             <input
+              id="phaseName"
               type="text"
-              value={newPhaseName}
-              onChange={(e) => setNewPhaseName(e.target.value)}
-              placeholder="e.g. Phase 1 — Project Proposal"
-              disabled={createPhaseStatus.loading}
-              className="w-full rounded-xl border border-[#1e293b] bg-[#080f1f] px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
+              value={phaseName}
+              disabled={creatingPhase}
+              onChange={(event) => {
+                setPhaseName(event.target.value);
+                setFieldErrors((current) => ({ ...current, phaseName: '' }));
+              }}
+              aria-invalid={Boolean(fieldErrors.phaseName)}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
             />
+            {fieldErrors.phaseName && (
+              <p className="text-xs text-red-400 mt-1">{fieldErrors.phaseName}</p>
+            )}
           </div>
-          <button
-            type="submit"
-            disabled={createPhaseStatus.loading || !newPhaseName.trim()}
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
-          >
-            {createPhaseStatus.loading ? 'Creating...' : 'Create Phase'}
-          </button>
+
+          <div>
+            <button
+              type="submit"
+              disabled={creatingPhase}
+              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {creatingPhase ? 'Creating...' : 'Create Phase'}
+            </button>
+          </div>
         </form>
-        {createPhaseStatus.message && (
-          <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
-            {createPhaseStatus.message}
-          </p>
-        )}
-        {createPhaseStatus.error && (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
-            {createPhaseStatus.error}
-          </p>
-        )}
       </div>
 
       <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Phase Select */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+            <label htmlFor="phaseId" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Phase
             </label>
             <select
+              id="phaseId"
               value={phaseId}
               onChange={handlePhaseChange}
               disabled={status.loadingPhases || status.loading}
@@ -287,7 +348,7 @@ function PhaseSchedulingPage() {
               </option>
               {phases.map((phase) => (
                 <option key={phase.phaseId} value={phase.phaseId}>
-                  {phase.phaseId}
+                  {getPhaseOptionLabel(phase)}
                 </option>
               ))}
             </select>
@@ -333,10 +394,11 @@ function PhaseSchedulingPage() {
 
           {/* Submission Start */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+            <label htmlFor="submissionStart" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Submission Start
             </label>
             <input
+              id="submissionStart"
               type="datetime-local"
               value={submissionStart}
               disabled={!phaseId || status.loading}
@@ -354,10 +416,11 @@ function PhaseSchedulingPage() {
 
           {/* Submission End */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+            <label htmlFor="submissionEnd" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Submission End
             </label>
             <input
+              id="submissionEnd"
               type="datetime-local"
               value={submissionEnd}
               min={submissionStart}

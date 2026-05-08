@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Link2, RefreshCw, GitBranch, BarChart3, ClipboardCheck,
+} from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { PageHeader } from '../components/ui';
@@ -16,6 +19,29 @@ const formatDate = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 };
+
+function SectionLabel({ icon: Icon, children, action }) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={13} className="text-zinc-600" />}
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          {children}
+        </span>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-[#1c1c20] py-2.5 last:border-b-0">
+      <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-600">{label}</span>
+      <span className="truncate text-[13px] text-zinc-200">{value}</span>
+    </div>
+  );
+}
 
 function ScrumManagementPage() {
   const user = useMemo(() => {
@@ -70,8 +96,8 @@ function ScrumManagementPage() {
     setInlineError('team', '');
 
     try {
-      // Contract-driven endpoint assumed from Process 9 backend issues
-      const response = await apiClient.get(`/teams/${teamId}`);
+      // Use the integrations/status endpoint which exists on the backend
+      const response = await apiClient.get(apiConfig.endpoints.teamIntegrationsStatus(teamId));
       setTeamData(response.data || null);
     } catch (error) {
       setInlineError('team', parseApiMessage(error, 'Failed to load team integration status.'));
@@ -200,10 +226,12 @@ function ScrumManagementPage() {
 
   const completedPoints = storyPoints?.completedStoryPoints ?? storyPoints?.completed ?? 0;
   const totalPoints = storyPoints?.totalStoryPoints ?? storyPoints?.total ?? 0;
+  const progressPct = totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
+        eyebrow={isCoordinator ? 'Coordinator' : 'Team Leader'}
         title="Scrum Management"
         subtitle={
           isCoordinator
@@ -213,147 +241,206 @@ function ScrumManagementPage() {
       />
 
       {errors.general && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
           {errors.general}
         </div>
       )}
 
       {!errors.general && (
         <>
-          <section className="rounded-2xl border border-[#1e293b] bg-[#111827] p-5">
-            <h2 className="text-sm font-bold text-slate-200 mb-3">Integration Status</h2>
+          <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+            <SectionLabel icon={Link2}>Integration status</SectionLabel>
+
             {loading.team ? (
-              <p className="text-sm text-slate-500">Loading integration data...</p>
+              <p className="text-[13px] text-zinc-600">Loading integration data…</p>
             ) : (
               <div className="space-y-2 text-sm">
                 <p className="text-slate-300">
-                  Jira Project Key: <span className="text-slate-100">{teamData?.jiraProjectKey || 'Not configured'}</span>
+                  Jira Project Key: <span className="text-slate-100">{teamData?.jira?.projectKey || 'Not configured'}</span>
                 </p>
                 <p className="text-slate-300">
-                  Jira Domain: <span className="text-slate-100">{teamData?.jiraDomain || 'Not configured'}</span>
+                  Jira Domain: <span className="text-slate-100">{teamData?.jira?.domain || 'Not configured'}</span>
                 </p>
                 <p className="text-slate-300">
                   GitHub Repository ID:{' '}
-                  <span className="text-slate-100">{teamData?.githubRepositoryId || 'Not configured'}</span>
+                  <span className="text-slate-100">{teamData?.github?.repository || 'Not configured'}</span>
                 </p>
                 <p className="text-xs text-slate-400">
                   Update integrations from <Link className="text-blue-400 hover:underline" to="/integrations">Integrations</Link>.
                 </p>
               </div>
             )}
+
+            <p className="mt-3 text-[12px] text-zinc-500">
+              Update integrations from{' '}
+              <Link className="text-zinc-300 underline-offset-2 hover:text-zinc-100 hover:underline" to="/integrations">
+                Integrations
+              </Link>
+              .
+            </p>
+
             {errors.team && (
-              <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+              <p className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
                 {errors.team}
               </p>
             )}
           </section>
 
-          <section className="rounded-2xl border border-[#1e293b] bg-[#111827] p-5">
-            <h2 className="text-sm font-bold text-slate-200 mb-3">Sync</h2>
-            <button
-              type="button"
-              onClick={handleSyncStories}
-              disabled={!canSync || loading.syncAction}
-              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+            <SectionLabel
+              icon={RefreshCw}
+              action={
+                <button
+                  type="button"
+                  onClick={handleSyncStories}
+                  disabled={!canSync || loading.syncAction}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-3.5 py-2 text-[13px] font-semibold text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-[#26262b] disabled:text-zinc-600"
+                >
+                  <RefreshCw size={12} className={loading.syncAction ? 'animate-spin' : ''} />
+                  {loading.syncAction ? 'Syncing…' : 'Sync stories'}
+                </button>
+              }
             >
-              {loading.syncAction ? 'Syncing...' : 'Sync Stories'}
-            </button>
-            {!canSync && <p className="text-xs text-slate-500 mt-2">Read-only access for coordinators.</p>}
+              Sync
+            </SectionLabel>
 
-            <div className="mt-4 space-y-1 text-sm text-slate-300">
-              <p>Sync Run ID: <span className="text-slate-100">{syncSummary?.syncRunId || 'No sync yet'}</span></p>
-              <p>Total Issues: <span className="text-slate-100">{syncSummary?.totalIssues ?? 0}</span></p>
-              <p>Linked Count: <span className="text-slate-100">{syncSummary?.linkedCount ?? 0}</span></p>
-              <p>Synced At: <span className="text-slate-100">{formatDate(syncSummary?.syncedAt)}</span></p>
+            {!canSync && (
+              <p className="mb-3 text-[12px] text-zinc-600">Read-only access for coordinators.</p>
+            )}
+
+            <div className="rounded-xl border border-[#1f1f23] bg-[#0e0e10] px-4">
+              <InfoRow label="Sync run id" value={syncSummary?.syncRunId || 'No sync yet'} />
+              <InfoRow label="Total issues" value={String(syncSummary?.totalIssues ?? 0)} />
+              <InfoRow label="Linked count" value={String(syncSummary?.linkedCount ?? 0)} />
+              <InfoRow label="Synced at" value={formatDate(syncSummary?.syncedAt)} />
             </div>
 
             {errors.syncAction && (
-              <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+              <p className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
                 {errors.syncAction}
               </p>
             )}
           </section>
 
-          <section className="rounded-2xl border border-[#1e293b] bg-[#111827] p-5">
-            <h2 className="text-sm font-bold text-slate-200 mb-3">Story Points</h2>
+          <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+            <SectionLabel icon={BarChart3}>Story points</SectionLabel>
+
             {loading.storyPoints ? (
-              <p className="text-sm text-slate-500">Loading story-point summary...</p>
+              <p className="text-[13px] text-zinc-600">Loading story-point summary…</p>
             ) : (
-              <p className="text-sm text-slate-200">
-                {completedPoints} / {totalPoints} story points completed
-              </p>
+              <div className="space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[13px] text-zinc-200 tabular-nums">
+                    {completedPoints} / {totalPoints} story points completed
+                  </span>
+                  <span className="text-[11px] font-medium tabular-nums text-zinc-500">
+                    {progressPct}%
+                  </span>
+                </div>
+                <div className="h-1 w-full overflow-hidden rounded-full bg-[#1c1c20]">
+                  <div
+                    className="h-full rounded-full bg-zinc-300 transition-all duration-700"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
             )}
+
             {errors.storyPoints && (
-              <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+              <p className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
                 {errors.storyPoints}
               </p>
             )}
           </section>
 
-          <section className="rounded-2xl border border-[#1e293b] bg-[#111827] p-5">
-            <h2 className="text-sm font-bold text-slate-200 mb-3">Per-Issue Validation</h2>
+          <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+            <SectionLabel icon={ClipboardCheck}>Per-issue validation</SectionLabel>
 
             {loading.syncData ? (
-              <p className="text-sm text-slate-500">Loading issue rows...</p>
+              <p className="text-[13px] text-zinc-600">Loading issue rows…</p>
             ) : issues.length === 0 ? (
-              <p className="text-sm text-slate-500">No sync data available yet.</p>
+              <p className="text-[13px] text-zinc-600">No sync data available yet.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-slate-400 border-b border-[#1e293b]">
-                      <th className="py-2 pr-4">Issue Key</th>
-                      <th className="py-2 pr-4">Summary</th>
-                      <th className="py-2 pr-4">Status</th>
-                      <th className="py-2 pr-4">Points</th>
-                      <th className="py-2 pr-4">Branch</th>
-                      <th className="py-2 pr-4">PR</th>
-                      <th className="py-2 pr-4">GitHub</th>
-                      <th className="py-2">Complete</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {issues.map((issue) => {
-                      const gh = issue.githubStatus || 'no_branch';
-                      const branchFound = gh !== 'no_branch';
-                      const prFound = gh !== 'no_branch' && gh !== 'no_pr';
-                      const complete = !!issue.isComplete;
-                      const rowClass = complete
-                        ? 'bg-emerald-500/5'
-                        : !branchFound || !prFound
-                        ? 'bg-amber-500/10'
-                        : '';
+              <div className="overflow-hidden rounded-xl border border-[#1f1f23]">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-[13px]">
+                    <thead>
+                      <tr className="border-b border-[#1c1c20] bg-[#0e0e10] text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                        <th className="px-4 py-2.5">Issue key</th>
+                        <th className="px-4 py-2.5">Summary</th>
+                        <th className="px-4 py-2.5">Status</th>
+                        <th className="px-4 py-2.5">Points</th>
+                        <th className="px-4 py-2.5">Branch</th>
+                        <th className="px-4 py-2.5">PR</th>
+                        <th className="px-4 py-2.5">GitHub</th>
+                        <th className="px-4 py-2.5">Complete</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {issues.map((issue) => {
+                        // Derive branch/PR booleans from githubStatus enum, not the
+                        // legacy boolean fields that GET /sync no longer returns.
+                        const gh = issue.githubStatus || 'no_branch';
+                        const branchFound = gh !== 'no_branch';
+                        const prFound = gh !== 'no_branch' && gh !== 'no_pr';
+                        const complete = !!issue.isComplete;
+                        const ghLabel = {
+                          no_branch: { text: 'No Branch', color: 'text-zinc-500' },
+                          no_pr: { text: 'No PR', color: 'text-amber-400' },
+                          pr_not_merged: { text: 'PR Open', color: 'text-sky-400' },
+                          author_mismatch: { text: 'Author Mismatch', color: 'text-fuchsia-400' },
+                          verified: { text: 'Verified ✓', color: 'text-emerald-400' },
+                        }[gh] || { text: gh, color: 'text-zinc-300' };
+                        const rowBg = complete
+                          ? 'bg-emerald-500/[0.04]'
+                          : !branchFound || !prFound
+                          ? 'bg-amber-500/[0.04]'
+                          : '';
 
-                      const ghLabel = {
-                        no_branch: { text: 'No Branch', color: 'text-slate-400' },
-                        no_pr: { text: 'No PR', color: 'text-amber-400' },
-                        pr_not_merged: { text: 'PR Open', color: 'text-sky-400' },
-                        author_mismatch: { text: 'Author Mismatch', color: 'text-fuchsia-400' },
-                        verified: { text: 'Verified ✓', color: 'text-emerald-400' },
-                      }[gh] || { text: gh, color: 'text-slate-300' };
-
-                      return (
-                        <tr key={issue.issueKey || issue.key} className={`border-b border-[#1e293b] ${rowClass}`}>
-                          <td className="py-2 pr-4 text-slate-100 font-mono">{issue.issueKey || issue.key || '—'}</td>
-                          <td className="py-2 pr-4 text-slate-300">{issue.summary || '—'}</td>
-                          <td className="py-2 pr-4 text-slate-300">{issue.resolution || issue.status || '—'}</td>
-                          <td className="py-2 pr-4 text-slate-300">{issue.work ?? 0}</td>
-                          <td className="py-2 pr-4 text-slate-300">{branchFound ? 'Yes' : 'No'}</td>
-                          <td className="py-2 pr-4 text-slate-300">{prFound ? 'Yes' : 'No'}</td>
-                          <td className={`py-2 pr-4 ${ghLabel.color}`}>{ghLabel.text}</td>
-                          <td className={`py-2 ${complete ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
-                            {complete ? '✓ YES' : 'no'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        return (
+                          <tr
+                            key={issue.issueKey || issue.key}
+                            className={`border-b border-[#1c1c20] last:border-b-0 ${rowBg}`}
+                          >
+                            <td className="px-4 py-2.5 font-mono text-[12px] text-zinc-100">
+                              {issue.issueKey || issue.key || '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-zinc-300">{issue.summary || '—'}</td>
+                            <td className="px-4 py-2.5 text-zinc-400">
+                              {issue.resolution || issue.status || '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-zinc-300">{issue.work ?? 0}</td>
+                            <td className="px-4 py-2.5">
+                              <span
+                                className={`inline-flex h-1.5 w-1.5 rounded-full ${
+                                  branchFound ? 'bg-emerald-400' : 'bg-amber-400'
+                                }`}
+                              />
+                              <span className="ml-2 text-zinc-300">{branchFound ? 'Yes' : 'No'}</span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span
+                                className={`inline-flex h-1.5 w-1.5 rounded-full ${
+                                  prFound ? 'bg-emerald-400' : 'bg-amber-400'
+                                }`}
+                              />
+                              <span className="ml-2 text-zinc-300">{prFound ? 'Yes' : 'No'}</span>
+                            </td>
+                            <td className={`px-4 py-2.5 ${ghLabel.color}`}>{ghLabel.text}</td>
+                            <td className={`px-4 py-2.5 ${complete ? 'text-emerald-400 font-bold' : 'text-zinc-500'}`}>
+                              {complete ? '✓ YES' : 'no'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
             {errors.syncData && (
-              <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+              <p className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
                 {errors.syncData}
               </p>
             )}

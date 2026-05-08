@@ -386,12 +386,22 @@ export class CommitteesService {
 
       const allAdvisors = (committee.advisors as any[]) ?? [];
       const total = allAdvisors.length;
-      const data: CommitteeAdvisorListItemDto[] = allAdvisors
-        .slice(skip, skip + limit)
-        .map((a) => ({
-          advisorUserId: (a.advisorId ?? a.userId ?? a.advisorUserId) as string,
+      const pageAdvisors = allAdvisors.slice(skip, skip + limit);
+      const advisorUserIds = pageAdvisors
+        .map((a) => a.advisorId ?? a.userId ?? a.advisorUserId)
+        .filter(Boolean);
+      const advisorUsers = advisorUserIds.length
+        ? await this.userModel.find({ _id: { $in: advisorUserIds } }, { _id: 1, email: 1 }).lean().exec()
+        : [];
+      const advisorEmailMap = new Map(advisorUsers.map((u) => [String(u._id), u.email as string]));
+      const data: CommitteeAdvisorListItemDto[] = pageAdvisors.map((a) => {
+        const uid = (a.advisorId ?? a.userId ?? a.advisorUserId) as string;
+        return {
+          advisorUserId: uid,
+          email: advisorEmailMap.get(uid) ?? undefined,
           assignedAt: a.assignedAt as Date,
-        }));
+        };
+      });
 
       this.logger.log({
         event: 'committee_advisors_listed',
@@ -457,6 +467,56 @@ export class CommitteesService {
         'Failed to retrieve committee due to an unexpected error.',
       );
     }
+  }
+
+  async getEnrichedCommitteeByGroupId(
+    groupId: string,
+    correlationId?: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date | null;
+    jury: { userId: string; email?: string }[];
+    advisors: { userId: string; email?: string }[];
+    groups: { groupId: string; assignedAt: Date; assignedByUserId: string }[];
+  }> {
+    const committee = await this.getCommitteeByGroupId(groupId, correlationId);
+
+    const juryUserIds = (committee.jury as any[]).map((j) => j.userId);
+    const advisorUserIds = (committee.advisors as any[]).map((a) => a.userId);
+    const allUserIds = [...new Set([...juryUserIds, ...advisorUserIds])];
+
+    const users = allUserIds.length
+      ? await this.userModel.find(
+          { _id: { $in: allUserIds.map((id) => new Types.ObjectId(id)) } },
+          { _id: 1, email: 1 },
+        ).lean().exec()
+      : [];
+
+    const emailMap = new Map<string, string>(
+      users.map((u: any) => [u._id.toString(), u.email as string]),
+    );
+
+    return {
+      id: (committee as any).id,
+      name: (committee as any).name,
+      createdAt: (committee as any).createdAt,
+      updatedAt: (committee as any).updatedAt ?? null,
+      jury: (committee.jury as any[]).map((j) => ({
+        userId: j.userId,
+        email: emailMap.get(j.userId) ?? j.userId,
+      })),
+      advisors: (committee.advisors as any[]).map((a) => ({
+        userId: a.userId,
+        email: emailMap.get(a.userId) ?? a.userId,
+      })),
+      groups: (committee.groups as any[]).map((g) => ({
+        groupId: g.groupId,
+        assignedAt: g.assignedAt,
+        assignedByUserId: g.assignedByUserId,
+      })),
+    };
   }
 
   async removeJuryMember(
@@ -818,8 +878,18 @@ export class CommitteesService {
 
       const allJury = (committee.jury as any[]) ?? [];
       const total = allJury.length;
-      const data: JuryMemberResponseDto[] = allJury.slice(skip, skip + limit).map((j) => ({
+      const pageJury = allJury.slice(skip, skip + limit);
+
+      // Fetch user emails for display
+      const userIds = pageJury.map((j) => j.userId).filter(Boolean);
+      const users = userIds.length
+        ? await this.userModel.find({ _id: { $in: userIds } }, { _id: 1, email: 1 }).lean().exec()
+        : [];
+      const emailMap = new Map(users.map((u) => [String(u._id), u.email as string]));
+
+      const data: JuryMemberResponseDto[] = pageJury.map((j) => ({
         userId: j.userId as string,
+        email: emailMap.get(j.userId) ?? undefined,
         assignedAt: j.assignedAt as Date,
         assignedByUserId: j.assignedByUserId as string,
       }));
@@ -865,6 +935,38 @@ export class CommitteesService {
       await this.committeeModel
         .updateOne({ id: committeeId }, { $push: { advisors: entry } })
         .exec();
+
+      // Auto-assign all groups whose primary advisor is this advisor
+      const advisorGroups = await this.groupModel
+        .find({ assignedAdvisorId: dto.advisorId })
+        .lean<Group[]>()
+        .exec();
+
+      if (advisorGroups.length > 0) {
+        const existingGroupIds = new Set(
+          ((committee.groups as any[]) ?? []).map((g) => g.groupId as string),
+        );
+        const newGroupEntries = advisorGroups
+          .filter((g) => !existingGroupIds.has(g.groupId))
+          .map((g) => ({
+            groupId: g.groupId,
+            assignedAt,
+            assignedByUserId: coordinatorId,
+          }));
+
+        if (newGroupEntries.length > 0) {
+          await this.committeeModel
+            .updateOne({ id: committeeId }, { $push: { groups: { $each: newGroupEntries } } })
+            .exec();
+          this.logger.log({
+            event: 'committee_groups_auto_assigned',
+            committeeId,
+            advisorId: dto.advisorId,
+            groupCount: newGroupEntries.length,
+            correlationId,
+          });
+        }
+      }
 
       this.logger.log({ event: 'committee_advisor_added', committeeId, advisorId: dto.advisorId, coordinatorId, correlationId });
       return { advisorId: dto.advisorId, assignmentSource: dto.assignmentSource, assignedAt, assignedByUserId: coordinatorId };

@@ -1,70 +1,94 @@
+/* ================================================================
+   DashboardPage / StoryPointsPanel — matte black/zinc palette
+   Tokens (mirrors StudentView.jsx surfaces):
+     bg-page   #0a0a0b
+     bg-card   #131316
+     bg-elev   #18181c
+     bg-input  #0e0e10
+     border-1  #1f1f23
+     border-2  #26262b
+     border-3  #2a2a30
+     text-1    #f4f4f5
+     text-2    #d4d4d8
+     text-3    #a1a1aa
+     text-4    #71717a
+     text-5    #52525b
+   ================================================================ */
+
 /* ── Layout ──────────────────────────────────────────────── */
 .roleContainer {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 24px;
+  gap: 20px;
+  padding: 0;
 }
 
 .sectionTitle {
-  font-size: 1.25rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: #f1f5f9;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #71717a;
   margin: 0 0 12px;
 }
 
 /* ── Stats grid ──────────────────────────────────────────── */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1px;
+  background: #1c1c20;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .statCard {
-  background: #111827;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 18px 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: #0e0e10;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .cardTitle {
-  font-size: 0.72rem;
-  color: #64748b;
-  margin-bottom: 8px;
+  font-size: 0.625rem;
+  color: #71717a;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-weight: 600;
 }
 
 .cardValue {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: 1.625rem;
+  font-weight: 600;
   line-height: 1;
-  color: #f1f5f9;
+  color: #f4f4f5;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Info box ────────────────────────────────────────────── */
 .infoBox {
-  background: #111827;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 20px 24px;
+  background: #131316;
+  border: 1px solid #1f1f23;
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .infoBox h3 {
-  color: #f1f5f9;
-  font-size: 1rem;
+  color: #f4f4f5;
+  font-size: 0.875rem;
   font-weight: 600;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .infoBox p {
-  color: #94a3b8;
-  font-size: 0.9rem;
+  color: #a1a1aa;
+  font-size: 0.8125rem;
+  line-height: 1.5;
   margin: 0;
 }
 
@@ -73,56 +97,60 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 18px;
+  padding: 8px 16px;
   border-radius: 8px;
   border: none;
-  background: #6366f1;
-  color: #ffffff;
-  font-size: 0.875rem;
-  font-weight: 500;
+  background: #fafafa;
+  color: #09090b;
+  font-size: 0.8125rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
 }
 
-.actionButton:hover {
-  background: #4f46e5;
+.actionButton:hover:not(:disabled) {
+  background: #ffffff;
 }
 
 .actionButton:disabled {
-  background: #3730a3;
-  color: #a5b4fc;
+  background: #26262b;
+  color: #71717a;
   cursor: not-allowed;
 }
 
 .secondaryButton {
   background: transparent;
-  color: #94a3b8;
-  border: 1px solid #334155;
+  color: #a1a1aa;
+  border: 1px solid #26262b;
 }
 
-.secondaryButton:hover {
-  background: #1e293b;
-  color: #f1f5f9;
+.secondaryButton:hover:not(:disabled) {
+  background: #18181c;
+  color: #f4f4f5;
+  border-color: #3a3a40;
 }
 
 .smallButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 5px 12px;
-  border-radius: 6px;
-  border: 1px solid #334155;
-  background: #1e293b;
-  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #26262b;
+  background: #18181c;
+  color: #d4d4d8;
   font-size: 0.75rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 
-.smallButton:hover {
-  background: #273549;
-  color: #f1f5f9;
+.smallButton:hover:not(:disabled) {
+  background: #1f1f23;
+  color: #f4f4f5;
+  border-color: #3a3a40;
 }
 
 .smallButton:disabled {
@@ -133,32 +161,32 @@
 /* ── Table ───────────────────────────────────────────────── */
 .tableWrapper {
   overflow-x: auto;
-  border-radius: 10px;
-  border: 1px solid #1e293b;
-  background: #111827;
+  border-radius: 12px;
+  border: 1px solid #1f1f23;
+  background: #0e0e10;
 }
 
 .customTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
-  color: #cbd5e1;
+  font-size: 0.8125rem;
+  color: #d4d4d8;
 }
 
 .customTable th,
 .customTable td {
-  padding: 11px 16px;
+  padding: 10px 14px;
   text-align: left;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid #1c1c20;
 }
 
 .customTable th {
-  background: #0f172a;
+  background: #131316;
   font-weight: 600;
-  color: #94a3b8;
-  font-size: 0.78rem;
+  color: #71717a;
+  font-size: 0.625rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.18em;
 }
 
 .customTable tr:last-child td {
@@ -166,7 +194,7 @@
 }
 
 .customTable tbody tr:hover td {
-  background: #1a2535;
+  background: #131316;
 }
 
 /* ── Story Points Panel ──────────────────────────────────── */
@@ -176,43 +204,44 @@
   gap: 8px;
   flex-wrap: wrap;
   padding: 14px 16px;
-  background: #0f172a;
-  border-bottom: 1px solid #1e293b;
+  background: #131316;
+  border-bottom: 1px solid #1f1f23;
 }
 
 .storyPointInput {
   padding: 7px 12px;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  font-size: 0.875rem;
+  border: 1px solid #26262b;
+  border-radius: 8px;
+  font-size: 0.8125rem;
   outline: none;
-  background: #1e293b;
-  color: #f1f5f9;
+  background: #0a0a0b;
+  color: #e4e4e7;
   transition: border-color 0.15s;
 }
 
 .storyPointInput::placeholder {
-  color: #475569;
+  color: #52525b;
 }
 
 .storyPointInput:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  border-color: #3a3a40;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
 }
 
 .storyPointNumberInput {
-  width: 72px;
-  padding: 5px 8px;
-  border: 1px solid #334155;
+  width: 76px;
+  padding: 5px 10px;
+  border: 1px solid #26262b;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   outline: none;
-  background: #1e293b;
-  color: #f1f5f9;
+  background: #0a0a0b;
+  color: #e4e4e7;
 }
 
 .storyPointNumberInput:focus {
-  border-color: #6366f1;
+  border-color: #3a3a40;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
 }
 
 .overrideInlineForm {
@@ -223,29 +252,32 @@
 
 /* ── Source badges ───────────────────────────────────────── */
 .sourceBadge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  border: 1px solid transparent;
 }
 
 .sourceWarning {
-  background: rgba(251, 191, 36, 0.15);
+  background: rgba(251, 191, 36, 0.08);
   color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-color: rgba(251, 191, 36, 0.25);
 }
 
 .sourceSuccess {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
 .sourceNeutral {
-  background: rgba(100, 116, 139, 0.2);
-  color: #94a3b8;
-  border: 1px solid rgba(100, 116, 139, 0.3);
+  background: #18181c;
+  color: #a1a1aa;
+  border-color: #26262b;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import { Link2, CheckCircle2, AlertCircle, Loader2, Unlink, Link as LinkIcon } from 'lucide-react';
 import authService from '../utils/authService';
 
 const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID;
@@ -33,13 +34,10 @@ const GithubConnect = ({ userId }) => {
     }
   }, [userId]);
 
-  useEffect(() => {
-    refreshStatus();
-  }, [refreshStatus]);
+  useEffect(() => { refreshStatus(); }, [refreshStatus]);
 
   useEffect(() => {
     if (!userId) return;
-
     const url = new URL(window.location.href);
     const code = url.searchParams.get('code');
     const returnedState = url.searchParams.get('state');
@@ -50,7 +48,6 @@ const GithubConnect = ({ userId }) => {
       window.history.replaceState({}, document.title, url.pathname);
       return;
     }
-
     if (!code) return;
 
     const expectedState = sessionStorage.getItem(STATE_STORAGE_KEY);
@@ -82,15 +79,12 @@ const GithubConnect = ({ userId }) => {
   const handleConnect = () => {
     setError(null);
     setInfo(null);
-
     if (!GITHUB_CLIENT_ID) {
       setError('VITE_GITHUB_CLIENT_ID is not configured.');
       return;
     }
-
     const state = generateState();
     sessionStorage.setItem(STATE_STORAGE_KEY, state);
-
     const redirectUri = `${window.location.origin}${window.location.pathname}`;
     const params = new URLSearchParams({
       client_id: GITHUB_CLIENT_ID,
@@ -98,7 +92,6 @@ const GithubConnect = ({ userId }) => {
       scope: GITHUB_OAUTH_SCOPES,
       state,
     });
-
     window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`;
   };
 
@@ -119,128 +112,107 @@ const GithubConnect = ({ userId }) => {
     }
   };
 
+  const scopeList = scopes ? scopes.split(/[,\s]+/).filter(Boolean) : [];
+
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>GitHub</h3>
-        <span style={isLinked ? styles.badgeOn : styles.badgeOff}>
-          {loading ? 'Checking…' : isLinked ? 'Connected' : 'Not connected'}
+    <div className="overflow-hidden rounded-2xl border border-[#1f1f23] bg-[#131316]">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 border-b border-[#1f1f23] p-5">
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#26262b] bg-[#0a0a0b]">
+            <Link2 size={18} className="text-zinc-200" />
+          </div>
+          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight text-zinc-100">GitHub</h3>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-zinc-500">
+              Sync story points and issue completion from repositories linked to your projects.
+            </p>
+          </div>
+        </div>
+
+        <span
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+            loading
+              ? 'border-[#26262b] bg-[#18181c] text-zinc-400'
+              : isLinked
+                ? 'border-emerald-900/50 bg-emerald-900/10 text-emerald-400'
+                : 'border-[#26262b] bg-[#18181c] text-zinc-500'
+          }`}
+        >
+          {loading ? (
+            <><Loader2 size={11} className="animate-spin" /> Checking</>
+          ) : isLinked ? (
+            <><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Connected</>
+          ) : (
+            <><span className="h-1.5 w-1.5 rounded-full bg-zinc-600" /> Not connected</>
+          )}
         </span>
       </div>
 
-      <p style={styles.description}>
-        Link your GitHub account so the platform can read story points and issue completion
-        from the project linked to your repository.
-      </p>
+      {/* Body */}
+      <div className="p-5">
+        {/* Scopes */}
+        {isLinked && scopeList.length > 0 && (
+          <div className="mb-5">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Granted scopes
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {scopeList.map((scope) => (
+                <code
+                  key={scope}
+                  className="rounded-md border border-[#26262b] bg-[#0a0a0b] px-2 py-1 text-[11px] font-mono text-zinc-300"
+                >
+                  {scope}
+                </code>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {isLinked && scopes && (
-        <div style={styles.scopeBox}>
-          <span style={styles.scopeLabel}>Granted scopes:</span>{' '}
-          <code style={styles.scopeCode}>{scopes}</code>
-        </div>
-      )}
+        {/* Messages */}
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-rose-900/40 bg-rose-950/20 p-3 text-[12px] text-rose-300">
+            <AlertCircle size={13} className="mt-px shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+        {info && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-3 text-[12px] text-emerald-300">
+            <CheckCircle2 size={13} className="mt-px shrink-0" />
+            <span>{info}</span>
+          </div>
+        )}
 
-      {error && <div style={styles.errorBox}>{error}</div>}
-      {info && <div style={styles.infoBox}>{info}</div>}
-
-      {isLinked ? (
-        <button type="button" onClick={handleDisconnect} disabled={loading} style={styles.dangerBtn}>
-          {loading ? 'Working…' : 'Disconnect GitHub'}
-        </button>
-      ) : (
-        <button type="button" onClick={handleConnect} disabled={loading} style={styles.primaryBtn}>
-          {loading ? 'Working…' : 'Connect GitHub Account'}
-        </button>
-      )}
+        {/* Action */}
+        {isLinked ? (
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            disabled={loading}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-[#26262b] bg-[#18181c] py-2.5 text-[13px] font-medium text-zinc-300 transition hover:border-rose-900/60 hover:bg-rose-950/20 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />}
+            {loading ? 'Working…' : 'Disconnect GitHub'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={loading}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-zinc-100 py-2.5 text-[13px] font-semibold text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <LinkIcon size={14} />}
+            {loading ? 'Working…' : 'Connect GitHub'}
+          </button>
+        )}
+      </div>
     </div>
   );
 };
 
 GithubConnect.propTypes = {
   userId: PropTypes.string.isRequired,
-};
-
-const styles = {
-  container: {
-    border: '1px solid #1e293b',
-    borderRadius: 12,
-    padding: 20,
-    backgroundColor: '#0f172a',
-    color: '#e2e8f0',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  title: { margin: 0, fontSize: 18, fontWeight: 600 },
-  badgeOn: {
-    backgroundColor: '#064e3b',
-    color: '#34d399',
-    padding: '4px 10px',
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-  },
-  badgeOff: {
-    backgroundColor: '#1e293b',
-    color: '#94a3b8',
-    padding: '4px 10px',
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-  },
-  description: { color: '#94a3b8', fontSize: 14, marginBottom: 16 },
-  scopeBox: {
-    backgroundColor: '#0b1220',
-    border: '1px solid #1e293b',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 12,
-    color: '#cbd5e1',
-    marginBottom: 12,
-  },
-  scopeLabel: { color: '#94a3b8' },
-  scopeCode: { color: '#7dd3fc', wordBreak: 'break-all' },
-  errorBox: {
-    backgroundColor: '#450a0a',
-    color: '#fca5a5',
-    border: '1px solid #7f1d1d',
-    padding: 10,
-    borderRadius: 8,
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  infoBox: {
-    backgroundColor: '#0c4a6e',
-    color: '#bae6fd',
-    border: '1px solid #075985',
-    padding: 10,
-    borderRadius: 8,
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  primaryBtn: {
-    width: '100%',
-    padding: '10px 16px',
-    backgroundColor: '#111827',
-    color: '#f8fafc',
-    border: '1px solid #374151',
-    borderRadius: 8,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  dangerBtn: {
-    width: '100%',
-    padding: '10px 16px',
-    backgroundColor: '#7f1d1d',
-    color: '#fff',
-    border: '1px solid #991b1b',
-    borderRadius: 8,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
 };
 
 export default GithubConnect;

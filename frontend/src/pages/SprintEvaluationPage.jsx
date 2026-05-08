@@ -120,7 +120,7 @@ const SprintEvaluationPage = () => {
               <option value="">Select group</option>
               {groups.map((g) => (
                 <option key={g.groupId ?? g.requestId} value={g.groupId}>
-                  {g.groupId}
+                  {g.groupName ?? g.name ?? g.groupId}
                 </option>
               ))}
             </select>
@@ -136,7 +136,7 @@ const SprintEvaluationPage = () => {
               <option value="">Select sprint</option>
               {sprints.map((s) => (
                 <option key={s.sprintId} value={s.sprintId}>
-                  {s.sprintId}
+                  {s.phase ? `${s.phase} ` : ''}Sprint ({s.startDate ? new Date(s.startDate).toLocaleDateString() : s.sprintId})
                 </option>
               ))}
             </select>

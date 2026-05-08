@@ -142,7 +142,7 @@ export const LoginPage = () => {
         <section
           className="pointer-events-auto flex w-full flex-col items-center justify-center px-6 py-14 lg:w-115 lg:flex-none"
           style={{
-            background: '#080f1f',
+            background: '#000000',
             borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
@@ -191,7 +191,7 @@ export const LoginPage = () => {
               <div className="relative">
                 <Mail
                   size={15}
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600"
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600"
                 />
                 <input
                   id="email"
@@ -201,13 +201,13 @@ export const LoginPage = () => {
                   disabled={isSubmitting}
                   {...register('email')}
                   className={[
-                    'w-full rounded-xl border bg-[rgba(15,23,42,0.72)] py-3 pl-10 pr-4 text-sm text-slate-200',
-                    'placeholder:text-slate-600 transition-colors duration-150',
-                    'focus:outline-none focus:ring-2 focus:ring-slate-500/30 focus:border-slate-400/50',
+                    'w-full rounded-xl border bg-[#0a0a0b] py-3 pl-10 pr-4 text-sm text-slate-200',
+                    'placeholder:text-zinc-500 transition-colors duration-150',
+                    'focus:outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500/60',
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                     errors.email
-                      ? 'border-red-500/50'
-                      : 'border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]',
+                      ? 'border-rose-500/45 bg-rose-500/[0.03]'
+                      : 'border-[#26262b]',
                   ].join(' ')}
                 />
               </div>
@@ -227,7 +227,7 @@ export const LoginPage = () => {
               <div className="relative">
                 <Lock
                   size={15}
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600"
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600"
                 />
                 <input
                   id="password"
@@ -237,20 +237,20 @@ export const LoginPage = () => {
                   disabled={isSubmitting}
                   {...register('password')}
                   className={[
-                    'w-full rounded-xl border bg-[rgba(15,23,42,0.72)] py-3 pl-10 pr-11 text-sm text-slate-200',
-                    'placeholder:text-slate-600 transition-colors duration-150',
-                    'focus:outline-none focus:ring-2 focus:ring-slate-500/30 focus:border-slate-400/50',
+                    'w-full rounded-xl border bg-[#0a0a0b] py-3 pl-10 pr-11 text-sm text-slate-200',
+                    'placeholder:text-zinc-500 transition-colors duration-150',
+                    'focus:outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500/60',
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                     errors.password
-                      ? 'border-red-500/50'
-                      : 'border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]',
+                      ? 'border-rose-500/45 bg-rose-500/[0.03]'
+                      : 'border-[#26262b]',
                   ].join(' ')}
                 />
                 <button
                   type="button"
                   aria-label="Toggle password visibility"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 transition-colors hover:text-slate-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-500 transition-colors hover:text-zinc-300"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -265,8 +265,8 @@ export const LoginPage = () => {
               <label className="group flex cursor-pointer select-none items-center gap-2.5 text-sm">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 cursor-pointer rounded border border-slate-600 bg-[#0b1120] accent-slate-400
-                             transition-all duration-150 group-hover:border-slate-400 group-hover:shadow-md group-hover:shadow-slate-500/10"
+                  className="h-4 w-4 cursor-pointer rounded border border-[#3a3a40] bg-[#0a0a0b] accent-zinc-400
+                             transition-all duration-150 group-hover:border-zinc-400 group-hover:shadow-md group-hover:shadow-zinc-500/10"
                 />
                 <span className="text-slate-400 transition-colors duration-150 group-hover:text-slate-300">
                   Remember Me
@@ -284,8 +284,8 @@ export const LoginPage = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] py-3 text-sm font-bold text-slate-100 tracking-wide
-                         transition-all duration-150 hover:bg-[#1e293b] hover:shadow-lg hover:shadow-black/25
+              className="mt-1 w-full rounded-xl border border-[#2a2a30] bg-[#18181c] py-3 text-sm font-bold text-slate-100 tracking-wide
+                         transition-all duration-150 hover:border-[#3a3a40] hover:bg-[#202026] hover:shadow-lg hover:shadow-black/25
                          active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? 'Authenticating…' : 'Sign In'}
@@ -304,9 +304,9 @@ export const LoginPage = () => {
             <button
               type="button"
               onClick={() => navigate('/register')}
-              className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/10
-                         bg-[rgba(15,23,42,0.65)] py-3 text-sm font-semibold text-slate-300
-                         transition-all duration-150 hover:border-slate-500/40 hover:bg-[rgba(31,41,55,0.72)] hover:text-slate-100"
+              className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-[#2a2a30]
+                         bg-[#121216] py-3 text-sm font-semibold text-slate-300
+                         transition-all duration-150 hover:border-[#3a3a40] hover:bg-[#18181c] hover:text-slate-100"
             >
               <UserPlus size={16} />
               Register

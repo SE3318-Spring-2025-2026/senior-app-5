@@ -1,8 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CommitteeAdvisorListItemDto {
-  @ApiProperty({ description: 'User ID of the advisor', format: 'uuid' })
+  @ApiProperty({ description: 'User ID of the advisor' })
   advisorUserId!: string;
+
+  @ApiPropertyOptional({ description: 'Email address of the advisor' })
+  email?: string;
 
   @ApiProperty({
     description: 'Timestamp when this advisor was assigned',

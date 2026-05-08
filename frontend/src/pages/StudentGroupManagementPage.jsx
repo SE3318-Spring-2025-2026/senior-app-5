@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
 import EntitySearchSelect from '../components/EntitySearchSelect'
-import { SectionCard } from '../components/ui'
+import { PageHeader, SectionCard } from '../components/ui'
 import styles from './GroupLifecyclePage.module.css'
 
 const TEAM_LEADER_ROLES = new Set(['TeamLeader', 'TEAM_LEADER', 'Professor'])
@@ -454,15 +454,11 @@ function StudentGroupManagementPage() {
 
   return (
     <div className={styles.pageContainer}>
-      <header className={styles.hero}>
-        <div>
-          <p className={styles.badge}>Student Group Management</p>
-          <h1>Group Management Hub</h1>
-          <p className={styles.lead}>
-           Take control of your academic project: manage advisor requests, track your status, and view committee details.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Student"
+        title="My Group"
+        subtitle="Manage advisor requests, track group status, and view committee details."
+      />
 
       <nav className={styles.tabMenu}>
         {isTeamLeader && (
@@ -562,7 +558,7 @@ function StudentGroupManagementPage() {
               </div>
             )}
             {isTeamLeader && (
-              <div className={styles.form} style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
+              <div className={styles.form} style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #1c1c20' }}>
                 <div className={styles.resultBox}>
                   <ul className={styles.resultList}>
                     <li><strong>Selected Advisor</strong><span>{selectedAdvisor ? (selectedAdvisor.name || selectedAdvisor.fullName || selectedAdvisor.email || '—') : 'None selected'}</span></li>
@@ -652,16 +648,26 @@ function StudentGroupManagementPage() {
             {committeeResult && (
               <div className={styles.resultBox}>
                 <ul className={styles.resultList}>
-                  <li><strong>Committee ID</strong><span>{committeeResult.id || '—'}</span></li>
                   <li><strong>Committee Name</strong><span>{committeeResult.name || '—'}</span></li>
-                  <li><strong>Group ID</strong><span>{committeeGroupId || '—'}</span></li>
                   <li>
-                    <strong>Jury Members</strong>
-                    <span>{committeeResult.jury?.length ? committeeResult.jury.map((j) => j.name || j.userId).join(', ') : 'None'}</span>
+                    <strong>Advisor</strong>
+                    <span>
+                      {committeeResult.advisors?.length
+                        ? (committeeResult.advisors[0].email ?? committeeResult.advisors[0].name ?? committeeResult.advisors[0].userId ?? '—')
+                        : 'None'}
+                    </span>
                   </li>
                   <li>
-                    <strong>Advisors</strong>
-                    <span>{committeeResult.advisors?.length ? committeeResult.advisors.map((a) => a.name || a.userId).join(', ') : 'None'}</span>
+                    <strong>Jury Members</strong>
+                    <span>
+                      {committeeResult.jury?.length
+                        ? committeeResult.jury.map((j, i) => (
+                            <span key={i} style={{ display: 'block' }}>
+                              {j.email ?? j.name ?? j.userId}
+                            </span>
+                          ))
+                        : 'None'}
+                    </span>
                   </li>
                   <li><strong>Created At</strong><span>{committeeResult.createdAt ? new Date(committeeResult.createdAt).toLocaleDateString() : '—'}</span></li>
                 </ul>
@@ -690,7 +696,7 @@ function StudentGroupManagementPage() {
                       <span>
                         {groupStatusResult.advisorName}
                         {groupStatusResult.advisorEmail && groupStatusResult.advisorEmail !== groupStatusResult.advisorName && (
-                          <span style={{ color: '#64748b', fontSize: '0.8rem', display: 'block' }}>
+                          <span style={{ color: '#71717a', fontSize: '0.8rem', display: 'block' }}>
                             {groupStatusResult.advisorEmail}
                           </span>
                         )}
@@ -703,16 +709,16 @@ function StudentGroupManagementPage() {
                   )}
                 </ul>
                 {groupStatusResult.members && groupStatusResult.members.length > 0 && (
-                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #1e293b' }}>
-                    <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#64748b', margin: '0 0 10px' }}>
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #1c1c20' }}>
+                    <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#71717a', margin: '0 0 10px' }}>
                       Members ({groupStatusResult.members.length})
                     </p>
                     <ul className={styles.list}>
                       {groupStatusResult.members.map((member, i) => (
-                        <li key={i} className={styles.listItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                          <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{member.name || member.email}</span>
-                          {member.name && <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{member.email}</span>}
-                          <span style={{ fontSize: '0.7rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{member.role}</span>
+                        <li key={i} className={styles.listItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                          <span style={{ fontWeight: 600, color: '#f4f4f5', fontSize: '0.875rem' }}>{member.name || member.email}</span>
+                          {member.name && <span style={{ fontSize: '0.78rem', color: '#71717a' }}>{member.email}</span>}
+                          <span style={{ fontSize: '0.68rem', color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>{member.role}</span>
                         </li>
                       ))}
                     </ul>

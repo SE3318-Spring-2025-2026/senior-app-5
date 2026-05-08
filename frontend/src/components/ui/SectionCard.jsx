@@ -1,13 +1,16 @@
-export function SectionCard({ title, description, children }) {
+export function SectionCard({ title, description, children, action }) {
   return (
-    <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
-      <div>
-        <h2 className="text-sm font-bold text-slate-200">{title}</h2>
-        {description && (
-          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
-        )}
-      </div>
-      <div className="mt-4">{children}</div>
+    <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[14px] font-semibold tracking-tight text-zinc-100">{title}</h2>
+          {description && (
+            <p className="mt-1 text-[12.5px] leading-relaxed text-zinc-500">{description}</p>
+          )}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </header>
+      <div>{children}</div>
     </section>
-  )
+  );
 }

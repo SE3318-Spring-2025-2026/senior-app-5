@@ -330,7 +330,7 @@ export class CommitteesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeJuryMember(
     @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
-    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Param('userId') userId: string,
     @Request() req: RequestWithUser,
   ): Promise<void> {
     const coordinatorId =
@@ -411,7 +411,7 @@ export class CommitteesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeCommitteeAdvisor(
     @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
-    @Param('advisorUserId', new ParseUUIDPipe()) advisorUserId: string,
+    @Param('advisorUserId') advisorUserId: string,
     @Request() req: RequestWithUser,
   ): Promise<void> {
     const coordinatorId =
@@ -449,7 +449,7 @@ export class CommitteesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeGroupFromCommittee(
     @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
-    @Param('groupId', new ParseUUIDPipe()) groupId: string,
+    @Param('groupId') groupId: string,
     @Request() req: RequestWithUser,
   ): Promise<void> {
     const coordinatorId =

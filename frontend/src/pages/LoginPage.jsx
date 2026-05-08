@@ -64,7 +64,7 @@ export const LoginPage = () => {
       localStorage.setItem('accessToken', token);
       const meResponse = await apiClient.get('/auth/me');
       localStorage.setItem('user', JSON.stringify(meResponse.data));
-      login();
+      await login();
       navigate(from, { replace: true });
     } catch (error) {
       console.error('[AuthError]:', error);
@@ -142,7 +142,7 @@ export const LoginPage = () => {
         <section
           className="pointer-events-auto flex w-full flex-col items-center justify-center px-6 py-14 lg:w-115 lg:flex-none"
           style={{
-            background: '#080808',
+            background: '#080f1f',
             borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
@@ -284,8 +284,8 @@ export const LoginPage = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(2,6,23,0.95))] py-3 text-sm font-bold text-slate-100 tracking-wide
-                         transition-all duration-150 hover:bg-[linear-gradient(180deg,rgba(31,41,55,0.98),rgba(15,23,42,0.98))] hover:shadow-lg hover:shadow-black/25
+              className="mt-1 w-full rounded-xl border border-white/10 bg-[#111827] py-3 text-sm font-bold text-slate-100 tracking-wide
+                         transition-all duration-150 hover:bg-[#1e293b] hover:shadow-lg hover:shadow-black/25
                          active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? 'Authenticating…' : 'Sign In'}

@@ -14,10 +14,7 @@ import {
 import { CommitteesModule } from '../committees/committees.module';
 import { SubmissionsModule } from '../submissions/submissions.module';
 import { User, UserSchema } from '../users/data/user.schema';
-import {
-  Committee,
-  CommitteeSchema,
-} from '../committees/schemas/committee.schema';
+import { Committee, CommitteeSchema } from '../committees/schemas/committee.schema';
 import { TeamInvite, TeamInviteSchema } from './schemas/team-invite.schema';
 
 @Module({

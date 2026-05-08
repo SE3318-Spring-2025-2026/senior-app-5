@@ -8,32 +8,50 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
-  const logout = useCallback(() => {
-    authService.logout();
+  const logout = useCallback(async () => {
+    await authService.logout();
     setIsAuthenticated(false);
+    setUser(null);
   }, []);
 
-  const login = useCallback(() => {
+  const login = useCallback(async () => {
     setIsAuthenticated(true);
+    try {
+      const me = await authService.getCurrentUser();
+      setUser(me);
+    } catch {
+      // token geçerli ama /me başarısız
+    }
   }, []);
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('accessToken');
-      
-      // If we don't have an access token, try to refresh from cookie before giving up
+      let token = localStorage.getItem('accessToken');
+
       if (!token) {
         const success = await authService.refresh();
         if (success) {
+          token = localStorage.getItem('accessToken');
           setIsAuthenticated(true);
         } else {
           setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
         }
       } else {
-        // We have a token, but it might be from a previous session
         setIsAuthenticated(true);
       }
+
+      try {
+        const me = await authService.getCurrentUser();
+        setUser(me);
+      } catch {
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+
       setIsLoading(false);
     };
 
@@ -43,9 +61,10 @@ export const AuthProvider = ({ children }) => {
   const contextValue = useMemo(() => ({
     isAuthenticated,
     isLoading,
+    user,
     login,
-    logout
-  }), [isAuthenticated, isLoading, login, logout]);
+    logout,
+  }), [isAuthenticated, isLoading, user, login, logout]);
 
   if (isLoading) {
     // Show nothing or a simple loader during the initial auth check

@@ -735,7 +735,7 @@ export default function CommitteeDetailPage() {
       </div>
 
       {/* Tabs card */}
-      <div className="rounded-2xl border border-[#1e293b] bg-[#111827] overflow-hidden">
+      <div className="rounded-2xl border border-[#1e293b] bg-[#111827]">
         {/* Tab bar */}
         <div className="flex border-b border-[#1e293b] overflow-x-auto">
           {TABS.map((tab, i) => (

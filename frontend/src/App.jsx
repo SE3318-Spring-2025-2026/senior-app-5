@@ -36,6 +36,7 @@ import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
 import SprintConfigPage from './pages/SprintConfigPage';
+import SprintSchedulePage from './pages/SprintSchedulePage';
 import DeliverableManagementPage from './pages/DeliverableManagementPage';
 
 const RootRedirect = () => {
@@ -70,6 +71,7 @@ function App() {
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
             <Route path="/grades" element={<GradeDisplayPage />} />
+            <Route path="/professor/submissions" element={<DocumentsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route
               path="/review"
@@ -86,6 +88,11 @@ function App() {
             <Route path="/coordinator/advisor-schedule" element={
               <ProtectedRoute requiredRole="Coordinator">
                 <AdvisorSchedulePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/coordinator/sprint-schedule" element={
+              <ProtectedRoute requiredRole="Coordinator">
+                <SprintSchedulePage />
               </ProtectedRoute>
             } />
             <Route

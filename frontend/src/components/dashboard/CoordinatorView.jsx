@@ -184,6 +184,8 @@ const CoordinatorView = ({ user }) => {
         <SectionLabel icon={TrendingUp}>Sprint story points</SectionLabel>
         <StoryPointsPanel canOverride />
       </div>
+      {/* Story Points */}
+      <StoryPointsPanel canOverride={false} />
     </div>
   );
 };

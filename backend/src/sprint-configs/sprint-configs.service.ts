@@ -299,18 +299,30 @@ export class SprintConfigsService {
     mappings: { deliverableId: string; contributionPercentage: number }[],
     excludeSprintId: string | null,
   ): Promise<void> {
-    // Aggregate existing percentages per deliverable (excluding the current sprint if updating)
-    const query = excludeSprintId ? { sprintId: { $ne: excludeSprintId } } : {};
+    // Only sprint configs whose sprintId matches a real Schedule entry count toward
+    // the budget. Orphaned configs (created by the old system with auto-generated IDs
+    // that never linked to a Schedule) are excluded to avoid phantom overflows.
+    const linkedSchedules = await this.scheduleModel
+      .find({})
+      .select('scheduleId')
+      .lean()
+      .exec();
+    const linkedIds = new Set(
+      linkedSchedules.map((s) => (s as unknown as { scheduleId: string }).scheduleId).filter(Boolean),
+    );
+
+    const baseQuery = excludeSprintId ? { sprintId: { $ne: excludeSprintId } } : {};
 
     const existingConfigs = await this.sprintConfigModel
-      .find(query)
-      .select('deliverableMappings')
+      .find(baseQuery)
+      .select('sprintId deliverableMappings')
       .lean()
       .exec();
 
-    // Build map: deliverableId → total existing percentage
+    // Build map: deliverableId → total existing percentage (linked configs only)
     const existingTotals = new Map<string, number>();
     for (const config of existingConfigs) {
+      if (!linkedIds.has(config.sprintId)) continue;
       for (const m of config.deliverableMappings ?? []) {
         existingTotals.set(
           m.deliverableId,

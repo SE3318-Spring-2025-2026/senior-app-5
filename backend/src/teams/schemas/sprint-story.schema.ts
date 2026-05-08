@@ -8,6 +8,8 @@ export enum GithubStatus {
   NO_BRANCH = 'no_branch',
   NO_PR = 'no_pr',
   PR_NOT_MERGED = 'pr_not_merged',
+  /** PR is merged but the author's GitHub username does not match the JIRA assignee's. */
+  AUTHOR_MISMATCH = 'author_mismatch',
   VERIFIED = 'verified',
 }
 
@@ -75,6 +77,10 @@ export class SprintStory {
 
   @Prop({ required: true, default: false })
   githubPrFound!: boolean;
+
+  /** GitHub login of whoever opened the merged PR (only set when one was found). */
+  @Prop({ type: String, default: null })
+  prAuthorLogin!: string | null;
 
   /** True when resolution=Done AND githubStatus=verified */
   @Prop({ type: Boolean, default: false })

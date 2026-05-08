@@ -5,6 +5,7 @@ import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { Group, GroupDocument } from '../groups/group.entity';
 import { User, UserDocument } from '../users/data/user.schema';
+import { Role } from '../auth/enums/role.enum';
 
 @Injectable()
 export class AdminService {
@@ -17,6 +18,12 @@ export class AdminService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private readonly connection: Connection, 
   ) {}
+
+  async updateUserRole(userId: string, role: Role) {
+    const updated = await this.usersService.updateRole(userId, role);
+    if (!updated) throw new NotFoundException('User not found');
+    return { id: updated._id.toString(), email: updated.email, role: updated.role };
+  }
 
   async moveStudentToGroup(studentId: string, groupId: string) {
     

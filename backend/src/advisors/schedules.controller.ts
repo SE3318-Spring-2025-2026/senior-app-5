@@ -1,8 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Logger,
+  NotFoundException,
+  Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -16,6 +21,8 @@ import { Role } from '../auth/enums/role.enum';
 import { AdvisorsService } from './advisors.service';
 import { GetActiveScheduleQueryDto } from './dto/get-active-schedule-query.dto';
 import { SetScheduleDto } from './dto/set-schedule.dto';
+import { UpdateScheduleTimesDto } from './dto/update-schedule-times.dto';
+import { SchedulePhase } from './schemas/schedule.schema';
 
 interface RequestWithUser extends Request {
   user?: {
@@ -84,5 +91,33 @@ export class SchedulesController {
     );
 
     return result;
+  }
+
+  @Get()
+  @Roles(Role.Coordinator)
+  async listSchedules(@Query('phase') phase: SchedulePhase) {
+    if (!phase) {
+      throw new NotFoundException('phase query parameter is required.');
+    }
+    return this.advisorsService.listSchedules(phase);
+  }
+
+  @Patch(':scheduleId')
+  @Roles(Role.Coordinator)
+  async updateSchedule(
+    @Param('scheduleId') scheduleId: string,
+    @Body() body: UpdateScheduleTimesDto,
+  ) {
+    return this.advisorsService.updateSchedule(scheduleId, {
+      startDatetime: body.startDatetime,
+      endDatetime: body.endDatetime,
+    });
+  }
+
+  @Delete(':scheduleId')
+  @Roles(Role.Coordinator)
+  @HttpCode(204)
+  async deleteSchedule(@Param('scheduleId') scheduleId: string) {
+    await this.advisorsService.deleteSchedule(scheduleId);
   }
 }

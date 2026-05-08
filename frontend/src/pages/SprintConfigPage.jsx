@@ -159,12 +159,7 @@ const SprintConfigPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {editingSprintId && (
-              <div>
-                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Sprint ID
-                </label>
-                <p className="px-1 font-mono text-[12px] text-zinc-500">{editingSprintId}</p>
-              </div>
+              <p className="text-xs text-slate-500 px-1">Editing existing sprint config</p>
             )}
             <div>
               <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
@@ -261,11 +256,12 @@ const SprintConfigPage = () => {
                 className="rounded-xl border border-[#1f1f23] bg-[#0e0e10] p-3.5 transition-colors hover:border-[#2a2a30] hover:bg-[#18181c]"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-zinc-200">{c.sprintId}</p>
-                    <p className="mt-0.5 text-[11px] text-zinc-500">
-                      Target: <span className="text-zinc-300 tabular-nums">{c.targetStoryPoints}</span> pts
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-200 truncate">
+                      {c.phase ? `${c.phase} — ` : ''}
+                      {c.startDate ? new Date(c.startDate).toLocaleDateString() : '?'} – {c.endDate ? new Date(c.endDate).toLocaleDateString() : '?'}
                     </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Target: {c.targetStoryPoints} pts</p>
                     {c.deliverableMappings.length > 0 && (
                       <ul className="mt-1.5 space-y-0.5">
                         {c.deliverableMappings.map((m, i) => (

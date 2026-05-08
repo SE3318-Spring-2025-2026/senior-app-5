@@ -220,9 +220,6 @@ function EntitySearchSelect({
                   <span className={styles.optionPrimary}>
                     {String(item?.[effectiveDisplayField] ?? '-')}
                   </span>
-                  <span className={styles.optionSecondary}>
-                    {String(item?.[returnField] ?? '')}
-                  </span>
                 </li>
               )
             })}
@@ -232,11 +229,7 @@ function EntitySearchSelect({
         </ul>
       )}
 
-      {selected && (
-        <small className={styles.hint}>
-          Selected {returnField}: {value}
-        </small>
-      )}
+
     </div>
   )
 }

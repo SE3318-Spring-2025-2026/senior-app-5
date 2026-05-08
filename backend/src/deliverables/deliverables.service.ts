@@ -126,6 +126,11 @@ export class DeliverablesService {
         );
       }
 
+      if (dto.name !== undefined) {
+        await this.ensureUniqueName(dto.name, deliverableId);
+        existing.name = dto.name.trim();
+      }
+
       const updatedPercentage =
         dto.deliverablePercentage ?? existing.deliverablePercentage;
 
@@ -150,6 +155,31 @@ export class DeliverablesService {
     } catch (error) {
       throw this.toWriteException(error, correlationId);
     }
+  }
+
+  async deleteDeliverable(
+    deliverableId: string,
+    actorId: string,
+    correlationId?: string,
+  ): Promise<void> {
+    const result = await this.deliverableModel
+      .deleteOne({ deliverableId })
+      .exec();
+
+    if (result.deletedCount === 0) {
+      throw new NotFoundException(
+        `Deliverable with ID '${deliverableId}' not found.`,
+      );
+    }
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'deliverable.deleted',
+        deliverableId,
+        actorId,
+        correlationId: correlationId ?? null,
+      }),
+    );
   }
 
   private async ensureUniqueName(

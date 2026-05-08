@@ -136,6 +136,58 @@
   font-style: normal;
 }
 
+.summaryPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summaryRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summaryLabel {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #71717a;
+}
+
+.summaryValue {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #e4e4e7;
+  line-height: 1.45;
+}
+
+.windowPill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.windowOpen {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.windowClosed {
+  background: rgba(244, 63, 94, 0.1);
+  color: #f87171;
+  border-color: rgba(244, 63, 94, 0.28);
+}
+
 .meta {
   font-size: 0.75rem;
   color: #71717a;
@@ -350,15 +402,6 @@
   background: #18181c;
   border-color: #3a3a40;
   color: #f4f4f5;
-}
-
-.infoPanel pre {
-  color: #d4d4d8;
-  font-size: 0.75rem;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .form small {

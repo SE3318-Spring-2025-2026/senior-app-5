@@ -8,8 +8,10 @@ import { PageHeader } from '../components/ui';
 
 const emptyQuestion = () => ({ criteriaName: '', criteriaWeight: '' });
 
-const inputCls =
-  'w-full rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40] disabled:opacity-50 disabled:cursor-not-allowed';
+const inputBaseCls =
+  'rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40] disabled:opacity-50 disabled:cursor-not-allowed';
+
+const inputCls = `${inputBaseCls} w-full`;
 
 function SectionLabel({ icon: Icon, children, action }) {
   return (
@@ -250,28 +252,29 @@ const RubricManagementPage = () => {
                   </span>
                 </div>
                 {questions.map((q, idx) => (
-                  <div key={idx} className="flex items-start gap-2">
+                  <div key={idx} className="flex items-center gap-2">
                     <input
                       type="text"
                       placeholder="Criteria name"
                       value={q.criteriaName}
                       onChange={(e) => handleQuestionChange(idx, 'criteriaName', e.target.value)}
-                      className={`${inputCls} flex-1`}
+                      className={`${inputBaseCls} min-w-0 flex-1`}
                     />
                     <input
                       type="number"
-                      placeholder="0–1"
+                      placeholder="0.00"
                       step="0.01"
                       min="0"
                       max="1"
                       value={q.criteriaWeight}
                       onChange={(e) => handleQuestionChange(idx, 'criteriaWeight', e.target.value)}
-                      className={`${inputCls} w-28`}
+                      className={`${inputBaseCls} w-[5.25rem] shrink-0 tabular-nums text-center`}
+                      title="Weight (0–1)"
                     />
                     <button
                       type="button"
                       onClick={() => removeQuestion(idx)}
-                      className="mt-0.5 rounded-md border border-[#26262b] bg-[#18181c] p-2 text-zinc-500 transition-colors hover:border-rose-500/40 hover:text-rose-400"
+                      className="shrink-0 rounded-md border border-[#26262b] bg-[#18181c] p-2 text-zinc-500 transition-colors hover:border-rose-500/40 hover:text-rose-400"
                       aria-label="Remove question"
                     >
                       <Trash2 size={13} />

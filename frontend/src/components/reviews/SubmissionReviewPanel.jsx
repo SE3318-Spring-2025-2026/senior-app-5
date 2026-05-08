@@ -12,6 +12,7 @@ import {
 } from '../../utils/reviewService'
 import { getGradingWindow } from '../../utils/scheduleService'
 import { Badge } from '../ui'
+import { openNativeDatePicker } from '../../utils/openPicker'
 
 const getId = (value) => value?._id || value?.id || value?.reviewId || value?.commentId
 
@@ -307,6 +308,7 @@ const SubmissionReviewPanel = ({ submission, committeeId, currentUser }) => {
           <input
             aria-label="Revision due datetime"
             className={inputClass}
+            onClick={openNativeDatePicker}
             onChange={(event) => setRevisionDueDatetime(event.target.value)}
             type="datetime-local"
             value={revisionDueDatetime}

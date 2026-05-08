@@ -21,17 +21,13 @@ vi.mock('../utils/committeeService', () => ({
   addAdvisor: vi.fn(),
   addJuryMember: vi.fn().mockResolvedValue({}),
   assignCommitteeGroup: vi.fn(),
-  createCommittee: vi.fn(),
-  deleteCommittee: vi.fn(),
   getCommittee: vi.fn().mockResolvedValue({ id: 'committee-1', name: 'AI Committee' }),
   listAdvisors: vi.fn().mockResolvedValue([]),
   listCommitteeGroups: vi.fn().mockResolvedValue([]),
-  listCommittees: vi.fn().mockResolvedValue({ data: [] }),
   listJuryMembers: vi.fn().mockResolvedValue([]),
   removeAdvisor: vi.fn(),
   removeCommitteeGroup: vi.fn(),
   removeJuryMember: vi.fn(),
-  updateCommittee: vi.fn(),
 }))
 
 describe('CoordinatorManagementPage', () => {
@@ -91,7 +87,7 @@ describe('CoordinatorManagementPage', () => {
       const submitButton = screen.getByRole('button', { name: /Create Schedule/i })
       fireEvent.click(submitButton)
 
-      expect(await screen.findByText('Schedule created successfully.')).toBeTruthy()
+      expect(await screen.findByText('Active schedule loaded successfully.')).toBeTruthy()
       
       await waitFor(() => {
           expect(createSchedule).toHaveBeenCalledWith({
@@ -120,7 +116,7 @@ describe('CoordinatorManagementPage', () => {
     render(<CoordinatorManagementPage />)
 
     const committeeSearchInputs = screen.getAllByPlaceholderText(/Search committee by name/i)
-    fireEvent.change(committeeSearchInputs[1], {
+    fireEvent.change(committeeSearchInputs[0], {
       target: { value: 'AI' },
     })
     fireEvent.click(await screen.findByText('AI Committee'))

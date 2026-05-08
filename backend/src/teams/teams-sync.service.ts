@@ -276,18 +276,58 @@ export class TeamsSyncService {
       const issues = await this.fetchJiraIssues(team);
       const studentByAccountId = await this.buildAccountIdMap(team);
 
+      this.logger.log(
+        `[sync ${teamId}] fetched ${issues.length} issues from JIRA (${team.jiraDomain}/${team.jiraProjectKey}).`,
+      );
+
+      // Debug: dump first issue's raw fields so misconfig (wrong story-points
+      // field id, assignee shape) is obvious. Toggle with SYNC_DEBUG=1.
+      if (process.env.SYNC_DEBUG === '1' && issues.length > 0) {
+        const sample = issues[0];
+        const fieldKeys = Object.keys(sample.fields ?? {});
+        const storyPointsField = team.jiraStoryPointsField || 'customfield_10016';
+        this.logger.warn(
+          `[sync DEBUG] first issue ${sample.key}:\n` +
+            `  configured storyPointsField = "${storyPointsField}"\n` +
+            `  fields[${storyPointsField}] = ${JSON.stringify(sample.fields?.[storyPointsField])}\n` +
+            `  fields.assignee = ${JSON.stringify(sample.fields?.assignee)}\n` +
+            `  available field keys: ${fieldKeys.join(', ')}\n` +
+            `  any "customfield_*" with non-null value: ${fieldKeys
+              .filter((k) => k.startsWith('customfield_') && sample.fields[k] !== null && sample.fields[k] !== undefined)
+              .map((k) => `${k}=${JSON.stringify(sample.fields[k]).slice(0, 60)}`)
+              .join('; ') || '(none)'}`,
+        );
+      }
+
+      // Build a parallel map: studentId → githubUsername, so we can compare PR
+      // authors to the JIRA assignee's linked GitHub account.
+      const githubByStudentId = await this.buildGithubLoginMap(team);
+
       let linkedCount = 0;
       for (const issue of issues) {
-        if (await this.isLocked(teamId, issue.key)) continue;
-
-        const githubResult = team.githubRepositoryId
-          ? await this.verifyGithub(team, issue.key)
-          : { githubStatus: GithubStatus.NO_BRANCH, verifiedAt: null, branchFound: false, prFound: false };
+        if (await this.isLocked(teamId, issue.key)) {
+          this.logger.log(`  • ${issue.key}  [LOCKED — sprint already finalized, skipping]`);
+          continue;
+        }
 
         const assigneeAccountId: string | null = issue.fields?.assignee?.accountId ?? null;
         const assigneeStudentId = assigneeAccountId
           ? (studentByAccountId.get(assigneeAccountId) ?? null)
           : null;
+
+        const expectedAuthorLogin = assigneeStudentId
+          ? githubByStudentId.get(assigneeStudentId) ?? null
+          : null;
+
+        const githubResult = team.githubRepositoryId
+          ? await this.verifyGithub(team, issue.key, expectedAuthorLogin)
+          : {
+              githubStatus: GithubStatus.NO_BRANCH,
+              verifiedAt: null,
+              branchFound: false,
+              prFound: false,
+              prAuthorLogin: null,
+            };
 
         const resolution: string | null = issue.fields?.resolution?.name ?? null;
         const storyPointsField = team.jiraStoryPointsField || 'customfield_10016';
@@ -300,6 +340,31 @@ export class TeamsSyncService {
           resolution === 'Done' && githubResult.githubStatus === GithubStatus.VERIFIED;
 
         if (githubResult.branchFound || githubResult.prFound) linkedCount++;
+
+        const assigneeLabel = assigneeAccountId
+          ? assigneeStudentId
+            ? `student ${assigneeStudentId.slice(-6)}`
+            : `unmapped accountId ${assigneeAccountId.slice(-8)}`
+          : 'no assignee';
+        const authorTrace = githubResult.prAuthorLogin
+          ? `pr@${githubResult.prAuthorLogin}${
+              expectedAuthorLogin ? ` (expected @${expectedAuthorLogin})` : ' (assignee github not linked)'
+            }`
+          : '';
+        this.logger.log(
+          `  • ${issue.key.padEnd(10)}  ` +
+            `pts=${String(work).padEnd(3)}  ` +
+            `jira=${(resolution ?? 'open').padEnd(8)}  ` +
+            `github=${githubResult.githubStatus.padEnd(16)}  ` +
+            `complete=${isComplete ? 'YES' : 'no '}  ` +
+            `${assigneeLabel}` +
+            (authorTrace ? `  ${authorTrace}` : ''),
+        );
+        if (githubResult.githubStatus === GithubStatus.AUTHOR_MISMATCH) {
+          this.logger.warn(
+            `[sync ${teamId}] ${issue.key}: PR was authored by @${githubResult.prAuthorLogin} but JIRA assignee's linked GitHub is @${expectedAuthorLogin}. Issue NOT counted as complete.`,
+          );
+        }
 
         const jiraSprintId = this.extractJiraSprintId(issue);
 
@@ -320,6 +385,7 @@ export class TeamsSyncService {
               verifiedAt: githubResult.verifiedAt,
               githubBranchFound: githubResult.branchFound,
               githubPrFound: githubResult.prFound,
+              prAuthorLogin: githubResult.prAuthorLogin,
               isComplete,
               syncRunId,
               syncedAt,
@@ -329,7 +395,27 @@ export class TeamsSyncService {
         ).exec();
       }
 
-      this.logger.log(`Sync done for team ${teamId}. RunID: ${syncRunId}`);
+      // Summary tally
+      const fresh = await this.sprintStoryModel
+        .find({ teamId })
+        .select('githubStatus isComplete work assigneeStudentId')
+        .lean()
+        .exec();
+      const verified = fresh.filter((s) => s.githubStatus === GithubStatus.VERIFIED).length;
+      const completed = fresh.filter((s) => s.isComplete).length;
+      const unassigned = fresh.filter((s) => !s.assigneeStudentId).length;
+      const totalPoints = fresh
+        .filter((s) => s.isComplete)
+        .reduce((sum, s) => sum + (s.work ?? 0), 0);
+
+      this.logger.log(
+        `[sync ${teamId}] DONE: total=${issues.length} linked=${linkedCount} verified=${verified} complete=${completed} (${totalPoints} pts) unassigned=${unassigned}`,
+      );
+      if (unassigned > 0) {
+        this.logger.warn(
+          `[sync ${teamId}] ${unassigned} issue(s) have no mapped student — those students need to bind their JIRA accountId at /integrations.`,
+        );
+      }
       return { syncRunId, totalIssues: issues.length, linkedCount, syncedAt: syncedAt.toISOString() };
 
     } catch (error) {
@@ -660,7 +746,14 @@ export class TeamsSyncService {
   private async verifyGithub(
     team: TeamDocument,
     issueKey: string,
-  ): Promise<{ githubStatus: GithubStatus; verifiedAt: Date | null; branchFound: boolean; prFound: boolean }> {
+    expectedAuthorLogin: string | null,
+  ): Promise<{
+    githubStatus: GithubStatus;
+    verifiedAt: Date | null;
+    branchFound: boolean;
+    prFound: boolean;
+    prAuthorLogin: string | null;
+  }> {
     const headers: Record<string, string> = {
       'User-Agent': 'senior-app',
       Accept: 'application/vnd.github+json',
@@ -675,7 +768,7 @@ export class TeamsSyncService {
     );
 
     if (!branchName) {
-      return { githubStatus: GithubStatus.NO_BRANCH, verifiedAt: null, branchFound: false, prFound: false };
+      return { githubStatus: GithubStatus.NO_BRANCH, verifiedAt: null, branchFound: false, prFound: false, prAuthorLogin: null };
     }
 
     // Step 2: find PR for that branch
@@ -687,20 +780,42 @@ export class TeamsSyncService {
     );
 
     if (!pr) {
-      return { githubStatus: GithubStatus.NO_PR, verifiedAt: null, branchFound: true, prFound: false };
+      return { githubStatus: GithubStatus.NO_PR, verifiedAt: null, branchFound: true, prFound: false, prAuthorLogin: null };
     }
 
+    const prAuthorLogin: string | null = pr.user?.login ?? null;
+
     // Step 3: check merge status
-    if (pr.merged_at) {
+    if (!pr.merged_at) {
+      return { githubStatus: GithubStatus.PR_NOT_MERGED, verifiedAt: null, branchFound: true, prFound: true, prAuthorLogin };
+    }
+
+    // Step 4: author check — only verifies when we know the assignee's GitHub
+    // login. Missing assignee or unlinked GitHub account → can't verify, treat
+    // as full verified (we don't downgrade based on missing data, only on real
+    // mismatches), because otherwise students who haven't OAuth-linked GitHub
+    // would block their teammates' completion.
+    if (
+      expectedAuthorLogin &&
+      prAuthorLogin &&
+      expectedAuthorLogin.toLowerCase() !== prAuthorLogin.toLowerCase()
+    ) {
       return {
-        githubStatus: GithubStatus.VERIFIED,
+        githubStatus: GithubStatus.AUTHOR_MISMATCH,
         verifiedAt: new Date(pr.merged_at),
         branchFound: true,
         prFound: true,
+        prAuthorLogin,
       };
     }
 
-    return { githubStatus: GithubStatus.PR_NOT_MERGED, verifiedAt: null, branchFound: true, prFound: true };
+    return {
+      githubStatus: GithubStatus.VERIFIED,
+      verifiedAt: new Date(pr.merged_at),
+      branchFound: true,
+      prFound: true,
+      prAuthorLogin,
+    };
   }
 
   private async findBranchContaining(
@@ -783,8 +898,17 @@ export class TeamsSyncService {
   }
 
   private async buildAccountIdMap(team: TeamDocument): Promise<Map<string, string>> {
+    // User.teamId actually stores the Group.groupId (UUID), not the Team's
+    // mongo _id. Match users by team.groupId. If a team has no groupId yet
+    // (legacy/seeded), fall back to all users with a JIRA accountId so the
+    // mapping degrades gracefully instead of returning everyone as unmapped.
+    const filter: Record<string, unknown> = { jiraAccountId: { $ne: null } };
+    if (team.groupId) {
+      filter.teamId = team.groupId;
+    }
+
     const users = await this.userModel
-      .find({ teamId: team._id?.toString(), jiraAccountId: { $ne: null } })
+      .find(filter)
       .select('_id jiraAccountId')
       .lean()
       .exec();
@@ -792,7 +916,40 @@ export class TeamsSyncService {
     const map = new Map<string, string>();
     for (const u of users) {
       if (u.jiraAccountId) {
-        map.set(u.jiraAccountId, (u._id as any).toString());
+        // Strip any querystring (e.g. "?cloudId=...") that users sometimes
+        // paste from a JIRA profile URL.
+        const cleanId = u.jiraAccountId.split('?')[0].trim();
+        map.set(cleanId, (u._id as any).toString());
+      }
+    }
+
+    this.logger.log(
+      `[sync ${(team._id as any).toString()}] accountId map built: ${map.size} user(s) for groupId=${team.groupId ?? '(none)'}`,
+    );
+    return map;
+  }
+
+  /**
+   * Returns map: studentId → linked GitHub username. Empty entries (students
+   * who never OAuth-linked GitHub) are omitted, so author-check becomes a
+   * "best-effort verify when we have the link" rather than a hard block.
+   */
+  private async buildGithubLoginMap(team: TeamDocument): Promise<Map<string, string>> {
+    const filter: Record<string, unknown> = {
+      githubUsername: { $nin: [null, ''] },
+    };
+    if (team.groupId) filter.teamId = team.groupId;
+
+    const users = await this.userModel
+      .find(filter)
+      .select('_id githubUsername')
+      .lean()
+      .exec();
+
+    const map = new Map<string, string>();
+    for (const u of users) {
+      if (u.githubUsername) {
+        map.set((u._id as any).toString(), u.githubUsername);
       }
     }
     return map;

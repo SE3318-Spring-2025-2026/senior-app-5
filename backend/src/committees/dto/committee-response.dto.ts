@@ -1,19 +1,25 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class JuryMemberResponse {
   @ApiProperty()
   userId!: string;
 
-  @ApiProperty()
-  name!: string;
+  @ApiPropertyOptional()
+  name?: string;
+
+  @ApiPropertyOptional()
+  email?: string;
 }
 
 export class CommitteeAdvisorResponse {
   @ApiProperty()
   userId!: string;
 
-  @ApiProperty()
-  name!: string;
+  @ApiPropertyOptional()
+  name?: string;
+
+  @ApiPropertyOptional()
+  email?: string;
 }
 
 export class CommitteeGroupResponse {

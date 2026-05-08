@@ -116,15 +116,13 @@ export class RubricsService {
         )
         .exec();
 
-      const [rubric] = await this.rubricModel.create([
-        {
-          deliverableId: dto.deliverableId,
-          name: dto.name.trim(),
-          gradingType: dto.gradingType,
-          isActive: true,
-          questions: dto.questions,
-        },
-      ]);
+      const rubric = await this.rubricModel.create({
+        deliverableId: dto.deliverableId,
+        name: dto.name.trim(),
+        gradingType: dto.gradingType,
+        isActive: true,
+        questions: dto.questions,
+      });
 
       this.logger.log(
         JSON.stringify({
@@ -136,7 +134,7 @@ export class RubricsService {
         }),
       );
 
-      return this.toResponseDto(rubric.toObject());
+      return this.toResponseDto((rubric as RubricDocument).toObject());
     } catch (error) {
       throw this.toWriteException(error, correlationId);
     }

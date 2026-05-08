@@ -63,6 +63,201 @@ export class TeamsSyncService {
   ) {}
 
   // ─────────────────────────────────────────────────────────
+  // PUBLIC: Integration health / validation status
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Probes JIRA and GitHub for the team's stored credentials and reports the
+   * outcome of each check, plus a snapshot of the last sync. No secrets are
+   * returned — only configuration metadata and probe results.
+   */
+  async getIntegrationStatus(teamId: string) {
+    const team = await this.teamModel.findById(teamId).exec();
+    if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
+
+    const jiraConfigured = !!(
+      team.jiraDomain && team.jiraEmail && team.jiraApiToken && team.jiraProjectKey
+    );
+    const githubConfigured = !!team.githubRepositoryId;
+
+    const result: any = {
+      teamId,
+      name: team.name,
+      groupId: team.groupId ?? null,
+      jira: {
+        configured: jiraConfigured,
+        domain: team.jiraDomain || null,
+        email: team.jiraEmail || null,
+        projectKey: team.jiraProjectKey || null,
+        boardId: team.jiraBoardId || null,
+        storyPointsField: team.jiraStoryPointsField || 'customfield_10016',
+        hasToken: !!team.jiraApiToken,
+        checks: {
+          auth: { ok: false, status: null as number | null, message: null as string | null },
+          project: { ok: false, status: null as number | null, message: null as string | null },
+          board: { ok: false, status: null as number | null, message: null as string | null },
+          activeSprint: { ok: false, sprintId: null as string | null, name: null as string | null, startDate: null as string | null, endDate: null as string | null },
+        },
+      },
+      github: {
+        configured: githubConfigured,
+        repository: team.githubRepositoryId || null,
+        hasToken: !!team.githubToken,
+        checks: {
+          repo: { ok: false, status: null as number | null, message: null as string | null, private: null as boolean | null },
+        },
+      },
+      lastSync: {
+        syncedAt: null as Date | null,
+        totalIssues: 0,
+        verifiedIssues: 0,
+        lockedIssues: 0,
+      },
+    };
+
+    // JIRA probes
+    if (jiraConfigured) {
+      const auth = this.buildAuthHeader(team);
+      // 1) auth — /myself returns 200 if creds are valid
+      try {
+        const res: any = await lastValueFrom(
+          this.httpService.get(`https://${team.jiraDomain}/rest/api/3/myself`, {
+            headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
+            timeout: 5000,
+          }),
+        );
+        result.jira.checks.auth = { ok: true, status: res.status, message: null };
+      } catch (err: any) {
+        result.jira.checks.auth = {
+          ok: false,
+          status: err?.response?.status ?? null,
+          message: err?.response?.data?.message ?? err?.message ?? 'Auth failed',
+        };
+      }
+
+      // 2) project — /project/{key}
+      if (result.jira.checks.auth.ok) {
+        try {
+          const res: any = await lastValueFrom(
+            this.httpService.get(
+              `https://${team.jiraDomain}/rest/api/3/project/${team.jiraProjectKey}`,
+              { headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' }, timeout: 5000 },
+            ),
+          );
+          result.jira.checks.project = { ok: true, status: res.status, message: null };
+        } catch (err: any) {
+          result.jira.checks.project = {
+            ok: false,
+            status: err?.response?.status ?? null,
+            message: err?.response?.data?.errorMessages?.[0] ?? err?.message ?? 'Project not found',
+          };
+        }
+      }
+
+      // 3) board — /board/{boardId} (only if boardId is set)
+      if (team.jiraBoardId && result.jira.checks.auth.ok) {
+        try {
+          const res: any = await lastValueFrom(
+            this.httpService.get(
+              `https://${team.jiraDomain}/rest/agile/1.0/board/${team.jiraBoardId}`,
+              { headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' }, timeout: 5000 },
+            ),
+          );
+          result.jira.checks.board = { ok: true, status: res.status, message: null };
+        } catch (err: any) {
+          result.jira.checks.board = {
+            ok: false,
+            status: err?.response?.status ?? null,
+            message: err?.response?.data?.errorMessages?.[0] ?? err?.message ?? 'Board not found',
+          };
+        }
+
+        // 4) active sprint
+        if (result.jira.checks.board.ok) {
+          try {
+            const res: any = await lastValueFrom(
+              this.httpService.get(
+                `https://${team.jiraDomain}/rest/agile/1.0/board/${team.jiraBoardId}/sprint`,
+                {
+                  params: { state: 'active' },
+                  headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
+                  timeout: 5000,
+                },
+              ),
+            );
+            const sprints: any[] = res.data?.values ?? [];
+            const active = sprints[0];
+            if (active) {
+              result.jira.checks.activeSprint = {
+                ok: true,
+                sprintId: active.id?.toString() ?? null,
+                name: active.name ?? null,
+                startDate: active.startDate ?? null,
+                endDate: active.endDate ?? null,
+              };
+            }
+          } catch {
+            // leave defaults
+          }
+        }
+      }
+    }
+
+    // GitHub probe
+    if (githubConfigured) {
+      const headers: Record<string, string> = {
+        'User-Agent': 'senior-app',
+        Accept: 'application/vnd.github+json',
+      };
+      if (team.githubToken) {
+        headers['Authorization'] = `Bearer ${decryptSecret(team.githubToken)}`;
+      }
+      try {
+        const res: any = await lastValueFrom(
+          this.httpService.get(
+            `https://api.github.com/repos/${team.githubRepositoryId}`,
+            { headers, timeout: 5000 },
+          ),
+        );
+        result.github.checks.repo = {
+          ok: true,
+          status: res.status,
+          message: null,
+          private: !!res.data?.private,
+        };
+      } catch (err: any) {
+        result.github.checks.repo = {
+          ok: false,
+          status: err?.response?.status ?? null,
+          message: err?.response?.data?.message ?? err?.message ?? 'Repo unreachable',
+          private: null,
+        };
+      }
+    }
+
+    // Last sync snapshot from sprintstories
+    const stories = await this.sprintStoryModel
+      .find({ teamId })
+      .select('syncedAt githubStatus isLocked')
+      .lean()
+      .exec();
+    if (stories.length > 0) {
+      result.lastSync.totalIssues = stories.length;
+      result.lastSync.verifiedIssues = stories.filter(
+        (s) => s.githubStatus === GithubStatus.VERIFIED,
+      ).length;
+      result.lastSync.lockedIssues = stories.filter((s) => s.isLocked).length;
+      result.lastSync.syncedAt = stories.reduce<Date>((latest, s) => {
+        const d = s.syncedAt ? new Date(s.syncedAt) : new Date(0);
+        return d > latest ? d : latest;
+      }, new Date(0));
+      if (result.lastSync.syncedAt.getTime() === 0) result.lastSync.syncedAt = null;
+    }
+
+    return result;
+  }
+
+  // ─────────────────────────────────────────────────────────
   // PUBLIC: Manual / cron-triggered sync
   // ─────────────────────────────────────────────────────────
 

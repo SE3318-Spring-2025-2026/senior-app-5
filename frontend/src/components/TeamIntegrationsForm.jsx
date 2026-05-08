@@ -14,11 +14,15 @@ const FIELDS = [
   { key: 'githubToken', label: 'GitHub PAT', placeholder: 'ghp_xxxxxxxxxxxx', required: false, type: 'password' },
 ];
 
-const EMPTY = { ...FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {}), groupId: '' };
+const EMPTY = FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {});
 
-const TeamIntegrationsForm = ({ teamId, groups = [] }) => {
+const TeamIntegrationsForm = ({ team, groups = [] }) => {
   const [values, setValues] = useState(EMPTY);
   const [status, setStatus] = useState({ saving: false, error: null, info: null });
+
+  const groupForTeam = team?.groupId
+    ? groups.find((g) => g.groupId === team.groupId) || null
+    : null;
 
   const update = (k) => (e) => setValues((v) => ({ ...v, [k]: e.target.value }));
 
@@ -29,7 +33,10 @@ const TeamIntegrationsForm = ({ teamId, groups = [] }) => {
       const payload = Object.fromEntries(
         Object.entries(values).filter(([, v]) => v !== ''),
       );
-      const res = await apiClient.put(apiConfig.endpoints.teamIntegrations(teamId), payload);
+      const res = await apiClient.put(
+        apiConfig.endpoints.teamIntegrations(team.teamId),
+        payload,
+      );
       setStatus({ saving: false, error: null, info: res.data?.message || 'Saved.' });
     } catch (err) {
       setStatus({
@@ -44,10 +51,22 @@ const TeamIntegrationsForm = ({ teamId, groups = [] }) => {
     <div style={styles.container}>
       <h3 style={styles.title}>Team Integrations</h3>
       <p style={styles.description}>
-        JIRA / GitHub credentials for the team-level sync. The token is encrypted at rest before persistence.
-        Set <strong>Board ID</strong> to use the agile board endpoint for active-sprint resolution.
-        Set <strong>Group ID</strong> so the daily auto-finalize cron can compute per-student points without manual action.
+        JIRA / GitHub credentials for your team. Tokens are encrypted at rest before persistence.
       </p>
+
+      {/* Group readonly chip — leader cannot change this */}
+      <div style={styles.groupChip}>
+        <span style={styles.groupLabel}>Group</span>
+        {groupForTeam ? (
+          <span style={styles.groupValue}>{groupForTeam.groupName}</span>
+        ) : team?.groupId ? (
+          <span style={styles.groupValueDim}>{team.groupId}</span>
+        ) : (
+          <span style={styles.groupMissing}>
+            Not linked yet — contact admin to attach this team to a group.
+          </span>
+        )}
+      </div>
 
       {status.error && <div style={styles.errorBox}>{status.error}</div>}
       {status.info && <div style={styles.infoBox}>{status.info}</div>}
@@ -70,22 +89,6 @@ const TeamIntegrationsForm = ({ teamId, groups = [] }) => {
           </div>
         ))}
 
-        <div style={{ marginBottom: 12 }}>
-          <label style={styles.label}>Group (cohort)</label>
-          <select
-            value={values.groupId}
-            onChange={update('groupId')}
-            style={{ ...styles.input, fontFamily: 'inherit' }}
-          >
-            <option value="">— Not assigned —</option>
-            {groups.map((g) => (
-              <option key={g.groupId} value={g.groupId}>
-                {g.groupName}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <button type="submit" disabled={status.saving} style={styles.primaryBtn}>
           {status.saving ? 'Saving…' : 'Validate & Save'}
         </button>
@@ -95,7 +98,11 @@ const TeamIntegrationsForm = ({ teamId, groups = [] }) => {
 };
 
 TeamIntegrationsForm.propTypes = {
-  teamId: PropTypes.string.isRequired,
+  team: PropTypes.shape({
+    teamId: PropTypes.string.isRequired,
+    name: PropTypes.string,
+    groupId: PropTypes.string,
+  }).isRequired,
   groups: PropTypes.array,
 };
 
@@ -110,6 +117,16 @@ const styles = {
   },
   title: { margin: 0, fontSize: 18, fontWeight: 600, marginBottom: 8 },
   description: { color: '#94a3b8', fontSize: 13, marginBottom: 16, lineHeight: 1.5 },
+  groupChip: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    padding: '10px 14px', borderRadius: 8,
+    background: '#0b1220', border: '1px solid #1e293b',
+    marginBottom: 16,
+  },
+  groupLabel: { fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.4 },
+  groupValue: { fontSize: 14, color: '#e2e8f0', fontWeight: 600 },
+  groupValueDim: { fontSize: 13, color: '#cbd5e1', fontFamily: 'monospace' },
+  groupMissing: { fontSize: 13, color: '#fca5a5' },
   label: { color: '#94a3b8', fontSize: 12, display: 'block', marginBottom: 4 },
   input: {
     width: '100%', padding: '9px 12px', borderRadius: 8,

@@ -1,19 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import authService from '../utils/authService';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import GithubConnect from '../components/GithubConnect';
 import JiraConnect from '../components/JiraConnect';
 import TeamIntegrationsForm from '../components/TeamIntegrationsForm';
+import IntegrationStatusCard from '../components/IntegrationStatusCard';
 import { PageHeader } from '../components/ui';
 
 const IntegrationsPage = () => {
   const [userId, setUserId] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
-  const [teams, setTeams] = useState([]);
+  const [myTeam, setMyTeam] = useState(null);
   const [groups, setGroups] = useState([]);
-  const [selectedTeamId, setSelectedTeamId] = useState('');
   const [myTeamError, setMyTeamError] = useState('');
 
   useEffect(() => {
@@ -29,9 +29,7 @@ const IntegrationsPage = () => {
         setLoadError(msg);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -39,42 +37,33 @@ const IntegrationsPage = () => {
     let cancelled = false;
     (async () => {
       try {
-        const [teamsRes, groupsRes, mineRes] = await Promise.all([
-          apiClient.get(apiConfig.endpoints.teamsList).catch(() => ({ data: [] })),
-          apiClient.get(apiConfig.endpoints.groups, { params: { page: 1, limit: 100 } })
-            .catch(() => ({ data: { data: [] } })),
+        const [mineRes, groupsRes] = await Promise.all([
           apiClient.get(apiConfig.endpoints.teamMine).catch((err) => {
-            if (err?.response?.status === 403 || err?.response?.status === 401) return null;
+            if (cancelled) return null;
+            const status = err?.response?.status;
+            if (status === 401 || status === 403) {
+              setMyTeamError(
+                'Only Team Leaders can configure team integrations. Create a team first.',
+              );
+            } else {
+              setMyTeamError(err?.response?.data?.message || 'Failed to load your team.');
+            }
             return null;
           }),
+          apiClient.get(apiConfig.endpoints.groups, { params: { page: 1, limit: 100 } })
+            .catch(() => ({ data: { data: [] } })),
         ]);
         if (cancelled) return;
-
-        const myTeam = mineRes?.data ?? null;
-        const baseTeams = teamsRes.data ?? [];
-        const merged = myTeam
-          ? [myTeam, ...baseTeams.filter((t) => t.teamId !== myTeam.teamId)]
-          : baseTeams;
-        setTeams(merged);
+        setMyTeam(mineRes?.data ?? null);
         setGroups(groupsRes.data?.data ?? groupsRes.data ?? []);
-        if (myTeam) setSelectedTeamId(myTeam.teamId);
       } catch (err) {
         if (!cancelled) {
-          setTeams([]);
-          setGroups([]);
           setMyTeamError(err?.response?.data?.message || 'Failed to load team data.');
         }
       }
     })();
     return () => { cancelled = true; };
   }, [userId]);
-
-  const myTeams = useMemo(() => {
-    if (!userId) return [];
-    return teams.filter((t) => t.leaderId === userId);
-  }, [teams, userId]);
-
-  const visibleTeams = myTeams.length > 0 ? myTeams : teams;
 
   return (
     <div>
@@ -97,35 +86,34 @@ const IntegrationsPage = () => {
 
             <div style={{ marginTop: 24 }}>
               <h3 style={{ color: '#e2e8f0', fontSize: 16, fontWeight: 600 }}>
-                Team Integrations {myTeams.length > 0 ? '(your teams)' : '(all teams)'}
+                Team Integrations
               </h3>
               <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>
-                Configure your team's JIRA & GitHub credentials. Your team is selected automatically.
+                Connect your team's JIRA & GitHub. You can only configure your own team.
               </p>
+
               {myTeamError && (
-                <div style={{ marginTop: 8, color: '#fca5a5', fontSize: 13 }}>{myTeamError}</div>
+                <div style={{
+                  marginTop: 12, padding: 10, borderRadius: 8,
+                  background: '#450a0a', border: '1px solid #7f1d1d',
+                  color: '#fca5a5', fontSize: 13,
+                }}>
+                  {myTeamError}
+                </div>
               )}
 
-              <select
-                value={selectedTeamId}
-                onChange={(e) => setSelectedTeamId(e.target.value)}
-                style={{
-                  width: '100%', padding: '9px 12px', borderRadius: 8, marginTop: 8,
-                  background: '#0b1220', border: '1px solid #1e293b', color: '#f8fafc',
-                  fontSize: 14,
-                }}
-              >
-                <option value="">— Select a team —</option>
-                {visibleTeams.map((t) => (
-                  <option key={t.teamId} value={t.teamId}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-
-              {selectedTeamId && (
-                <TeamIntegrationsForm teamId={selectedTeamId} groups={groups} />
-              )}
+              {myTeam ? (
+                <>
+                  <IntegrationStatusCard teamId={myTeam.teamId} />
+                  <TeamIntegrationsForm team={myTeam} groups={groups} />
+                </>
+              ) : !myTeamError ? (
+                <div style={{
+                  marginTop: 12, color: '#94a3b8', fontSize: 13,
+                }}>
+                  Loading your team…
+                </div>
+              ) : null}
             </div>
           </>
         ) : (

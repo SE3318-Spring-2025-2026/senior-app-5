@@ -29,19 +29,37 @@ export class TeamsService {
     } = dto;
 
     try {
-      const headers: Record<string, string> = { 'User-Agent': 'senior-app' };
+      const headers: Record<string, string> = {
+        'User-Agent': 'senior-app',
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      };
       if (githubToken) headers['Authorization'] = `Bearer ${githubToken}`;
       await lastValueFrom(
         this.httpService.get(
           `https://api.github.com/repos/${githubRepositoryId}`,
-          { headers, timeout: 5000 }
+          { headers, timeout: 5000 },
         ),
       );
     } catch (error: any) {
-      throw new HttpException(
-        'Invalid or not found GitHub Repository ID.',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      const status = error?.response?.status;
+      const ghMessage = error?.response?.data?.message;
+      const tokenSent = !!githubToken;
+
+      let detail = `GitHub returned ${status ?? 'no response'}`;
+      if (status === 404) {
+        detail = tokenSent
+          ? `GitHub returned 404 for "${githubRepositoryId}". The repo may not exist, or your PAT lacks access to it. For private repos, classic PATs need the full "repo" scope; fine-grained PATs must list this repo under "Repository access".`
+          : `GitHub returned 404 for "${githubRepositoryId}". If the repo is private, you must also provide a GitHub PAT.`;
+      } else if (status === 401) {
+        detail = 'GitHub returned 401 — the PAT is invalid, expired, or copied with whitespace.';
+      } else if (status === 403) {
+        detail = `GitHub returned 403${ghMessage ? ` — ${ghMessage}` : ''}. Rate limit or SSO authorization may be required for this token.`;
+      } else if (ghMessage) {
+        detail += ` — ${ghMessage}`;
+      }
+
+      throw new HttpException(detail, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     try {
@@ -84,8 +102,17 @@ export class TeamsService {
       };
       if (githubToken !== undefined) updateFields.githubToken = encryptSecret(githubToken);
       if (jiraBoardId !== undefined) updateFields.jiraBoardId = jiraBoardId || null;
-      if (groupId !== undefined) updateFields.groupId = groupId || null;
       if (jiraStoryPointsField) updateFields.jiraStoryPointsField = jiraStoryPointsField;
+      // groupId is set when the team is created (mirrored from the leader's
+      // own group at /groups/my-team). The leader cannot reassign their team
+      // to a different group through this endpoint — only fill in if the
+      // existing team has no group yet (legacy/seeded teams).
+      if (groupId) {
+        const existing = await this.teamModel.findById(teamId).select('groupId').lean().exec();
+        if (existing && !existing.groupId) {
+          updateFields.groupId = groupId;
+        }
+      }
 
       updatedTeam = await this.teamModel
         .findByIdAndUpdate(

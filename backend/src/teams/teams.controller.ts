@@ -42,10 +42,10 @@ export class TeamsController {
 
   @ApiBearerAuth('access-token')
   @ApiOperation({
-    summary: 'Get the Team owned by the current user, creating one on first call (TeamLeader)',
+    summary: 'Get the Team owned by the current TeamLeader, creating one on first call',
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.TeamLeader, Role.Student)
+  @Roles(Role.TeamLeader)
   @Get('mine')
   @HttpCode(HttpStatus.OK)
   async getMyTeam(@Request() req: any) {
@@ -60,7 +60,7 @@ export class TeamsController {
 
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update team integrations for JIRA and GitHub' })
-  @UseGuards(TeamLeaderGuard)
+  @UseGuards(JwtAuthGuard, TeamLeaderGuard)
   @Put(':teamId/integrations')
   async updateIntegrations(
     @Param('teamId') teamId: string,
@@ -70,8 +70,19 @@ export class TeamsController {
   }
 
   @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Live integration health check (JIRA + GitHub) for the team',
+  })
+  @UseGuards(JwtAuthGuard, TeamLeaderGuard)
+  @Get(':teamId/integrations/status')
+  @HttpCode(HttpStatus.OK)
+  async getIntegrationStatus(@Param('teamId') teamId: string) {
+    return this.teamsSyncService.getIntegrationStatus(teamId);
+  }
+
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Manually trigger JIRA/GitHub sync for Sprint Stories' })
-  @UseGuards(TeamLeaderGuard)
+  @UseGuards(JwtAuthGuard, TeamLeaderGuard)
   @Post(':teamId/sync')
   @HttpCode(HttpStatus.OK)
   async syncStories(@Param('teamId') teamId: string) {

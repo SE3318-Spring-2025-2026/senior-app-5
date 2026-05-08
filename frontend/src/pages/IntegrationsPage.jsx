@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link2, AlertCircle, Loader2, Lock, ShieldCheck, Kanban } from 'lucide-react';
 import authService from '../utils/authService';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
@@ -8,9 +9,31 @@ import TeamIntegrationsForm from '../components/TeamIntegrationsForm';
 import IntegrationStatusCard from '../components/IntegrationStatusCard';
 import { PageHeader } from '../components/ui';
 
+function IntegrationCard({ icon: Icon, name, description, comingSoon }) {
+  return (
+    <div className="relative flex items-start gap-3.5 overflow-hidden rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#26262b] bg-[#0a0a0b] text-zinc-300">
+        <Icon size={18} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h3 className="text-[14px] font-semibold tracking-tight text-zinc-100">{name}</h3>
+          {comingSoon && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#26262b] bg-[#18181c] px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+              <Lock size={9} /> Soon
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-[12px] leading-relaxed text-zinc-500">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 const IntegrationsPage = () => {
   const [userId, setUserId] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [myTeam, setMyTeam] = useState(null);
   const [myTeamError, setMyTeamError] = useState('');
@@ -26,6 +49,8 @@ const IntegrationsPage = () => {
         if (cancelled) return;
         const msg = err?.response?.data?.message || err?.message || 'Failed to load user';
         setLoadError(msg);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -57,13 +82,65 @@ const IntegrationsPage = () => {
   return (
     <div>
       <PageHeader
+        eyebrow="Account"
         title="Integrations"
-        subtitle="Connect external services to your account."
+        subtitle="Connect external services to sync data into your workspace."
       />
 
-      {loadError && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mb-4">
-          {loadError}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Active integrations — main column */}
+        <div className="space-y-4 lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Available
+            </h2>
+            <span className="text-[11px] text-zinc-700">1 active</span>
+          </div>
+
+          {loadError && (
+            <div className="flex items-start gap-2 rounded-xl border border-rose-900/40 bg-rose-950/20 p-3.5 text-[13px] text-rose-300">
+              <AlertCircle size={14} className="mt-px shrink-0" />
+              <span>{loadError}</span>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex h-44 items-center justify-center gap-2 rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+              <Loader2 size={14} className="animate-spin" /> Loading account…
+            </div>
+          ) : userId ? (
+            <GithubConnect userId={userId} />
+          ) : (
+            !loadError && (
+              <div className="flex h-44 items-center justify-center rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+                Sign in required
+              </div>
+            )
+          )}
+
+          {/* Roadmap */}
+          <div className="mt-8">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Coming soon
+              </h2>
+              <span className="text-[11px] text-zinc-700">Planned</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <IntegrationCard
+                icon={Kanban}
+                name="Jira"
+                description="Pull sprint progress and story points directly from Jira boards."
+                comingSoon
+              />
+              <IntegrationCard
+                icon={ShieldCheck}
+                name="Single Sign-On"
+                description="University SSO via SAML or institutional identity providers."
+                comingSoon
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -110,8 +187,8 @@ const IntegrationsPage = () => {
             <div className="rounded-2xl border border-[#1e293b] bg-[#111827] px-5 py-8 text-center text-sm text-slate-500">
               Loading…
             </div>
-          )
-        )}
+          </div>
+        </aside>
       </div>
     </div>
   );

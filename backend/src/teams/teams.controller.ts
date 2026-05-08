@@ -161,6 +161,16 @@ export class TeamsController {
   }
 
   @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Story points summary for the team (completed vs total)' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Coordinator, Role.TeamLeader)
+  @Get(':teamId/story-points')
+  @HttpCode(HttpStatus.OK)
+  async getStoryPointsSummary(@Param('teamId') teamId: string) {
+    return this.teamsSyncService.getStoryPointsSummary(teamId);
+  }
+
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'Advisor panel: live per-student sprint issue data with GitHub status',
   })

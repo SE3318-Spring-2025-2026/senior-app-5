@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'react-hot-toast'
-import { Plus, Trash2, Pencil, Save, X } from 'lucide-react'
+import { Plus, Trash2, Pencil, Save, X, SplitSquareHorizontal } from 'lucide-react'
 import apiClient from '../utils/apiClient'
 import { PageHeader, Badge, Card } from '../components/ui'
 
@@ -48,6 +48,29 @@ function toDatetimeLocal(iso) {
   return iso.slice(0, 16)
 }
 
+// mappings[deliverableId][sprintId] = { checked: boolean, pct: string }
+function buildMappings(schs, cfgs, dels) {
+  const result = {}
+  for (const del of dels) {
+    result[del.deliverableId] = {}
+    for (const sch of schs) {
+      const cfg = cfgs.find((c) => c.sprintId === sch.scheduleId)
+      const existing = cfg?.deliverableMappings?.find((m) => m.deliverableId === del.deliverableId)
+      result[del.deliverableId][sch.scheduleId] = {
+        checked: !!existing,
+        pct: existing ? String(existing.contributionPercentage) : '',
+      }
+    }
+  }
+  return result
+}
+
+function equalSplit(n) {
+  if (n === 0) return ''
+  // keep one decimal, e.g. 33.3
+  return String(Math.round((100 / n) * 10) / 10)
+}
+
 function SprintBuilderPage() {
   const [schedules, setSchedules] = useState([])
   const [sprintConfigs, setSprintConfigs] = useState([])
@@ -67,20 +90,8 @@ function SprintBuilderPage() {
   const [editWindowForm, setEditWindowForm] = useState({ startDatetime: '', endDatetime: '' })
 
   const [savingDeliverable, setSavingDeliverable] = useState(null)
-  const [percentages, setPercentages] = useState({})
-
-  const buildPercentages = (schs, cfgs, dels) => {
-    const pcts = {}
-    for (const del of dels) {
-      pcts[del.deliverableId] = {}
-      for (const sch of schs) {
-        const cfg = cfgs.find((c) => c.sprintId === sch.scheduleId)
-        const mapping = cfg?.deliverableMappings?.find((m) => m.deliverableId === del.deliverableId)
-        pcts[del.deliverableId][sch.scheduleId] = mapping ? String(mapping.contributionPercentage) : ''
-      }
-    }
-    return pcts
-  }
+  // mappings[deliverableId][sprintId] = { checked: boolean, pct: string }
+  const [mappings, setMappings] = useState({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -91,15 +102,15 @@ function SprintBuilderPage() {
         apiClient.get('/deliverables', { params: { limit: 100 } }),
       ])
       const schs = Array.isArray(schRes.data) ? schRes.data : []
-      const raw = cfgRes.data?.data ?? cfgRes.data
-      const cfgs = Array.isArray(raw) ? raw : []
+      const rawCfg = cfgRes.data?.data ?? cfgRes.data
+      const cfgs = Array.isArray(rawCfg) ? rawCfg : []
       const rawDel = delRes.data?.data ?? delRes.data
       const dels = Array.isArray(rawDel) ? rawDel : []
 
       setSchedules(schs)
       setSprintConfigs(cfgs)
       setDeliverables(dels)
-      setPercentages(buildPercentages(schs, cfgs, dels))
+      setMappings(buildMappings(schs, cfgs, dels))
     } catch (err) {
       toast.error(getApiError(err))
     } finally {
@@ -113,6 +124,8 @@ function SprintBuilderPage() {
     newForm.startDate && isMonday(newForm.startDate)
       ? addDaysUTC(newForm.startDate, 11)
       : null
+
+  // ── Sprint window handlers ────────────────────────────────────────────────
 
   const handleCreateSprint = async (e) => {
     e.preventDefault()
@@ -129,11 +142,7 @@ function SprintBuilderPage() {
 
     setCreating(true)
     try {
-      const schRes = await apiClient.post('/schedules', {
-        phase: PHASE,
-        startDatetime,
-        endDatetime,
-      })
+      const schRes = await apiClient.post('/schedules', { phase: PHASE, startDatetime, endDatetime })
       const scheduleId = schRes.data.scheduleId
       await apiClient.post('/sprints', {
         sprintId: scheduleId,
@@ -185,6 +194,56 @@ function SprintBuilderPage() {
     }
   }
 
+  // ── Deliverable mapping handlers ──────────────────────────────────────────
+
+  const toggleSprint = (deliverableId, sprintId, checked) => {
+    setMappings((prev) => ({
+      ...prev,
+      [deliverableId]: {
+        ...prev[deliverableId],
+        [sprintId]: { checked, pct: checked ? prev[deliverableId]?.[sprintId]?.pct || '' : '' },
+      },
+    }))
+  }
+
+  const setPct = (deliverableId, sprintId, value) => {
+    setMappings((prev) => ({
+      ...prev,
+      [deliverableId]: {
+        ...prev[deliverableId],
+        [sprintId]: { ...prev[deliverableId]?.[sprintId], pct: value },
+      },
+    }))
+  }
+
+  const applyEqualSplit = (deliverableId) => {
+    setMappings((prev) => {
+      const delivMap = prev[deliverableId] ?? {}
+      const checkedIds = Object.entries(delivMap)
+        .filter(([, v]) => v.checked)
+        .map(([id]) => id)
+      if (checkedIds.length === 0) return prev
+      const pct = equalSplit(checkedIds.length)
+      const updated = { ...delivMap }
+      for (const id of checkedIds) {
+        updated[id] = { ...updated[id], pct }
+      }
+      return { ...prev, [deliverableId]: updated }
+    })
+  }
+
+  const totalForDeliverable = (deliverableId) => {
+    const delivMap = mappings[deliverableId] ?? {}
+    return Object.values(delivMap).reduce((sum, { checked, pct }) => {
+      if (!checked) return sum
+      const v = parseFloat(pct)
+      return sum + (isNaN(v) ? 0 : v)
+    }, 0)
+  }
+
+  const checkedCountForDeliverable = (deliverableId) =>
+    Object.values(mappings[deliverableId] ?? {}).filter((v) => v.checked).length
+
   const handleSaveDeliverableMappings = async (deliverableId) => {
     setSavingDeliverable(deliverableId)
     try {
@@ -192,8 +251,8 @@ function SprintBuilderPage() {
         schedules.map(async (sch) => {
           const cfg = sprintConfigs.find((c) => c.sprintId === sch.scheduleId)
           if (!cfg) return
-          const pctStr = percentages[deliverableId]?.[sch.scheduleId]
-          const pct = pctStr !== '' && pctStr !== undefined ? parseFloat(pctStr) : null
+          const entry = mappings[deliverableId]?.[sch.scheduleId]
+          const pct = entry?.checked ? parseFloat(entry.pct) : null
           const otherMappings = (cfg.deliverableMappings ?? []).filter(
             (m) => m.deliverableId !== deliverableId,
           )
@@ -213,17 +272,15 @@ function SprintBuilderPage() {
     }
   }
 
-  const totalForDeliverable = (deliverableId) =>
-    schedules.reduce((sum, sch) => {
-      const v = parseFloat(percentages[deliverableId]?.[sch.scheduleId] ?? '')
-      return sum + (isNaN(v) ? 0 : v)
-    }, 0)
+  // ── Status helpers ────────────────────────────────────────────────────────
 
   const statusColor = (status) => {
     if (status === 'open') return 'green'
     if (status === 'scheduled') return 'blue'
     return 'slate'
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-1">
@@ -232,7 +289,7 @@ function SprintBuilderPage() {
         subtitle="Configure sprint evaluation windows and deliverable contribution weights."
       />
 
-      {/* ── Sprint Windows ──────────────────────────────────────────────── */}
+      {/* ── Sprint Windows ────────────────────────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Sprint Windows</h2>
@@ -443,71 +500,118 @@ function SprintBuilderPage() {
             Deliverable Contribution Map
           </h2>
           <p className="text-xs text-slate-500 mb-4">
-            For each deliverable, set what percentage each sprint contributes. Total per deliverable cannot exceed 100%.
+            Select which sprints feed into each deliverable and set their weight. Checked sprints must total exactly 100%.
           </p>
 
           <div className="space-y-4">
             {deliverables.map((del) => {
-              const total = totalForDeliverable(del.deliverableId)
+              const total = Math.round(totalForDeliverable(del.deliverableId) * 10) / 10
+              const checkedCount = checkedCountForDeliverable(del.deliverableId)
               const overLimit = total > 100
+              const isComplete = total === 100 && checkedCount > 0
 
               return (
                 <Card key={del.deliverableId}>
-                  <div className="flex items-start justify-between gap-3 mb-3">
+                  {/* Header row */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
                     <div>
                       <p className="text-sm font-semibold text-slate-200">{del.name ?? del.deliverableId}</p>
                       <p
                         className={`text-xs mt-0.5 font-medium ${
-                          overLimit
-                            ? 'text-red-400'
-                            : total === 100
-                            ? 'text-green-400'
-                            : 'text-slate-500'
+                          overLimit ? 'text-red-400' : isComplete ? 'text-green-400' : 'text-slate-500'
                         }`}
                       >
-                        {total}% / 100%{overLimit ? ' — exceeds limit' : total === 100 ? ' ✓' : ''}
+                        {checkedCount === 0
+                          ? 'No sprints selected'
+                          : `${total}% / 100%${overLimit ? ' — exceeds limit' : isComplete ? ' ✓' : ''}`}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveDeliverableMappings(del.deliverableId)}
-                      disabled={savingDeliverable === del.deliverableId || overLimit}
-                      className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                    >
-                      <Save size={12} />
-                      {savingDeliverable === del.deliverableId ? 'Saving…' : 'Save'}
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {checkedCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => applyEqualSplit(del.deliverableId)}
+                          title="Distribute equally across selected sprints"
+                          className="flex items-center gap-1.5 rounded-xl border border-[#1e293b] px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:border-slate-600"
+                        >
+                          <SplitSquareHorizontal size={12} /> Equal split
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSaveDeliverableMappings(del.deliverableId)}
+                        disabled={savingDeliverable === del.deliverableId || overLimit}
+                        className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Save size={12} />
+                        {savingDeliverable === del.deliverableId ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
                   </div>
 
+                  {/* Sprint rows */}
                   <div className="space-y-2">
-                    {schedules.map((sch, idx) => (
-                      <div key={sch.scheduleId} className="flex items-center gap-3">
-                        <span className="text-xs text-slate-400 w-16 shrink-0">Sprint {idx + 1}</span>
-                        <div className="flex items-center gap-2">
+                    {schedules.map((sch, idx) => {
+                      const entry = mappings[del.deliverableId]?.[sch.scheduleId] ?? {
+                        checked: false,
+                        pct: '',
+                      }
+                      return (
+                        <div
+                          key={sch.scheduleId}
+                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                            entry.checked
+                              ? 'bg-blue-600/8 border border-blue-600/20'
+                              : 'bg-[#0d1526] border border-transparent'
+                          }`}
+                        >
+                          {/* Checkbox */}
                           <input
-                            type="number"
-                            value={percentages[del.deliverableId]?.[sch.scheduleId] ?? ''}
-                            onChange={(e) =>
-                              setPercentages((prev) => ({
-                                ...prev,
-                                [del.deliverableId]: {
-                                  ...prev[del.deliverableId],
-                                  [sch.scheduleId]: e.target.value,
-                                },
-                              }))
-                            }
-                            placeholder="0"
-                            min="0"
-                            max="100"
-                            className="w-24 rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
+                            type="checkbox"
+                            id={`${del.deliverableId}-${sch.scheduleId}`}
+                            checked={entry.checked}
+                            onChange={(e) => toggleSprint(del.deliverableId, sch.scheduleId, e.target.checked)}
+                            className="w-4 h-4 accent-blue-500 shrink-0 cursor-pointer"
                           />
-                          <span className="text-xs text-slate-500">%</span>
+
+                          {/* Sprint label */}
+                          <label
+                            htmlFor={`${del.deliverableId}-${sch.scheduleId}`}
+                            className={`text-xs font-medium w-16 shrink-0 cursor-pointer ${
+                              entry.checked ? 'text-slate-200' : 'text-slate-500'
+                            }`}
+                          >
+                            Sprint {idx + 1}
+                          </label>
+
+                          {/* Date range */}
+                          <span
+                            className={`text-xs flex-1 hidden sm:inline ${
+                              entry.checked ? 'text-slate-400' : 'text-slate-600'
+                            }`}
+                          >
+                            {fmtDate(sch.startDatetime)} – {fmtDate(sch.endDatetime)}
+                          </span>
+
+                          {/* Percentage input */}
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              value={entry.pct}
+                              onChange={(e) => setPct(del.deliverableId, sch.scheduleId, e.target.value)}
+                              disabled={!entry.checked}
+                              placeholder="0"
+                              min="0"
+                              max="100"
+                              className="w-20 rounded-xl border border-[#1e293b] bg-[#111827] px-2.5 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-30 disabled:cursor-not-allowed text-right"
+                            />
+                            <span className={`text-xs ${entry.checked ? 'text-slate-400' : 'text-slate-600'}`}>
+                              %
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-xs text-slate-600 hidden sm:inline">
-                          {fmtDate(sch.startDatetime)} – {fmtDate(sch.endDatetime)}
-                        </span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </Card>
               )

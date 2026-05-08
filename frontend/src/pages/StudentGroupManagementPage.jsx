@@ -397,24 +397,13 @@ function StudentGroupManagementPage() {
     try {
       await apiClient.patch(apiConfig.endpoints.groupInviteRespond(inviteId), { accept })
       if (accept) {
+        // Refresh user so teamId appears
         try {
           const me = await apiClient.get(apiConfig.endpoints.me)
-          if (me.data) {
-            const updated = { ...me.data, teamId: me.data.teamId ?? me.data.groupId ?? null }
-            localStorage.setItem('user', JSON.stringify(updated))
-            setCurrentUser(updated)
-            const newGroupId = updated.teamId || updated.groupId || ''
-            if (newGroupId) {
-              setStatusGroupId(newGroupId)
-              await fetchGroupStatusById(newGroupId)
-            }
-            await fetchRequests()
-            setActiveTab('group-status')
-          }
+          if (me.data && setCurrentUser) setCurrentUser(me.data)
         } catch { /* ignore */ }
-      } else {
-        fetchMyInvites()
       }
+      fetchMyInvites()
     } catch (error) {
       const { status, message } = getApiError(error)
       setMyInvitesState((prev) => ({
@@ -426,14 +415,6 @@ function StudentGroupManagementPage() {
     }
   }
 
-
-  // Redirect non-team-leaders away from browse-advisors tab after user loads
-  useEffect(() => {
-    if (userLoaded && !isTeamLeader && activeTab === 'browse-advisors') {
-      setActiveTab('my-requests')
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoaded])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAdvisors(advisorPage) }, [advisorPage])
@@ -783,7 +764,6 @@ function StudentGroupManagementPage() {
                     <div className={styles.requestActions}>
                       <button
                         type="button"
-                        className={styles.btnGhost}
                         disabled={!!respondingInviteId}
                         onClick={() => handleRespondToInvite(invite.inviteId, true)}
                       >
@@ -791,7 +771,6 @@ function StudentGroupManagementPage() {
                       </button>
                       <button
                         type="button"
-                        className={styles.btnDanger}
                         disabled={!!respondingInviteId}
                         onClick={() => handleRespondToInvite(invite.inviteId, false)}
                       >
@@ -808,21 +787,14 @@ function StudentGroupManagementPage() {
         {activeTab === 'team-invites' && isTeamLeader && (
           <SectionCard title="Team Invites" description="Invite students to your team by email address. Statuses refresh every 10 seconds.">
             <form onSubmit={handleSendInvite} className={styles.form}>
-              <label>Student Email</label>
-              <EntitySearchSelect
-                endpoint={apiConfig.endpoints.userSearch}
-                searchField="email"
-                returnField="email"
-                displayField="email"
-                value={inviteEmail}
-                onChange={setInviteEmail}
+              <label htmlFor="invite-email">Student Email</label>
+              <input
+                id="invite-email"
+                type="email"
                 placeholder="student@example.com"
-                getItems={(data) =>
-                  (Array.isArray(data) ? data : []).filter(
-                    (u) => String(u.role || '').toLowerCase() === 'student'
-                  )
-                }
-                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                disabled={sendInviteState.loading}
               />
               <button type="submit" disabled={sendInviteState.loading || !inviteEmail.trim()}>
                 {sendInviteState.loading ? 'Sending…' : 'Send Invite'}

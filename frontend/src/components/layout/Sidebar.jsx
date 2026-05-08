@@ -13,6 +13,7 @@ import {
   Star,
   BookOpen,
   GitBranch,
+  Kanban,
   Package,
   Timer,
 } from 'lucide-react';
@@ -70,6 +71,13 @@ export const Sidebar = () => {
           </>
         )}
 
+        {role === 'TeamLeader' && (
+          <>
+            <SectionHeader label="Team Leader Menu" />
+            <SideNavLink to="/scrum" icon={GitBranch} label="Scrum" />
+          </>
+        )}
+
         {role === 'Professor' && (
           <>
             <SectionHeader label="Professor" />
@@ -95,6 +103,7 @@ export const Sidebar = () => {
             <SideNavLink to="/coordinator/deliverables" icon={Package} label="Deliverables" />
             <SideNavLink to="/coordinator/rubrics" icon={BookOpen} label="Rubric Management" />
             <SideNavLink to="/coordinator/sprint-config" icon={GitBranch} label="Sprint Config" />
+            <SideNavLink to="/scrum" icon={Kanban} label="Scrum" />
             <SideNavLink to="/coordinator/sprint-schedule" icon={Timer} label="Sprint Schedule" />
             <SideNavLink to="/admin" icon={ShieldCheck} label="Admin Panel" matchPrefix />
           </>

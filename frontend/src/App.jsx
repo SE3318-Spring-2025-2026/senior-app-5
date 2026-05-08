@@ -36,6 +36,7 @@ import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
 import SprintConfigPage from './pages/SprintConfigPage';
+import ScrumManagementPage from './pages/ScrumManagementPage';
 import SprintSchedulePage from './pages/SprintSchedulePage';
 import DeliverableManagementPage from './pages/DeliverableManagementPage';
 
@@ -83,6 +84,7 @@ function App() {
             />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/scrum" element={<ScrumManagementPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
             <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
             <Route path="/coordinator/advisor-schedule" element={

@@ -90,6 +90,76 @@ const IntegrationsPage = () => {
     return () => { cancelled = true; };
   }, [userId]);
 
+  const renderIntegrationsContent = () => {
+    if (loading) {
+      return (
+        <div className="flex h-44 items-center justify-center gap-2 rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+          <Loader2 size={14} className="animate-spin" /> Loading account...
+        </div>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <div className="rounded-2xl border border-rose-900/40 bg-rose-950/20 p-4 text-[13px] text-rose-300">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            <span>{loadError}</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (!userId) {
+      return (
+        <div className="flex h-44 items-center justify-center rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+          Sign in required
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <GithubConnect userId={userId} />
+        <JiraConnect userId={userId} />
+
+        <div style={{ marginTop: 24 }}>
+          <h3 style={{ color: '#e2e8f0', fontSize: 16, fontWeight: 600 }}>
+            Team Integrations
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>
+            Connect your team&apos;s JIRA and GitHub. You can only configure your own team.
+          </p>
+
+          {myTeamError && (
+            <div style={{
+              marginTop: 12,
+              padding: 10,
+              borderRadius: 8,
+              background: '#450a0a',
+              border: '1px solid #7f1d1d',
+              color: '#fca5a5',
+              fontSize: 13,
+            }}>
+              {myTeamError}
+            </div>
+          )}
+
+          {myTeam ? (
+            <>
+              <IntegrationStatusCard teamId={myTeam.teamId} />
+              <TeamIntegrationsForm team={myTeam} groups={groups} />
+            </>
+          ) : !myTeamError ? (
+            <div style={{ marginTop: 12, color: '#94a3b8', fontSize: 13 }}>
+              Loading your team...
+            </div>
+          ) : null}
+        </div>
+      </>
+    );
+  };
+
   return (
     <div>
       <PageHeader
@@ -108,86 +178,31 @@ const IntegrationsPage = () => {
             <span className="text-[11px] text-zinc-700">1 active</span>
           </div>
 
-      <div className="max-w-lg">
-        {userId ? (
-          <>
-            <GithubConnect userId={userId} />
-            <JiraConnect userId={userId} />
+          <div className="max-w-lg">
+            {renderIntegrationsContent()}
 
-            <div style={{ marginTop: 24 }}>
-              <h3 style={{ color: '#e2e8f0', fontSize: 16, fontWeight: 600 }}>
-                Team Integrations
-              </h3>
-              <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>
-                Connect your team's JIRA & GitHub. You can only configure your own team.
-              </p>
-
-              {myTeamError && (
-                <div style={{
-                  marginTop: 12, padding: 10, borderRadius: 8,
-                  background: '#450a0a', border: '1px solid #7f1d1d',
-                  color: '#fca5a5', fontSize: 13,
-                }}>
-                  {myTeamError}
-                </div>
-              )}
-
-              {myTeam ? (
-                <>
-                  <IntegrationStatusCard teamId={myTeam.teamId} />
-                  <TeamIntegrationsForm team={myTeam} groups={groups} />
-                </>
-              ) : !myTeamError ? (
-                <div style={{
-                  marginTop: 12, color: '#94a3b8', fontSize: 13,
-                }}>
-                  Loading your team…
-                </div>
-              ) : null}
-            </div>
-          </>
-        ) : (
-          !loadError && (
-            <div className="rounded-2xl border border-[#1e293b] bg-[#111827] px-5 py-8 text-center text-sm text-slate-500">
-              Loading…
-            </div>
-          )}
-
-          {loading ? (
-            <div className="flex h-44 items-center justify-center gap-2 rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
-              <Loader2 size={14} className="animate-spin" /> Loading account…
-            </div>
-          ) : userId ? (
-            <GithubConnect userId={userId} />
-          ) : (
-            !loadError && (
-              <div className="flex h-44 items-center justify-center rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
-                Sign in required
+            {/* Roadmap */}
+            <div className="mt-8">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Coming soon
+                </h2>
+                <span className="text-[11px] text-zinc-700">Planned</span>
               </div>
-            )
-          )}
-
-          {/* Roadmap */}
-          <div className="mt-8">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Coming soon
-              </h2>
-              <span className="text-[11px] text-zinc-700">Planned</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <IntegrationCard
-                icon={Kanban}
-                name="Jira"
-                description="Pull sprint progress and story points directly from Jira boards."
-                comingSoon
-              />
-              <IntegrationCard
-                icon={ShieldCheck}
-                name="Single Sign-On"
-                description="University SSO via SAML or institutional identity providers."
-                comingSoon
-              />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <IntegrationCard
+                  icon={Kanban}
+                  name="Jira"
+                  description="Pull sprint progress and story points directly from Jira boards."
+                  comingSoon
+                />
+                <IntegrationCard
+                  icon={ShieldCheck}
+                  name="Single Sign-On"
+                  description="University SSO via SAML or institutional identity providers."
+                  comingSoon
+                />
+              </div>
             </div>
           </div>
         </div>

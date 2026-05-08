@@ -135,7 +135,7 @@ function GroupsPage() {
       <SectionCard title="Create a Group" description="Register a new group and capture the generated ID.">
         <form className="space-y-4" onSubmit={handleCreateGroup}>
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+            <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
               Group Name
             </label>
             <input
@@ -143,7 +143,7 @@ function GroupsPage() {
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Student project group"
               required
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
+              className="w-full rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40] disabled:opacity-50"
             />
           </div>
           <EntitySearchSelect
@@ -170,24 +170,24 @@ function GroupsPage() {
         description="All groups. Transfer their advisor, view details, or disband unassigned groups."
       >
         {listState.error && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mb-3" role="status">
+          <div className="mb-3 flex items-center gap-2 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300" role="status">
             {listState.error}
           </div>
         )}
 
         {listState.loading ? (
-          <div className="py-12 text-center text-sm text-slate-500">Loading groups…</div>
+          <div className="py-12 text-center text-[13px] text-zinc-600">Loading groups…</div>
         ) : groups.length === 0 ? (
-          <p className="py-12 text-center text-sm text-slate-500">No groups found.</p>
+          <p className="py-12 text-center text-[13px] text-zinc-600">No groups found.</p>
         ) : (
           <>
-            <div className="overflow-hidden rounded-2xl border border-[#1e293b]">
+            <div className="overflow-hidden rounded-2xl border border-[#1f1f23]">
               <table className="w-full">
-                <thead className="bg-[#080f1f]">
+                <thead className="bg-[#0e0e10]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Name</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Actions</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">Name</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">Status</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -199,16 +199,16 @@ function GroupsPage() {
                     const isUnassigned = status === 'UNASSIGNED'
 
                     return (
-                      <tr key={groupId} className="border-t border-[#1e293b] hover:bg-white/2">
+                      <tr key={groupId} className="border-t border-[#1f1f23] hover:bg-[#18181c]">
                         <td className="px-4 py-3">
                           <button
                             onClick={() => navigate(`/admin/groups/${groupId}`)}
-                            className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors text-left"
+                            className="text-left text-[13px] font-medium text-zinc-300 transition-colors hover:text-zinc-100"
                           >
                             {name}
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-slate-300">
+                        <td className="px-4 py-3 text-zinc-300">
                           <StatusBadge status={group.status} />
                         </td>
                         <td className="px-4 py-3">
@@ -241,19 +241,19 @@ function GroupsPage() {
             </div>
 
             {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between border-t border-[#1e293b] pt-4">
+              <div className="mt-4 flex items-center justify-between border-t border-[#1f1f23] pt-4">
                 <button
                   onClick={() => goTo(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="text-xs text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-40"
+                  className="text-xs text-zinc-500 transition-colors hover:text-zinc-300 disabled:opacity-40"
                 >
                   ← Prev
                 </button>
-                <span className="text-xs text-slate-500">{page} / {totalPages}</span>
+                <span className="text-xs text-zinc-600">{page} / {totalPages}</span>
                 <button
                   onClick={() => goTo(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="text-xs text-slate-400 transition-colors hover:text-slate-200 disabled:opacity-40"
+                  className="text-xs text-zinc-500 transition-colors hover:text-zinc-300 disabled:opacity-40"
                 >
                   Next →
                 </button>
@@ -270,13 +270,13 @@ function GroupsPage() {
           aria-modal="true"
           aria-labelledby="transfer-modal-title"
         >
-          <div className="w-full max-w-sm rounded-2xl border border-[#1e293b] bg-[#0d1729] p-6 shadow-2xl">
-            <h3 id="transfer-modal-title" className="text-base font-bold text-slate-200 mb-1">
+          <div className="w-full max-w-sm rounded-2xl border border-[#1f1f23] bg-[#131316] p-6 shadow-2xl">
+            <h3 id="transfer-modal-title" className="mb-1 text-base font-semibold text-zinc-100">
               Transfer Advisor
             </h3>
-            <p className="text-sm text-slate-500 mb-5">
+            <p className="mb-5 text-[13px] text-zinc-500">
               Group:{' '}
-              <strong className="text-slate-200">
+              <strong className="text-zinc-200">
                 {transferModal.groupName || transferModal.name || transferModal.groupId || transferModal.id}
               </strong>
             </p>
@@ -295,7 +295,7 @@ function GroupsPage() {
             </div>
 
             {transferState.error && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3" role="status">
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300" role="status">
                 {transferState.error}
               </div>
             )}
@@ -330,20 +330,20 @@ function GroupsPage() {
           aria-modal="true"
           aria-labelledby="disband-modal-title"
         >
-          <div className="w-full max-w-sm rounded-2xl border border-[#1e293b] bg-[#0d1729] p-6 shadow-2xl">
-            <h3 id="disband-modal-title" className="text-base font-bold text-red-400 mb-2">
+          <div className="w-full max-w-sm rounded-2xl border border-[#1f1f23] bg-[#131316] p-6 shadow-2xl">
+            <h3 id="disband-modal-title" className="mb-2 text-base font-semibold text-rose-400">
               Disband Group
             </h3>
-            <p className="text-sm text-slate-400 mb-4">
+            <p className="mb-4 text-[13px] text-zinc-400">
               Are you sure you want to disband{' '}
-              <strong className="text-slate-200">
+              <strong className="text-zinc-200">
                 {disbandModal.groupName || disbandModal.name || disbandModal.groupId || disbandModal.id}
               </strong>
               ? This action cannot be undone.
             </p>
 
             {disbandState.error && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3" role="status">
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300" role="status">
                 {disbandState.error}
               </div>
             )}

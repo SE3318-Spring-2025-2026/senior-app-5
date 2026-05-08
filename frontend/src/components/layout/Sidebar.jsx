@@ -16,6 +16,8 @@ import {
   Kanban,
   Package,
   Timer,
+  Activity,
+  Lock,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -84,6 +86,7 @@ export const Sidebar = () => {
             <SideNavLink to="/review" icon={ClipboardCheck} label="Review" />
             <SideNavLink to="/professor/submissions" icon={FileText} label="Submissions" />
             <SideNavLink to="/advisor/sprint-evaluation" icon={Star} label="Sprint Evaluation" />
+            <SideNavLink to="/advisor/sprint-panel" icon={Activity} label="Sprint Panel" />
           </>
         )}
 
@@ -105,6 +108,8 @@ export const Sidebar = () => {
             <SideNavLink to="/coordinator/sprint-config" icon={GitBranch} label="Sprint Config" />
             <SideNavLink to="/scrum" icon={Kanban} label="Scrum" />
             <SideNavLink to="/coordinator/sprint-schedule" icon={Timer} label="Sprint Schedule" />
+            <SideNavLink to="/advisor/sprint-panel" icon={Activity} label="Sprint Panel" />
+            <SideNavLink to="/coordinator/sprint-finalize" icon={Lock} label="Finalize Sprint" />
             <SideNavLink to="/admin" icon={ShieldCheck} label="Admin Panel" matchPrefix />
           </>
         )}

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsEmail } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, IsEmail } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class UpdateIntegrationsDto {
@@ -45,10 +45,49 @@ export class UpdateIntegrationsDto {
 
   @ApiProperty({
     example: 'my-github-repo',
-    description: 'GitHub repository ID for the team',
+    description: 'GitHub repository ID in owner/repo format',
   })
   @IsNotEmpty()
   @IsString()
   @Transform(({ value }) => value?.trim())
   githubRepositoryId!: string;
+
+  @ApiPropertyOptional({
+    example: 'ghp_xxxxxxxxxxxxxxxxxxxx',
+    description: 'GitHub Personal Access Token (PAT) with read:repo access. Required for branch/PR verification.',
+  })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  githubToken?: string;
+
+  @ApiPropertyOptional({
+    example: '42',
+    description:
+      'Numeric JIRA board id. When set, the system uses /rest/agile/1.0/board/{boardId}/sprint?state=active to resolve the team\'s active sprint instead of JQL search.',
+  })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.toString().trim())
+  jiraBoardId?: string;
+
+  @ApiPropertyOptional({
+    example: 'a3f1c8de-...-uuid',
+    description:
+      'Cohort/group id this team belongs to. Required for the auto-finalize cron to compute per-student points without manual coordinator action.',
+  })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  groupId?: string;
+
+  @ApiPropertyOptional({
+    example: 'customfield_10016',
+    description:
+      "Custom field id Jira uses for Story Points on this team's instance. Defaults to customfield_10016 (Jira Cloud default).",
+  })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  jiraStoryPointsField?: string;
 }

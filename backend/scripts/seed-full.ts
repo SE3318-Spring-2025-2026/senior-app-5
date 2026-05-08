@@ -244,13 +244,14 @@ async function main(): Promise<void> {
         $set: {
           name: 'Alpha Team',
           leaderId: tl1Doc!._id.toString(),
+          groupId: IDS.group1,
           jiraProjectKey: 'ALPHA',
           githubRepositoryId: 'org/alpha-repo',
         },
       },
       { upsert: true },
     );
-    log.log('  Team: Alpha Team (jiraProjectKey=ALPHA, githubRepositoryId=org/alpha-repo)');
+    log.log('  Team: Alpha Team (groupId=' + IDS.group1 + ', jiraProjectKey=ALPHA)');
 
     // ── 6. Phase ──────────────────────────────────────────────────────────────
     log.log('Seeding phase…');

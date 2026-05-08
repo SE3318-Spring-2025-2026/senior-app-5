@@ -79,4 +79,3 @@ ReviewSchema.index(
   { submissionId: 1, reviewerUserId: 1 },
   { unique: true },
 );
-ReviewSchema.index({ reviewId: 1 }, { unique: true });

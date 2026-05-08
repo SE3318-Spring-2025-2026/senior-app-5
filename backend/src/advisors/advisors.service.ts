@@ -30,6 +30,7 @@ import {
   ScheduleDocument,
   SchedulePhase,
 } from './schemas/schedule.schema';
+import { validateSprintDateWindow } from './dto/set-schedule.dto';
 
 export interface AdvisorListItem {
   advisorId: string;
@@ -219,14 +220,11 @@ export class AdvisorsService {
       );
     }
 
-    try {
-      await this.scheduleModel
-        .updateMany(
-          { phase: input.phase, isActive: true },
-          { $set: { isActive: false } },
-        )
-        .exec();
+    if (input.phase === SchedulePhase.SPRINT) {
+      validateSprintDateWindow(input.startDatetime, input.endDatetime);
+    }
 
+    try {
       const createdSchedule = await this.scheduleModel.create({
         coordinatorId: input.coordinatorId,
         phase: input.phase,
@@ -987,6 +985,71 @@ export class AdvisorsService {
     const end = new Date(schedule.endDatetime).getTime();
 
     return now >= start && now <= end;
+  }
+
+  async listSchedules(phase: SchedulePhase): Promise<ScheduleResponse[]> {
+    const docs = (await this.scheduleModel
+      .find({ phase })
+      .sort({ startDatetime: 1 })
+      .lean()
+      .exec()) as ScheduleRecord[];
+
+    return docs.map((s) => ({
+      scheduleId: s.scheduleId ?? '',
+      coordinatorId: s.coordinatorId,
+      phase: s.phase,
+      startDatetime: new Date(s.startDatetime).toISOString(),
+      endDatetime: new Date(s.endDatetime).toISOString(),
+      createdAt: (s.createdAt ?? new Date()).toISOString(),
+    }));
+  }
+
+  async updateSchedule(
+    scheduleId: string,
+    input: { startDatetime: string; endDatetime: string },
+  ): Promise<ScheduleResponse> {
+    const start = new Date(input.startDatetime);
+    const end = new Date(input.endDatetime);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException('Schedule datetimes must be valid dates.');
+    }
+    if (end.getTime() <= start.getTime()) {
+      throw new BadRequestException(
+        'endDatetime must be greater than startDatetime.',
+      );
+    }
+
+    const doc = await this.scheduleModel.findOne({ scheduleId }).exec();
+    if (!doc) {
+      throw new NotFoundException(`Schedule '${scheduleId}' not found.`);
+    }
+    if (doc.phase === SchedulePhase.SPRINT) {
+      validateSprintDateWindow(input.startDatetime, input.endDatetime);
+    }
+
+    doc.startDatetime = start;
+    doc.endDatetime = end;
+    const saved = await doc.save();
+    const savedWithTs = saved as unknown as { createdAt?: Date };
+
+    return {
+      scheduleId: saved.scheduleId,
+      coordinatorId: saved.coordinatorId,
+      phase: saved.phase,
+      startDatetime: saved.startDatetime.toISOString(),
+      endDatetime: saved.endDatetime.toISOString(),
+      createdAt: (savedWithTs.createdAt ?? new Date()).toISOString(),
+    };
+  }
+
+  async deleteSchedule(scheduleId: string): Promise<void> {
+    const result = await this.scheduleModel
+      .deleteOne({ scheduleId })
+      .exec();
+    if (result.deletedCount === 0) {
+      throw new NotFoundException(`Schedule '${scheduleId}' not found.`);
+    }
   }
 
   private async getLatestScheduleByPhase(

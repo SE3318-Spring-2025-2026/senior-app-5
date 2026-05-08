@@ -7,13 +7,7 @@ export class DeliverableResponseDto {
   @ApiProperty({ description: 'Unique deliverable name' })
   name!: string;
 
-  @ApiProperty({ description: 'Top-level category weight' })
-  categoryWeight!: number;
-
-  @ApiProperty({ description: 'Deliverable weight within its category' })
-  subWeight!: number;
-
-  @ApiProperty({ description: 'Overall contribution percentage' })
+  @ApiProperty({ description: 'Contribution percentage toward the final grade (0–100)' })
   deliverablePercentage!: number;
 
   @ApiProperty({ description: 'Creation timestamp' })

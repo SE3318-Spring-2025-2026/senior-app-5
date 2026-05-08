@@ -1,12 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsNumber,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
 
 export class CreateDeliverableDto {
   @ApiProperty({
@@ -18,32 +12,8 @@ export class CreateDeliverableDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Top-level category weight in the final grade formula',
-    example: 0.5,
-    minimum: 0,
-    maximum: 1,
-  })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  categoryWeight!: number;
-
-  @ApiProperty({
-    description: 'Deliverable weight within its category',
-    example: 0.35,
-    minimum: 0,
-    maximum: 1,
-  })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  subWeight!: number;
-
-  @ApiProperty({
-    description: 'Overall contribution percentage of the deliverable',
-    example: 17.5,
+    description: 'Contribution percentage toward the final grade (0–100). Must not cause the total across all deliverables to exceed 100.',
+    example: 35,
     minimum: 0,
     maximum: 100,
   })

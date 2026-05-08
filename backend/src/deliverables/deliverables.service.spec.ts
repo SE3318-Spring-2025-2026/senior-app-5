@@ -64,8 +64,6 @@ describe('DeliverablesService', () => {
                 {
                   deliverableId: '11111111-1111-4111-8111-111111111111',
                   name: 'SoW',
-                  categoryWeight: 0.5,
-                  subWeight: 0.35,
                   deliverablePercentage: 17.5,
                   createdAt,
                   updatedAt,
@@ -108,14 +106,10 @@ describe('DeliverablesService', () => {
       {
         deliverableId: '22222222-2222-4222-8222-222222222222',
         name: 'SoW',
-        categoryWeight: 0.5,
-        subWeight: 0.35,
         deliverablePercentage: 17.5,
         toObject: () => ({
           deliverableId: '22222222-2222-4222-8222-222222222222',
           name: 'SoW',
-          categoryWeight: 0.5,
-          subWeight: 0.35,
           deliverablePercentage: 17.5,
           createdAt,
           updatedAt,
@@ -126,8 +120,6 @@ describe('DeliverablesService', () => {
     const result = await service.createDeliverable(
       {
         name: 'SoW',
-        categoryWeight: 0.5,
-        subWeight: 0.35,
         deliverablePercentage: 17.5,
       },
       'coord-1',
@@ -153,8 +145,6 @@ describe('DeliverablesService', () => {
       service.createDeliverable(
         {
           name: 'SoW',
-          categoryWeight: 0.5,
-          subWeight: 0.35,
           deliverablePercentage: 17.5,
         },
         'coord-1',
@@ -184,8 +174,6 @@ describe('DeliverablesService', () => {
       service.createDeliverable(
         {
           name: 'SoW',
-          categoryWeight: 0.5,
-          subWeight: 0.35,
           deliverablePercentage: 17.5,
         },
         'coord-1',
@@ -197,8 +185,6 @@ describe('DeliverablesService', () => {
     const existing = {
       deliverableId: '33333333-3333-4333-8333-333333333333',
       name: 'SoW',
-      categoryWeight: 0.5,
-      subWeight: 0.35,
       deliverablePercentage: 17.5,
       createdAt: new Date('2026-05-01T10:00:00.000Z'),
       updatedAt: new Date('2026-05-02T10:00:00.000Z'),
@@ -256,8 +242,6 @@ describe('DeliverablesService', () => {
       service.createDeliverable(
         {
           name: 'SoW',
-          categoryWeight: 0.5,
-          subWeight: 0.35,
           deliverablePercentage: 17.5,
         },
         'coord-1',

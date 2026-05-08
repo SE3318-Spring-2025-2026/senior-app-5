@@ -128,6 +128,9 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/phases" element={<Navigate to="/phases/schedule" replace />} />
+            <Route path="/committees" element={<Navigate to="/admin/committees" replace />} />
+            <Route path="/advisors" element={<Navigate to="/admin/advisors" replace />} />
             <Route
               path="/committees"
               element={

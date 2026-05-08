@@ -1,11 +1,12 @@
 import {
   BadGatewayException,
+  ForbiddenException,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SprintConfig } from './schemas/sprint-config.schema';
+import { SprintConfigEntry } from '../sprint-configs/schemas/sprint-config.schema';
 import {
   StoryPointRecord,
   StoryPointSource,
@@ -13,6 +14,7 @@ import {
 import { StoryPointsService } from './story-points.service';
 import { JiraGithubService } from './jira-github.service';
 import { User } from '../users/data/user.schema';
+import { Role } from '../auth/enums/role.enum';
 
 const NOW = new Date('2026-04-30T12:00:00Z');
 const SPRINT_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -22,11 +24,8 @@ const STUDENT_B = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
 
 const activeSprintConfig = {
   sprintId: SPRINT_ID,
-  groupId: GROUP_ID,
   targetStoryPoints: 10,
-  startDate: new Date('2026-04-01'),
-  endDate: new Date('2026-05-31'),
-  phase: 'SCRUM',
+  deliverableMappings: [],
 };
 
 function makeRecordModel() {
@@ -47,7 +46,10 @@ function makeSprintModel(config = activeSprintConfig) {
 
 function makeUserModel(ids: string[] = [STUDENT_A, STUDENT_B]) {
   const docs = ids.map((id) => ({ _id: { toString: () => id } }));
-  return { find: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(docs) }) };
+  return {
+    find: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(docs) }),
+    findById: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+  };
 }
 
 describe('StoryPointsService', () => {
@@ -69,7 +71,7 @@ describe('StoryPointsService', () => {
       providers: [
         StoryPointsService,
         { provide: getModelToken(StoryPointRecord.name), useValue: recordModel },
-        { provide: getModelToken(SprintConfig.name), useValue: sprintModel },
+        { provide: getModelToken(SprintConfigEntry.name), useValue: sprintModel },
         { provide: getModelToken(User.name), useValue: userModel },
         { provide: JiraGithubService, useValue: jiraService },
       ],
@@ -157,19 +159,6 @@ describe('StoryPointsService', () => {
       ).rejects.toThrow(UnprocessableEntityException);
     });
 
-    it('throws 422 when sprint window is not active', async () => {
-      const expiredConfig = {
-        ...activeSprintConfig,
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-02-01'),
-      };
-      sprintModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(expiredConfig) });
-
-      await expect(
-        service.fetchAndVerify(GROUP_ID, SPRINT_ID, {}, 'coord-1'),
-      ).rejects.toThrow(UnprocessableEntityException);
-    });
-
     it('throws 404 NotFoundException when group has no members', async () => {
       jiraService.fetchStoryPoints.mockResolvedValue([]);
       userModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([]) });
@@ -199,26 +188,49 @@ describe('StoryPointsService', () => {
   // override
   // ──────────────────────────────────────────────
   describe('override', () => {
-    it('happy path: upserts record with COORDINATOR_OVERRIDE source', async () => {
+    it('happy path: updates target points for TeamLeader in same group', async () => {
       const saved = {
         studentId: STUDENT_A,
         completedPoints: 15,
-        targetPoints: 10,
-        source: StoryPointSource.COORDINATOR_OVERRIDE,
+        targetPoints: 20,
+        source: StoryPointSource.JIRA_GITHUB,
         updatedAt: NOW,
       };
-      recordModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      recordModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          studentId: STUDENT_A,
+          completedPoints: 15,
+          targetPoints: 10,
+          source: StoryPointSource.JIRA_GITHUB,
+        }),
+      });
       recordModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(saved) });
+
+      userModel.findById
+        .mockReturnValueOnce({
+          exec: jest.fn().mockResolvedValue({
+            _id: { toString: () => 'leader-1' },
+            teamId: GROUP_ID,
+            role: Role.TeamLeader,
+          }),
+        })
+        .mockReturnValueOnce({
+          exec: jest.fn().mockResolvedValue({
+            _id: { toString: () => STUDENT_A },
+            teamId: GROUP_ID,
+          }),
+        });
 
       const result = await service.override(
         GROUP_ID,
         SPRINT_ID,
         STUDENT_A,
-        { completedPoints: 15 },
-        'coord-1',
+        { targetPoints: 20 },
+        'leader-1',
+        Role.TeamLeader,
       );
 
-      expect(result.source).toBe(StoryPointSource.COORDINATOR_OVERRIDE);
+      expect(result.targetPoints).toBe(20);
       expect(result.completedPoints).toBe(15);
     });
 
@@ -226,8 +238,43 @@ describe('StoryPointsService', () => {
       sprintModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
 
       await expect(
-        service.override(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, 'coord-1'),
+        service.override(
+          GROUP_ID,
+          SPRINT_ID,
+          STUDENT_A,
+          { targetPoints: 5 },
+          'student-1',
+          Role.Student,
+        ),
       ).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it('throws 403 when Student attempts to override another student', async () => {
+      userModel.findById
+        .mockReturnValueOnce({
+          exec: jest.fn().mockResolvedValue({
+            _id: { toString: () => STUDENT_A },
+            teamId: GROUP_ID,
+            role: Role.Student,
+          }),
+        })
+        .mockReturnValueOnce({
+          exec: jest.fn().mockResolvedValue({
+            _id: { toString: () => STUDENT_B },
+            teamId: GROUP_ID,
+          }),
+        });
+
+      await expect(
+        service.override(
+          GROUP_ID,
+          SPRINT_ID,
+          STUDENT_B,
+          { targetPoints: 7 },
+          STUDENT_A,
+          Role.Student,
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

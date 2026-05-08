@@ -11,6 +11,8 @@ import {
   DeliverableSchema,
 } from '../deliverables/schemas/deliverable.schema';
 import { Schedule, ScheduleSchema } from '../advisors/schemas/schedule.schema';
+import { Team, TeamSchema } from '../teams/schemas/team.schema';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -18,7 +20,9 @@ import { Schedule, ScheduleSchema } from '../advisors/schemas/schedule.schema';
       { name: SprintConfigEntry.name, schema: SprintConfigEntrySchema },
       { name: Deliverable.name, schema: DeliverableSchema },
       { name: Schedule.name, schema: ScheduleSchema },
+      { name: Team.name, schema: TeamSchema },
     ]),
+    NotificationsModule,
   ],
   controllers: [SprintConfigsController],
   providers: [SprintConfigsService],

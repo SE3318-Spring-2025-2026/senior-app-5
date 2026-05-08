@@ -24,12 +24,15 @@ export class TeamLeaderGuard implements CanActivate {
       );
     }
 
-    const team = await this.teamModel.findById(teamId);
+    const team = await this.teamModel.findOne({ groupId: teamId });
     if (!team) {
       throw new NotFoundException('Team not found.');
     }
 
-    if (team.leaderId !== user.id && team.leaderId !== user._id?.toString()) {
+    const callerId =
+      user.userId ?? user.id ?? user.sub ?? user._id?.toString() ?? null;
+
+    if (!callerId || team.leaderId !== callerId) {
       throw new ForbiddenException(
         'Only the Team Leader can perform this action.',
       );

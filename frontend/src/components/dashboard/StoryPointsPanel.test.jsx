@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import StoryPointsPanel from './StoryPointsPanel';
 import storyPointsService from '../../utils/storyPointsService';
+import apiClient from '../../utils/apiClient';
 
 vi.mock('../../utils/storyPointsService', () => ({
   default: {
@@ -9,6 +10,23 @@ vi.mock('../../utils/storyPointsService', () => ({
     fetchAndVerifyStoryPoints: vi.fn(),
     overrideStoryPoints: vi.fn(),
   },
+}));
+
+vi.mock('../../utils/apiClient', () => ({
+  default: {
+    get: vi.fn(),
+  },
+}));
+
+vi.mock('../EntitySearchSelect', () => ({
+  default: ({ value, onChange, placeholder }) => (
+    <input
+      aria-label="group-select"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+    />
+  ),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -21,7 +39,29 @@ vi.mock('react-hot-toast', () => ({
 describe('StoryPointsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiClient.get.mockImplementation((url) => {
+      if (String(url).startsWith('/groups/')) {
+        return Promise.resolve({
+          data: {
+            members: [{ _id: 'student-1', email: 'student-1@example.com' }],
+          },
+        });
+      }
+      return Promise.resolve({
+        data: { data: [{ sprintId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', targetStoryPoints: 10 }] },
+      });
+    });
   });
+
+  const fillRequiredInputs = async () => {
+    fireEvent.change(screen.getByLabelText('group-select'), {
+      target: { value: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' },
+    });
+    const sprintSelect = await screen.findByRole('combobox');
+    fireEvent.change(sprintSelect, {
+      target: { value: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' },
+    });
+  };
 
   it('renders source badge with correct label', async () => {
     storyPointsService.getStoryPoints.mockResolvedValue({
@@ -37,12 +77,7 @@ describe('StoryPointsPanel', () => {
 
     render(<StoryPointsPanel canOverride={false} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Group UUID'), {
-      target: { value: 'group-1' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('Sprint UUID'), {
-      target: { value: 'sprint-1' },
-    });
+    await fillRequiredInputs();
     fireEvent.click(screen.getByText('Load'));
 
     await waitFor(() => {
@@ -64,12 +99,7 @@ describe('StoryPointsPanel', () => {
 
     render(<StoryPointsPanel canOverride />);
 
-    fireEvent.change(screen.getByPlaceholderText('Group UUID'), {
-      target: { value: 'group-1' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('Sprint UUID'), {
-      target: { value: 'sprint-1' },
-    });
+    await fillRequiredInputs();
     fireEvent.click(screen.getByText('Load'));
 
     await screen.findByLabelText('override-student-2');
@@ -95,12 +125,7 @@ describe('StoryPointsPanel', () => {
 
     render(<StoryPointsPanel canOverride={false} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Group UUID'), {
-      target: { value: 'group-1' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('Sprint UUID'), {
-      target: { value: 'sprint-1' },
-    });
+    await fillRequiredInputs();
     fireEvent.click(screen.getByText('Load'));
 
     await screen.findByText('student-3');

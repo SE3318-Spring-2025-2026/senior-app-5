@@ -34,7 +34,6 @@ import { SendInviteDto } from './dto/send-invite.dto';
 import { RespondToInviteDto } from './dto/respond-to-invite.dto';
 import { CommitteesService } from '../committees/committees.service';
 import { CommitteeResponseDto } from '../committees/dto/committee-response.dto';
-import { CommitteeDocument } from '../committees/schemas/committee.schema';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -54,13 +53,38 @@ export class GroupsController {
     private readonly committeesService: CommitteesService,
   ) {}
 
-  @ApiOperation({ summary: 'List groups with optional name filter (Admin, Coordinator)' })
+  @ApiOperation({
+    summary:
+      'List groups. Admin/Coordinator see all; Professor sees groups they advise; TeamLeader/Student see only their own group.',
+  })
   @ApiOkResponse({ description: 'Paginated list of groups' })
   @Get()
-  @Roles(Role.Admin, Role.Coordinator)
+  @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
   @HttpCode(HttpStatus.OK)
-  async listGroups(@Query() query: ListGroupsQueryDto) {
-    return this.groupsService.findAll(query.page, query.limit, query.name);
+  async listGroups(
+    @Query() query: ListGroupsQueryDto,
+    @Request() req: RequestWithUser,
+  ) {
+    const callerId = req.user.userId ?? req.user.sub ?? req.user._id ?? '';
+    const role = (req.user.role ?? '').toLowerCase();
+
+    if (role === 'teamleader' || role === 'student') {
+      // Members only see their own group. user.teamId === groupId in this app.
+      const ownGroupId = (req.user as any).groupId ?? (req.user as any).teamId ?? null;
+      if (!ownGroupId) {
+        return { data: [], total: 0, page: query.page ?? 1, limit: query.limit ?? 20 };
+      }
+      return this.groupsService.findAll(
+        query.page,
+        query.limit,
+        query.name,
+        undefined,
+        [ownGroupId],
+      );
+    }
+
+    const advisorScope = role === 'professor' ? callerId : undefined;
+    return this.groupsService.findAll(query.page, query.limit, query.name, advisorScope);
   }
 
   // ─── Student: create own team ─────────────────────────────────────────────
@@ -187,11 +211,11 @@ export class GroupsController {
     @Request() req: RequestWithUser,
   ): Promise<CommitteeResponseDto> {
     const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
-    const committee = await this.committeesService.getCommitteeByGroupId(
+    const enriched = await this.committeesService.getEnrichedCommitteeByGroupId(
       groupId,
       correlationId,
     );
-    return this.toResponseDto(committee);
+    return enriched as unknown as CommitteeResponseDto;
   }
 
   @ApiOperation({
@@ -213,27 +237,5 @@ export class GroupsController {
   ): Promise<CommitteeGradeResultDto> {
     const correlationId = (req.headers['x-correlation-id'] as string) ?? undefined;
     return this.groupsService.getCommitteeGrade(groupId, deliverableId, correlationId);
-  }
-
-  private toResponseDto(committee: CommitteeDocument): CommitteeResponseDto {
-    return {
-      id: committee.id,
-      name: committee.name,
-      createdAt: (committee as any).createdAt as Date,
-      updatedAt: (committee as any).updatedAt as Date | null,
-      jury: (committee.jury as any[]).map((j) => ({
-        userId: j.userId,
-        name: j.name,
-      })),
-      advisors: (committee.advisors as any[]).map((a) => ({
-        userId: a.userId,
-        name: a.name,
-      })),
-      groups: (committee.groups as any[]).map((g) => ({
-        groupId: g.groupId,
-        assignedAt: g.assignedAt,
-        assignedByUserId: g.assignedByUserId,
-      })),
-    };
   }
 }

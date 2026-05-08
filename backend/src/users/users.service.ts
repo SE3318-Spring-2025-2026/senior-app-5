@@ -60,6 +60,13 @@ export class UsersService {
     });
   }
 
+  async updateRole(userId: string, role: Role): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { $set: { role } }, { new: true })
+      .select('-passwordHash')
+      .exec();
+  }
+
   async createPasswordResetToken(email: string) {
     const normalizedEmail = email?.toLowerCase().trim();
     if (!normalizedEmail) return null;
@@ -143,6 +150,28 @@ export class UsersService {
           githubScopes,
           githubLinkedAt: new Date(),
         },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
+
+  async setJiraAccountId(
+    userId: string,
+    jiraAccountId: string | null,
+  ): Promise<UserDocument | null> {
+    if (jiraAccountId === null || jiraAccountId === '') {
+      return this.userModel
+        .findByIdAndUpdate(
+          userId,
+          { $unset: { jiraAccountId: '' } },
+          { returnDocument: 'after' },
+        )
+        .exec();
+    }
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { jiraAccountId },
         { returnDocument: 'after' },
       )
       .exec();

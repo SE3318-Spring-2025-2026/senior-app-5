@@ -8,6 +8,7 @@ import {
 import apiClient from '../../utils/apiClient';
 import apiConfig from '../../config/api';
 import { uploadSubmissionDocument } from '../../utils/submissionService';
+import StoryPointsPanel from './StoryPointsPanel';
 
 /* ─── design tokens ─────────────────────────────────────────────────── */
 const surface = {
@@ -508,6 +509,8 @@ const StudentView = ({ user }) => {
           </div>
         </div>
       )}
+
+      <StoryPointsPanel canOverride />
     </div>
   );
 };

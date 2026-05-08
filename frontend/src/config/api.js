@@ -74,8 +74,8 @@ export const apiConfig = {
     groupGradeHistory: (groupId) => `/groups/${groupId}/grade-history`,
     storyPoints: (groupId, sprintId) =>
       `/groups/${groupId}/sprints/${sprintId}/story-points`,
-    overrideStoryPoints: (groupId, sprintId) =>
-      `/groups/${groupId}/sprints/${sprintId}/story-points/override`,
+    overrideStoryPoints: (groupId, sprintId, studentId) =>
+      `/groups/${groupId}/sprints/${sprintId}/story-points/${studentId}`,
     deliverables: '/deliverables',
     rubrics: (deliverableId) => `/deliverables/${deliverableId}/rubrics`,
     rubricById: (deliverableId, rubricId) => `/deliverables/${deliverableId}/rubrics/${rubricId}`,
@@ -86,6 +86,13 @@ export const apiConfig = {
     sprintEvaluations: '/sprint-evaluations',
     githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,
     teamSync: (teamId) => `/teams/${teamId}/sync`,
+    teamAdvisorPanel: (teamId) => `/teams/${teamId}/advisor-panel`,
+    teamFinalizeSprintSync: (teamId) => `/teams/${teamId}/finalize-sprint`,
+    teamIntegrations: (teamId) => `/teams/${teamId}/integrations`,
+    teamIntegrationsStatus: (teamId) => `/teams/${teamId}/integrations/status`,
+    teamsList: '/teams',
+    teamMine: '/teams/mine',
+    teamJiraDiscover: '/teams/jira/discover',
     teamStoryPoints: (teamId) => `/teams/${teamId}/story-points`,
   },
 };

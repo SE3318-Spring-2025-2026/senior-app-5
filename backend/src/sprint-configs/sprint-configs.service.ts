@@ -22,6 +22,8 @@ import {
   Schedule,
   ScheduleDocument,
 } from '../advisors/schemas/schedule.schema';
+import { Team, TeamDocument } from '../teams/schemas/team.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateSprintConfigDto } from './dto/create-sprint-config.dto';
 import { UpdateSprintConfigDto } from './dto/update-sprint-config.dto';
 import { SprintConfigResponseDto } from './dto/sprint-config-response.dto';
@@ -37,6 +39,9 @@ export class SprintConfigsService {
     private readonly deliverableModel: Model<DeliverableDocument>,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<ScheduleDocument>,
+    @InjectModel(Team.name)
+    private readonly teamModel: Model<TeamDocument>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -82,6 +87,8 @@ export class SprintConfigsService {
       sprintId: created.sprintId,
     });
 
+    await this.notifyTeamLeadersAboutSprint(created.sprintId);
+
     return this.toResponseDto(created);
   }
 
@@ -122,7 +129,54 @@ export class SprintConfigsService {
       sprintId: updated.sprintId,
     });
 
+    await this.notifyTeamLeadersAboutSprint(updated.sprintId);
+
     return this.toResponseDto(updated);
+  }
+
+  /**
+   * Fan out an in-app notification to every team leader so they know to open
+   * a matching sprint in their own JIRA instance for this date range.
+   * Best-effort: a notification failure must not roll back the sprint write.
+   */
+  private async notifyTeamLeadersAboutSprint(sprintId: string): Promise<void> {
+    try {
+      const schedule = await this.scheduleModel
+        .findOne({ scheduleId: sprintId })
+        .lean()
+        .exec();
+      if (!schedule) {
+        this.logger.warn(
+          `Skipping sprint notification: no Schedule found for sprintId '${sprintId}'.`,
+        );
+        return;
+      }
+
+      const teams = await this.teamModel
+        .find({ leaderId: { $exists: true, $ne: '' } })
+        .select('leaderId name')
+        .lean()
+        .exec();
+
+      const sprintName = `Sprint ${sprintId.slice(0, 8)}`;
+      await Promise.allSettled(
+        teams.map((t) =>
+          this.notificationsService.notifySprintScheduled({
+            recipientUserId: t.leaderId,
+            sprintId,
+            sprintName,
+            startDate: schedule.startDatetime,
+            endDate: schedule.endDatetime,
+          }),
+        ),
+      );
+    } catch (err) {
+      this.logger.error({
+        event: 'sprint_notification_failed',
+        sprintId,
+        error: (err as Error).message,
+      });
+    }
   }
 
   async findAll(
@@ -245,18 +299,30 @@ export class SprintConfigsService {
     mappings: { deliverableId: string; contributionPercentage: number }[],
     excludeSprintId: string | null,
   ): Promise<void> {
-    // Aggregate existing percentages per deliverable (excluding the current sprint if updating)
-    const query = excludeSprintId ? { sprintId: { $ne: excludeSprintId } } : {};
+    // Only sprint configs whose sprintId matches a real Schedule entry count toward
+    // the budget. Orphaned configs (created by the old system with auto-generated IDs
+    // that never linked to a Schedule) are excluded to avoid phantom overflows.
+    const linkedSchedules = await this.scheduleModel
+      .find({})
+      .select('scheduleId')
+      .lean()
+      .exec();
+    const linkedIds = new Set(
+      linkedSchedules.map((s) => (s as unknown as { scheduleId: string }).scheduleId).filter(Boolean),
+    );
+
+    const baseQuery = excludeSprintId ? { sprintId: { $ne: excludeSprintId } } : {};
 
     const existingConfigs = await this.sprintConfigModel
-      .find(query)
-      .select('deliverableMappings')
+      .find(baseQuery)
+      .select('sprintId deliverableMappings')
       .lean()
       .exec();
 
-    // Build map: deliverableId → total existing percentage
+    // Build map: deliverableId → total existing percentage (linked configs only)
     const existingTotals = new Map<string, number>();
     for (const config of existingConfigs) {
+      if (!linkedIds.has(config.sprintId)) continue;
       for (const m of config.deliverableMappings ?? []) {
         existingTotals.set(
           m.deliverableId,

@@ -27,9 +27,9 @@ const mockSummary: StoryPointSummaryDto = {
 
 const mockRecord: StudentStoryPointRecordDto = {
   studentId: STUDENT_A,
-  completedPoints: 15,
-  targetPoints: 10,
-  source: StoryPointSource.COORDINATOR_OVERRIDE,
+  completedPoints: 5,
+  targetPoints: 15,
+  source: StoryPointSource.MANUAL,
   updatedAt: NOW,
 };
 
@@ -44,6 +44,8 @@ describe('StoryPointsController', () => {
 
   const coordinatorReq: any = { user: { userId: 'coord-1', role: Role.Coordinator } };
   const professorReq: any = { user: { userId: 'prof-1', role: Role.Professor } };
+  const studentReq: any = { user: { userId: 'student-1', role: Role.Student } };
+  const teamLeaderReq: any = { user: { userId: 'leader-1', role: Role.TeamLeader } };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -116,26 +118,26 @@ describe('StoryPointsController', () => {
   // PATCH overrideStoryPoints
   // ──────────────────────────────────────────────
   describe('overrideStoryPoints (PATCH)', () => {
-    it('200: returns single StudentStoryPointRecord with COORDINATOR_OVERRIDE source', async () => {
+    it('200: returns single StudentStoryPointRecord with updated target points', async () => {
       mockService.override.mockResolvedValue(mockRecord);
 
       const result = await controller.overrideStoryPoints(
         GROUP_ID,
         SPRINT_ID,
         STUDENT_A,
-        { completedPoints: 15 },
-        coordinatorReq,
+        { targetPoints: 15 },
+        teamLeaderReq,
       );
 
       expect(result).toEqual(mockRecord);
-      expect(result.source).toBe(StoryPointSource.COORDINATOR_OVERRIDE);
+      expect(result.targetPoints).toBe(15);
     });
 
     it('403: ForbiddenException when ADVISOR attempts PATCH override', async () => {
       mockService.override.mockRejectedValue(new ForbiddenException('Insufficient permissions'));
 
       await expect(
-        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, professorReq),
+        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { targetPoints: 5 }, professorReq),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -143,7 +145,7 @@ describe('StoryPointsController', () => {
       mockService.override.mockRejectedValue(new UnprocessableEntityException('Sprint config missing'));
 
       await expect(
-        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, coordinatorReq),
+        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { targetPoints: 5 }, studentReq),
       ).rejects.toThrow(UnprocessableEntityException);
     });
   });
@@ -169,25 +171,25 @@ describe('StoryPointsController', () => {
     it('overrideStoryPoints rejects when service throws UnauthorizedException', async () => {
       mockService.override.mockRejectedValue(new UnauthorizedException());
       await expect(
-        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { completedPoints: 5 }, coordinatorReq),
+        controller.overrideStoryPoints(GROUP_ID, SPRINT_ID, STUDENT_A, { targetPoints: 5 }, studentReq),
       ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   // ──────────────────────────────────────────────
-  // 400: negative completedPoints — DTO validation (service-level check)
+  // 400: negative targetPoints — DTO validation (service-level check)
   // ──────────────────────────────────────────────
   describe('400 validation', () => {
-    it('propagates BadRequestException for negative completedPoints', async () => {
-      mockService.override.mockRejectedValue(new BadRequestException('completedPoints must not be less than 0'));
+    it('propagates BadRequestException for negative targetPoints', async () => {
+      mockService.override.mockRejectedValue(new BadRequestException('targetPoints must not be less than 0'));
 
       await expect(
         controller.overrideStoryPoints(
           GROUP_ID,
           SPRINT_ID,
           STUDENT_A,
-          { completedPoints: -1 },
-          coordinatorReq,
+          { targetPoints: -1 },
+          studentReq,
         ),
       ).rejects.toThrow(BadRequestException);
     });
@@ -207,10 +209,10 @@ describe('StoryPointsController', () => {
       expect(roles).toEqual(expect.arrayContaining([Role.Coordinator, Role.Professor]));
     });
 
-    it('overrideStoryPoints allows only Coordinator', () => {
+    it('overrideStoryPoints allows Student and TeamLeader', () => {
       const roles = Reflect.getMetadata('roles', controller.overrideStoryPoints);
-      expect(roles).toEqual([Role.Coordinator]);
-      expect(roles).not.toContain(Role.Professor);
+      expect(roles).toEqual([Role.Student, Role.TeamLeader]);
+      expect(roles).not.toContain(Role.Coordinator);
     });
   });
 });

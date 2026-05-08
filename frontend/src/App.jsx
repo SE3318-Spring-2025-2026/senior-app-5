@@ -35,10 +35,11 @@ import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
 import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
-import SprintConfigPage from './pages/SprintConfigPage';
+import SprintBuilderPage from './pages/SprintBuilderPage';
 import ScrumManagementPage from './pages/ScrumManagementPage';
-import SprintSchedulePage from './pages/SprintSchedulePage';
 import DeliverableManagementPage from './pages/DeliverableManagementPage';
+import AdvisorSprintPanel from './pages/AdvisorSprintPanel';
+import SprintFinalizePage from './pages/SprintFinalizePage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -87,16 +88,26 @@ function App() {
             <Route path="/scrum" element={<ScrumManagementPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
             <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
+            <Route path="/advisor/sprint-panel" element={<AdvisorSprintPanel />} />
+            <Route
+              path="/coordinator/sprint-finalize"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <SprintFinalizePage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/coordinator/advisor-schedule" element={
               <ProtectedRoute requiredRole="Coordinator">
                 <AdvisorSchedulePage />
               </ProtectedRoute>
             } />
-            <Route path="/coordinator/sprint-schedule" element={
+            <Route path="/coordinator/sprint-builder" element={
               <ProtectedRoute requiredRole="Coordinator">
-                <SprintSchedulePage />
+                <SprintBuilderPage />
               </ProtectedRoute>
             } />
+            <Route path="/coordinator/sprint-schedule" element={<Navigate to="/coordinator/sprint-builder" replace />} />
             <Route
               path="/coordinator/rubrics"
               element={
@@ -107,17 +118,32 @@ function App() {
             />
             <Route
               path="/coordinator/sprint-config"
-              element={
-                <ProtectedRoute requiredRole="Coordinator">
-                  <SprintConfigPage />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/coordinator/sprint-builder" replace />}
             />
             <Route
               path="/coordinator/deliverables"
               element={
                 <ProtectedRoute requiredRole="Coordinator">
                   <DeliverableManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/phases" element={<Navigate to="/phases/schedule" replace />} />
+            <Route path="/committees" element={<Navigate to="/admin/committees" replace />} />
+            <Route path="/advisors" element={<Navigate to="/admin/advisors" replace />} />
+            <Route
+              path="/committees"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <CommitteesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/phases"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <PhaseSchedulingPage />
                 </ProtectedRoute>
               }
             />

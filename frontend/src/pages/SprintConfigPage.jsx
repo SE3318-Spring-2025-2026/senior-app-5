@@ -128,10 +128,7 @@ const SprintConfigPage = () => {
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             {editingSprintId && (
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-400">Sprint ID</label>
-                <p className="text-xs font-mono text-slate-500 px-1">{editingSprintId}</p>
-              </div>
+              <p className="text-xs text-slate-500 px-1">Editing existing sprint config</p>
             )}
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-400">Target Story Points</label>
@@ -206,7 +203,10 @@ const SprintConfigPage = () => {
               <li key={c.sprintId} className="border border-[#1e293b] rounded-xl p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-200 truncate">{c.sprintId}</p>
+                    <p className="text-sm font-semibold text-slate-200 truncate">
+                      {c.phase ? `${c.phase} — ` : ''}
+                      {c.startDate ? new Date(c.startDate).toLocaleDateString() : '?'} – {c.endDate ? new Date(c.endDate).toLocaleDateString() : '?'}
+                    </p>
                     <p className="text-xs text-slate-500 mt-0.5">Target: {c.targetStoryPoints} pts</p>
                     {c.deliverableMappings.length > 0 && (
                       <ul className="mt-1 space-y-0.5">

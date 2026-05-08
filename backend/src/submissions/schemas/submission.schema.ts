@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type SubmissionDocument = HydratedDocument<Submission>;
 
@@ -35,7 +36,6 @@ export class Submission {
   @Prop({ type: Date, required: true })
   submittedAt!: Date;
 
-  //Array to hold metadata of documents
   @Prop([
     {
       originalName: { type: String, required: true },
@@ -49,6 +49,39 @@ export class Submission {
     mimeType: string;
     uploadedAt: Date;
     storagePath?: string;
+  }>;
+
+  @Prop([
+    {
+      commentId: { type: String, default: () => randomUUID() },
+      commentText: { type: String, required: true, maxlength: 2000 },
+      reviewerUserId: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ])
+  comments?: Array<{
+    commentId: string;
+    commentText: string;
+    reviewerUserId: string;
+    createdAt: Date;
+  }>;
+
+
+  @Prop([
+    {
+      revisionRequestId: { type: String, default: () => randomUUID() },
+      requesterUserId: { type: String, required: true },
+      revisionDueDatetime: { type: Date, required: true },
+      status: { type: String, default: 'PENDING' },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ])
+  revisionRequests?: Array<{
+    revisionRequestId: string;
+    requesterUserId: string;
+    revisionDueDatetime: Date;
+    status: string;
+    createdAt: Date;
   }>;
 }
 

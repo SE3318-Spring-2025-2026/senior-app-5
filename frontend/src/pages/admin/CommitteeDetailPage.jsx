@@ -137,7 +137,7 @@ function JuryTab({ committeeId }) {
             return (
               <div key={uid} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm font-mono text-slate-200">{uid}</p>
+                  <p className="text-sm font-mono text-slate-200">{item.email ?? uid}</p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Assigned {new Date(item.assignedAt || item.createdAt).toLocaleString()}
                     {item.assignedBy ? ` · by ${item.assignedBy}` : ''}
@@ -168,6 +168,11 @@ function JuryTab({ committeeId }) {
             onChange={setUserId}
             placeholder="Search user by email"
             required
+            getItems={(data) =>
+              (Array.isArray(data) ? data : []).filter(
+                (u) => u?.role === 'Professor'
+              )
+            }
           />
         </div>
         <button
@@ -263,7 +268,7 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
             return (
               <div key={uid} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm font-mono text-slate-200">{uid}</p>
+                  <p className="text-sm font-mono text-slate-200">{item.email ?? uid}</p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Assigned {new Date(item.assignedAt || item.createdAt).toLocaleString()}
                   </p>

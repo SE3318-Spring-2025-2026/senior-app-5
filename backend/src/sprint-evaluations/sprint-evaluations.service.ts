@@ -30,7 +30,7 @@ import {
 import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
 import { RubricsService } from '../rubrics/rubrics.service';
-import { RubricDocument } from '../rubrics/schemas/rubric.schema';
+import { GradingType, RubricDocument } from '../rubrics/schemas/rubric.schema';
 
 interface RequestContext {
   userId?: string;
@@ -288,7 +288,7 @@ export class SprintEvaluationsService {
       rubricId: evaluation.rubricId,
       responses: evaluation.responses.map((response) => ({
         questionId: response.questionId,
-        softGrade: response.softGrade,
+        grade: response.grade,
       })),
       averageScore: evaluation.averageScore,
       status: evaluation.status ?? SprintEvaluationStatus.DRAFT,
@@ -314,16 +314,21 @@ export class SprintEvaluationsService {
       ]),
     );
 
+    const gradeValueFn =
+      rubric.gradingType === GradingType.BINARY
+        ? this.binaryGradeValue
+        : this.softGradeValue;
+
     const weightedScore = responses.reduce((sum, response) => {
       const criteriaWeight = weightByQuestionId.get(response.questionId) ?? 0;
-      return sum + this.softGradeValue(response.softGrade) * criteriaWeight;
+      return sum + gradeValueFn(response.grade) * criteriaWeight;
     }, 0);
 
     return Number(weightedScore.toFixed(2));
   }
 
-  private softGradeValue(softGrade: string): number {
-    switch (softGrade) {
+  private softGradeValue(grade: string): number {
+    switch (grade) {
       case 'A':
         return 100;
       case 'B':
@@ -337,5 +342,9 @@ export class SprintEvaluationsService {
       default:
         return 0;
     }
+  }
+
+  private binaryGradeValue(grade: string): number {
+    return grade === 'S' ? 100 : 0;
   }
 }

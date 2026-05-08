@@ -15,12 +15,14 @@ export enum DeliverableGrade {
   C = 'C',
   D = 'D',
   F = 'F',
+  S = 'S',
 }
 
-/** Maps a soft-grade letter to its numeric value per the project definition. */
+/** Maps a grade letter to its numeric value per the project definition. */
 export function deliverableGradeValue(grade: DeliverableGrade): number {
   switch (grade) {
     case DeliverableGrade.A:
+    case DeliverableGrade.S:
       return 100;
     case DeliverableGrade.B:
       return 80;

@@ -85,6 +85,27 @@ export class RubricsController {
   }
 
   @ApiOperation({
+    operationId: 'getActiveRubric',
+    summary: 'Get the active rubric for a deliverable',
+  })
+  @ApiOkResponse({ type: RubricResponseDto as never })
+  @ApiNotFoundResponse({ description: 'No active rubric found' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
+  @Get('active')
+  @HttpCode(HttpStatus.OK)
+  async getActiveRubric(
+    @Param('deliverableId', new ParseUUIDPipe()) deliverableId: string,
+    @Req() req: Request,
+  ): Promise<RubricResponseDto> {
+    return this.rubricsService.findActiveRubricDto(
+      deliverableId,
+      this.getCorrelationId(req),
+    );
+  }
+
+  @ApiOperation({
     operationId: 'createRubric',
     summary: 'Create a rubric for a deliverable',
   })

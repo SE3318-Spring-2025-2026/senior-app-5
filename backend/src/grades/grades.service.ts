@@ -47,9 +47,9 @@ import {
   SprintEvaluationDocument,
 } from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 import {
-  SprintConfig,
+  SprintConfigEntry,
   SprintConfigDocument,
-} from '../story-points/schemas/sprint-config.schema';
+} from '../sprint-configs/schemas/sprint-config.schema';
 import {
   StoryPointRecord,
   StoryPointRecordDocument,
@@ -80,7 +80,7 @@ export class GradesService {
     private readonly deliverableEvaluationModel: Model<DeliverableEvaluationDocument>,
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
-    @InjectModel(SprintConfig.name)
+    @InjectModel(SprintConfigEntry.name)
     private readonly sprintConfigModel: Model<SprintConfigDocument>,
     @InjectModel(StoryPointRecord.name)
     private readonly storyPointRecordModel: Model<StoryPointRecordDocument>,
@@ -410,7 +410,7 @@ export class GradesService {
 
     // ── Step 8.3: Compute per-deliverable team scalar ───────────────
     const sprintConfigs = await this.sprintConfigModel
-      .find({ groupId })
+      .find()
       .lean()
       .exec();
 

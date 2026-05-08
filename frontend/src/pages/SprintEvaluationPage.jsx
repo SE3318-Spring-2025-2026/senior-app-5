@@ -4,6 +4,7 @@ import apiClient from '../utils/apiClient';
 import { PageHeader, Card } from '../components/ui';
 
 const SOFT_GRADES = ['A', 'B', 'C', 'D', 'F'];
+const BINARY_GRADES = ['S', 'F'];
 const EVAL_TYPES = ['SCRUM', 'CODE_REVIEW'];
 
 const SprintEvaluationPage = () => {
@@ -50,10 +51,8 @@ const SprintEvaluationPage = () => {
     const load = async () => {
       setLoadingRubric(true);
       try {
-        const res = await apiClient.get(`/deliverables/${selectedDeliverable}/rubrics`, { params: { limit: 1 } });
-        const data = res.data?.data ?? res.data ?? [];
-        const first = Array.isArray(data) ? data[0] : null;
-        setRubric(first ?? null);
+        const res = await apiClient.get(`/deliverables/${selectedDeliverable}/rubrics/active`);
+        setRubric(res.data ?? null);
         setResponses({});
       } catch {
         setRubric(null);
@@ -89,7 +88,7 @@ const SprintEvaluationPage = () => {
       deliverableId: selectedDeliverable,
       evaluationType: evalType,
       rubricId,
-      responses: questionIds.map((id) => ({ questionId: id, softGrade: responses[id] })),
+      responses: questionIds.map((id) => ({ questionId: id, grade: responses[id] })),
     };
 
     setSubmitting(true);
@@ -179,30 +178,33 @@ const SprintEvaluationPage = () => {
               ) : !rubric ? (
                 <p className="text-sm text-red-400">No rubric found for this deliverable. Create one first.</p>
               ) : (
-                rubric.questions.map((q) => (
-                  <div key={q.questionId} className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-slate-300 flex-1">
-                      {q.criteriaName}
-                      <span className="ml-2 text-xs text-slate-500">(weight: {q.criteriaWeight})</span>
-                    </span>
-                    <div className="flex gap-2">
-                      {SOFT_GRADES.map((g) => (
-                        <button
-                          key={g}
-                          type="button"
-                          onClick={() => handleGradeChange(q.questionId, g)}
-                          className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${
-                            responses[q.questionId] === g
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                          }`}
-                        >
-                          {g}
-                        </button>
-                      ))}
+                rubric.questions.map((q) => {
+                  const grades = rubric.gradingType === 'binary' ? BINARY_GRADES : SOFT_GRADES;
+                  return (
+                    <div key={q.questionId} className="flex items-center justify-between gap-4">
+                      <span className="text-sm text-slate-300 flex-1">
+                        {q.criteriaName}
+                        <span className="ml-2 text-xs text-slate-500">(weight: {q.criteriaWeight})</span>
+                      </span>
+                      <div className="flex gap-2">
+                        {grades.map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => handleGradeChange(q.questionId, g)}
+                            className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${
+                              responses[q.questionId] === g
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                            }`}
+                          >
+                            {g}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}

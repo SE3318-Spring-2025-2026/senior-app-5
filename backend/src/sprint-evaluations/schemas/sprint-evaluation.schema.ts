@@ -22,13 +22,22 @@ export enum SoftGrade {
   F = 'F',
 }
 
+export enum Grade {
+  A = 'A',
+  B = 'B',
+  C = 'C',
+  D = 'D',
+  F = 'F',
+  S = 'S',
+}
+
 @Schema({ _id: false })
 export class SprintEvaluationResponseItem {
   @Prop({ type: String, required: true })
   questionId!: string;
 
-  @Prop({ type: String, required: true, enum: Object.values(SoftGrade) })
-  softGrade!: SoftGrade;
+  @Prop({ type: String, required: true, enum: Object.values(Grade) })
+  grade!: Grade;
 }
 
 export const SprintEvaluationResponseItemSchema = SchemaFactory.createForClass(

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  SoftGrade,
+  Grade,
   SprintEvaluationStatus,
   SprintEvaluationType,
 } from '../schemas/sprint-evaluation.schema';
@@ -9,8 +9,8 @@ export class SprintEvaluationResponseItemDto {
   @ApiProperty({ format: 'uuid' })
   questionId!: string;
 
-  @ApiProperty({ enum: SoftGrade })
-  softGrade!: SoftGrade;
+  @ApiProperty({ enum: Grade })
+  grade!: Grade;
 }
 
 export class SprintEvaluationResponseDto {

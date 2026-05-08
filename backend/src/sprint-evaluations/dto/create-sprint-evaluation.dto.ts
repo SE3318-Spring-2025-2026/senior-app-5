@@ -7,16 +7,16 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { SoftGrade, SprintEvaluationType } from '../schemas/sprint-evaluation.schema';
+import { Grade, SprintEvaluationType } from '../schemas/sprint-evaluation.schema';
 
 export class CreateSprintEvaluationResponseItemDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   questionId!: string;
 
-  @ApiProperty({ enum: SoftGrade })
-  @IsEnum(SoftGrade)
-  softGrade!: SoftGrade;
+  @ApiProperty({ enum: Grade })
+  @IsEnum(Grade)
+  grade!: Grade;
 }
 
 export class CreateSprintEvaluationDto {

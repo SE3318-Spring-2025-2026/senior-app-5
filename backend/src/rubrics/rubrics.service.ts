@@ -183,6 +183,22 @@ export class RubricsService {
   }
 
   /**
+   * Return the active rubric for a deliverable as a response DTO, or throw 404.
+   */
+  async findActiveRubricDto(
+    deliverableId: string,
+    correlationId?: string,
+  ): Promise<RubricResponseDto> {
+    const rubric = await this.getActiveRubric(deliverableId, correlationId);
+    if (!rubric) {
+      throw new NotFoundException(
+        `No active rubric found for deliverable '${deliverableId}'.`,
+      );
+    }
+    return this.toResponseDto(rubric.toObject());
+  }
+
+  /**
    * Delete a rubric by ID.
    * Rejects with 409 if the rubric is referenced in any SprintEvaluation.
    */

@@ -76,8 +76,8 @@ function AdvisorSchedulePage() {
     try {
       await apiClient.post(apiConfig.endpoints.schedules, {
         phase: PHASE,
-        startAt: new Date(form.startAt).toISOString(),
-        endAt: new Date(form.endAt).toISOString(),
+        startDatetime: new Date(form.startAt).toISOString(),
+        endDatetime: new Date(form.endAt).toISOString(),
       })
       setCreateState({
         loading: false,
@@ -197,3 +197,6 @@ function AdvisorSchedulePage() {
 }
 
 export default AdvisorSchedulePage
+
+
+

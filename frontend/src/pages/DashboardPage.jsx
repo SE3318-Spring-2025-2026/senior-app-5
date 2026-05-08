@@ -1,11 +1,31 @@
+import { useState, useEffect } from 'react';
 import StudentView from '../components/dashboard/StudentView';
 import ProfessorView from '../components/dashboard/ProfessorView';
 import CoordinatorView from '../components/dashboard/CoordinatorView';
 import { PageHeader } from '../components/ui';
+import apiClient from '../utils/apiClient';
 
 const DashboardPage = () => {
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : null;
+  const [user, setUser] = useState(() => {
+    const str = localStorage.getItem('user');
+    return str ? JSON.parse(str) : null;
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.get('/auth/me')
+      .then((res) => {
+        const fresh = res.data;
+        localStorage.setItem('user', JSON.stringify(fresh));
+        setUser(fresh);
+      })
+      .catch(() => {
+        // keep stale user data if refresh fails
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading && !user) return null;
 
   if (!user) return null;
 
@@ -14,6 +34,7 @@ const DashboardPage = () => {
     TeamLeader: 'Team Leader',
     Professor: 'Professor',
     Coordinator: 'Coordinator',
+    Admin: 'Admin',
   }[user.role] ?? user.role;
 
   const renderContent = () => {
@@ -23,6 +44,7 @@ const DashboardPage = () => {
         return <StudentView user={user} />;
       case 'Professor':
         return <ProfessorView user={user} />;
+      case 'Admin':
       case 'Coordinator':
         return <CoordinatorView user={user} />;
       default:

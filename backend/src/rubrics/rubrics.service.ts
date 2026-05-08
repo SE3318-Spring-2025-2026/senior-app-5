@@ -7,8 +7,8 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Connection, Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { CreateRubricDto } from './dto/create-rubric.dto';
 import { ListRubricsQueryDto } from './dto/rubric-response.dto';
 import {
@@ -30,8 +30,6 @@ export class RubricsService {
     private readonly rubricModel: Model<RubricDocument>,
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
-    @InjectConnection()
-    private readonly connection: Connection,
   ) {}
 
   /**
@@ -92,7 +90,7 @@ export class RubricsService {
 
   /**
    * Create a new rubric for a deliverable.
-   * Automatically deactivates the previous active rubric in the same transaction.
+   * Deactivates the previous active rubric, then creates the new one.
    * Validates that question weights sum to exactly 1.0.
    */
   async createRubric(
@@ -100,10 +98,7 @@ export class RubricsService {
     actorId: string,
     correlationId?: string,
   ): Promise<RubricResponseDto> {
-    let session: ClientSession | null = null;
-
     try {
-      // Validate question weights
       const weightSum = dto.questions.reduce(
         (sum, q) => sum + q.criteriaWeight,
         0,
@@ -114,34 +109,22 @@ export class RubricsService {
         );
       }
 
-      session = await this.connection.startSession();
-      session.startTransaction();
-
-      // Deactivate previous active rubric
       await this.rubricModel
         .updateMany(
           { deliverableId: dto.deliverableId, isActive: true },
           { $set: { isActive: false } },
-          { session },
         )
         .exec();
 
-      // Create new rubric with isActive=true
-      const created = await this.rubricModel.create(
-        [
-          {
-            deliverableId: dto.deliverableId,
-            name: dto.name.trim(),
-            isActive: true,
-            questions: dto.questions,
-          },
-        ],
-        { session },
-      );
-
-      await session.commitTransaction();
-
-      const rubric = created[0];
+      const [rubric] = await this.rubricModel.create([
+        {
+          deliverableId: dto.deliverableId,
+          name: dto.name.trim(),
+          gradingType: dto.gradingType,
+          isActive: true,
+          questions: dto.questions,
+        },
+      ]);
 
       this.logger.log(
         JSON.stringify({
@@ -155,12 +138,7 @@ export class RubricsService {
 
       return this.toResponseDto(rubric.toObject());
     } catch (error) {
-      if (session?.inTransaction()) {
-        await session.abortTransaction();
-      }
       throw this.toWriteException(error, correlationId);
-    } finally {
-      await session?.endSession();
     }
   }
 
@@ -267,6 +245,7 @@ export class RubricsService {
       deliverableId: rubric.deliverableId,
       name: rubric.name,
       isActive: rubric.isActive,
+      gradingType: rubric.gradingType,
       questions: rubric.questions.map((q) => ({
         questionId: q.questionId,
         criteriaName: q.criteriaName,

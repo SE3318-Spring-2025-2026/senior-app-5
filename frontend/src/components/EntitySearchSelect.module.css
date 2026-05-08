@@ -6,9 +6,13 @@
 }
 
 .label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  display: block;
 }
 
 .inputRow {
@@ -19,33 +23,40 @@
 
 .input {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
   font-size: 0.875rem;
   outline: none;
-  transition: border-color 0.15s;
+  background: #111827;
+  color: #e2e8f0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input::placeholder {
+  color: #475569;
 }
 
 .input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  border-color: rgba(37, 99, 235, 0.6);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
 .clearButton {
   padding: 6px 10px;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #94a3b8;
   background: none;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .clearButton:hover {
-  background: #f3f4f6;
+  background: #1e293b;
+  color: #e2e8f0;
 }
 
 .dropdown {
@@ -53,12 +64,12 @@
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 200;
   margin-top: 4px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: #0d1729;
+  border: 1px solid #1e293b;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   list-style: none;
   padding: 4px 0;
   max-height: 220px;
@@ -68,11 +79,11 @@
 .status {
   padding: 10px 14px;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .errorStatus {
-  color: #ef4444;
+  color: #f87171;
 }
 
 .option {
@@ -84,21 +95,21 @@
 }
 
 .option:hover {
-  background: #f0f0ff;
+  background: #1e293b;
 }
 
 .optionPrimary {
   font-size: 0.875rem;
-  color: #111827;
+  color: #e2e8f0;
   font-weight: 500;
 }
 
 .optionSecondary {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .hint {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #64748b;
 }

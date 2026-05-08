@@ -1,450 +1,273 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useRef, useState, useEffect } from 'react';
+import { Upload, FileText, CheckCircle, ChevronRight, X, Loader2 } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
-import { getSubmissionWindowStatus, WINDOW_STATE } from '../utils/submissionWindow';
-import styles from './StudentSubmissionPage.module.css';
 
-const initialFeedback = { loading: false, message: '', error: '' };
-const toSubmissionList = (payload) => {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.items)) return payload.items;
-  return [];
-};
+/* ─── helpers ─────────────────────────────────────────────── */
+const getId = (s) => s?._id || s?.id || s?.submissionId || '';
+const TYPE_OPTIONS = ['Report', 'Presentation', 'Source Code', 'Design Document', 'Other'];
 
-const getSubmissionId = (submission) => submission?._id || submission?.id || submission?.submissionId || '';
-const getSubmissionLabel = (submission) => {
-  const title = submission?.title || submission?.type || 'Untitled submission';
-  const dateValue = submission?.submittedAt || submission?.createdAt;
-  const dateLabel = dateValue ? new Date(dateValue).toLocaleDateString() : 'no date';
-  const status = submission?.status ? ` - ${submission.status}` : '';
-  return `${title} (${dateLabel})${status}`;
-};
-
-function StudentSubmissionPage() {
-  const { phaseId: urlPhaseId, submissionId: urlSubmissionId } = useParams();
-  const fileInputRef = useRef(null);
-  const [phaseId, setPhaseId] = useState(urlPhaseId || '');
-  const [submissionId, setSubmissionId] = useState(urlSubmissionId || '');
-  const [file, setFile] = useState(null);
-  const [phase, setPhase] = useState(null);
-  const [windowStatus, setWindowStatus] = useState(() => getSubmissionWindowStatus(null, null));
-  const [phaseFeedback, setPhaseFeedback] = useState(initialFeedback);
-  const [submitFeedback, setSubmitFeedback] = useState(initialFeedback);
-  
-  const [phases, setPhases] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
-  const [submissionsFeedback, setSubmissionsFeedback] = useState(initialFeedback);
-  
-  // State from main
-  const [membership, setMembership] = useState({
-    loading: true,
-    groupId: '',
-    message: '',
-    error: '',
-  });
-
-  // Auto-load phase window when URL params are provided
-  useEffect(() => {
-    let cancelled = false;
-    const loadMembership = async () => {
-      setMembership({ loading: true, groupId: '', message: '', error: '' });
-      try {
-        const response = await apiClient.get(apiConfig.endpoints.auth.me);
-        const me = response.data || {};
-        const assignedGroupId = me.teamId || me.groupId || '';
-        if (cancelled) return;
-        if (!assignedGroupId) {
-          setMembership({
-            loading: false,
-            groupId: '',
-            message: '',
-            error:
-              'You are not assigned to any group yet. Please contact your coordinator.',
-          });
-          return;
-        }
-        setMembership({
-          loading: false,
-          groupId: assignedGroupId,
-          message: `Submitting on behalf of group: ${assignedGroupId}`,
-          error: '',
-        });
-      } catch (error) {
-        if (cancelled) return;
-        const details =
-          error.response?.data?.message ||
-          error.message ||
-          'Unable to load your group membership.';
-        setMembership({
-          loading: false,
-          groupId: '',
-          message: '',
-          error: Array.isArray(details) ? details.join(', ') : details,
-        });
-      }
-    };
-    loadMembership();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  
-  useEffect(() => {
-    if (urlPhaseId) {
-      const loadWindow = async () => {
-        setPhaseFeedback({ loading: true, message: '', error: '' });
-        try {
-          const response = await apiClient.get(
-            apiConfig.endpoints.phaseById(urlPhaseId.trim()),
-          );
-          const nextPhase = response.data;
-          const nextWindowStatus = getSubmissionWindowStatus(
-            nextPhase?.submissionStart,
-            nextPhase?.submissionEnd,
-          );
-          const phaseMessage =
-            nextWindowStatus.state === WINDOW_STATE.UNAVAILABLE
-              ? ''
-              : 'Phase schedule loaded successfully.';
-          setPhase(nextPhase);
-          setWindowStatus(nextWindowStatus);
-          setPhaseFeedback({ loading: false, message: phaseMessage, error: '' });
-        } catch (error) {
-          const details =
-            error.response?.data?.message ||
-            error.message ||
-            'Unable to load phase schedule.';
-          setPhase(null);
-          setWindowStatus(getSubmissionWindowStatus(null, null));
-          setPhaseFeedback({
-            loading: false,
-            message: '',
-            error: Array.isArray(details) ? details.join(', ') : details,
-          });
-        }
-      };
-      loadWindow();
-    } else {
-      setWindowStatus({
-        state: WINDOW_STATE.UNAVAILABLE,
-        message: 'Invalid Phase ID. Please navigate to this page using a valid link.',
-        isActive: false,
-      });
-    }
-  }, [urlPhaseId]);
-
-  useEffect(() => {
-    if (urlPhaseId) return;
-    apiClient.get(apiConfig.endpoints.phases)
-      .then(r => setPhases(Array.isArray(r.data) ? r.data : []))
-      .catch(() => setPhases([]));
-  }, [urlPhaseId]);
-
-  useEffect(() => {
-    if (urlSubmissionId) return;
-
-    const loadSubmissions = async () => {
-      setSubmissionsFeedback({ loading: true, message: '', error: '' });
-      try {
-        const response = await apiClient.get(apiConfig.endpoints.submissions.mine);
-        const nextSubmissions = toSubmissionList(response.data);
-        setSubmissions(nextSubmissions);
-        setSubmissionsFeedback({
-          loading: false,
-          message: nextSubmissions.length ? 'Your submissions are ready to select.' : '',
-          error: '',
-        });
-      } catch (error) {
-        const details = error.response?.data?.message || error.message || 'Unable to load your submissions.';
-        setSubmissions([]);
-        setSubmissionsFeedback({
-          loading: false,
-          message: '',
-          error: Array.isArray(details) ? details.join(', ') : details,
-        });
-      }
-    };
-
-    loadSubmissions();
-  }, [urlSubmissionId]);
-
-  const isSubmissionDisabled = useMemo(
-    () =>
-      !windowStatus.isActive ||
-      submitFeedback.loading ||
-      membership.loading ||
-      !membership.groupId,
-    [windowStatus.isActive, submitFeedback.loading, membership.loading, membership.groupId],
-  );
-
-  const windowBannerClass = useMemo(() => {
-    if (windowStatus.state === WINDOW_STATE.OPEN) return styles.open;
-    if (windowStatus.state === WINDOW_STATE.UPCOMING) return styles.upcoming;
-    if (windowStatus.state === WINDOW_STATE.CLOSED) return styles.closed;
-    return styles.unavailable;
-  }, [windowStatus.state]);
-
-  const fetchPhaseWindow = async () => {
-    const trimmedPhaseId = phaseId.trim();
-    if (!trimmedPhaseId) {
-      setPhaseFeedback({
-        loading: false,
-        message: '',
-        error: 'Please enter a valid Phase ID first.',
-      });
-      return null;
-    }
-    setPhaseFeedback({ loading: true, message: '', error: '' });
-    try {
-      const response = await apiClient.get(
-        apiConfig.endpoints.phaseById(trimmedPhaseId),
-      );
-      const nextPhase = response.data;
-      const nextWindowStatus = getSubmissionWindowStatus(
-        nextPhase?.submissionStart,
-        nextPhase?.submissionEnd,
-      );
-      const phaseMessage =
-        nextWindowStatus.state === WINDOW_STATE.UNAVAILABLE
-          ? ''
-          : 'Phase schedule loaded successfully.';
-      setPhase(nextPhase);
-      setWindowStatus(nextWindowStatus);
-      setPhaseFeedback({ loading: false, message: phaseMessage, error: '' });
-      return nextWindowStatus;
-    } catch (error) {
-      const details =
-        error.response?.data?.message ||
-        error.message ||
-        'Unable to load phase schedule.';
-      setPhase(null);
-      setWindowStatus(getSubmissionWindowStatus(null, null));
-      setPhaseFeedback({
-        loading: false,
-        message: '',
-        error: Array.isArray(details) ? details.join(', ') : details,
-      });
-      return null;
-    }
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!membership.groupId) {
-      setSubmitFeedback({
-        loading: false,
-        message: '',
-        error: 'Submission is blocked because you are not assigned to a group.',
-      });
-      return;
-    }
-    const trimmedSubmissionId = submissionId.trim();
-    if (!trimmedSubmissionId) {
-      setSubmitFeedback({
-        loading: false,
-        message: '',
-        error: 'Submission ID is required to upload a document.',
-      });
-      return;
-    }
-    if (!file) {
-      setSubmitFeedback({
-        loading: false,
-        message: '',
-        error: 'Please choose a file to upload.',
-      });
-      return;
-    }
-    setSubmitFeedback({ loading: true, message: '', error: '' });
-    const latestWindowStatus = await fetchPhaseWindow();
-    if (!latestWindowStatus) {
-      setSubmitFeedback({
-        loading: false,
-        message: '',
-        error:
-          !phaseId || !phaseId.trim()
-            ? 'Please enter a valid Phase ID first.'
-            : 'Failed to fetch phase status. Upload is blocked.',
-      });
-      return;
-    }
-    if (!latestWindowStatus.isActive) {
-      setSubmitFeedback({
-        loading: false,
-        message: '',
-        error:
-          latestWindowStatus.message ||
-          'Submission window is not active. Upload is blocked.',
-      });
-      return;
-    }
-    const payload = new FormData();
-    payload.append('file', file);
-    try {
-      const response = await apiClient.post(
-        apiConfig.endpoints.submissionDocuments(trimmedSubmissionId),
-        payload,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        },
-      );
-      const uploadedName = response.data?.document?.originalName || file.name;
-      setSubmitFeedback({
-        loading: false,
-        message: `Uploaded ${uploadedName} successfully.`,
-        error: '',
-      });
-      setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (error) {
-      const details = error.response?.data?.message || error.message || 'File upload failed.';
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      setFile(null);
-      setSubmitFeedback({
-        loading: false,
-        message: '',
-        error: Array.isArray(details) ? details.join(', ') : details,
-      });
-    }
-  };
-
+function Step({ number, title, active, done }) {
   return (
-    <div className={styles.pageContainer}>
-      <header className={styles.hero}>
-        <h1>Submission Window Enforcement</h1>
-        <p>Load a phase schedule and submit documents only when the submission window is open.</p>
-      </header>
-      <section className={styles.card}>
-        <h2>1. Load Phase Window</h2>
-        {!urlPhaseId && (
-          <>
-            <div className={styles.formRow}>
-              <label htmlFor="phaseId">Phase</label>
-              <select
-                id="phaseId"
-                value={phaseId}
-                onChange={(event) => setPhaseId(event.target.value)}
-              >
-                <option value="">Select a phase</option>
-                {phases.map((p) => (
-                  <option key={p.phaseId} value={p.phaseId}>
-                    {p.name || p.phaseId}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={fetchPhaseWindow}
-              disabled={phaseFeedback.loading || !phaseId}
-              className={styles.primaryButton}
-            >
-              {phaseFeedback.loading ? 'Loading window...' : 'Load Window Status'}
-            </button>
-          </>
-        )}
-        {urlPhaseId && (
-          <p className={styles.infoText}>
-            Phase loaded from URL: <strong>{urlPhaseId}</strong>
-          </p>
-        )}
-        {phaseFeedback.message && <p className={styles.successText}>{phaseFeedback.message}</p>}
-        {phaseFeedback.error && <p className={styles.errorText}>{phaseFeedback.error}</p>}
-        <div className={`${styles.windowBanner} ${windowBannerClass}`}>
-          <strong>Submission Window Status: {windowStatus.state}</strong>
-          <span>{windowStatus.message}</span>
-        </div>
-        {phase && (
-          <div className={styles.windowDetails}>
-            <p>
-              <strong>submissionStart:</strong> {phase.submissionStart || 'Not set'}
-            </p>
-            <p>
-              <strong>submissionEnd:</strong> {phase.submissionEnd || 'Not set'}
-            </p>
-          </div>
-        )}
-      </section>
-      <section className={styles.card}>
-        <h2>2. Upload Submission Document</h2>
-        <form onSubmit={handleSubmit} className={styles.formGrid}>
-          <div className={styles.formRow}>
-            <label htmlFor="groupId">Group ID</label>
-            <input
-              id="groupId"
-              value={membership.groupId || 'Not assigned'}
-              readOnly
-              disabled
-            />
-            {membership.message && <p className={styles.infoText}>{membership.message}</p>}
-            {membership.error && <p className={styles.errorText}>{membership.error}</p>}
-          </div>
-          <div className={styles.formRow}>
-            <label htmlFor="submissionId">Submission ID</label>
-            {urlSubmissionId ? (
-              <>
-                <input id="submissionId" value={submissionId} disabled />
-                <p className={styles.infoText}>Submission ID provided via URL</p>
-              </>
-            ) : (
-              <>
-                <select
-                  id="submissionId"
-                  value={submissionId}
-                  onChange={(event) => setSubmissionId(event.target.value)}
-                  disabled={submissionsFeedback.loading}
-                  required
-                >
-                  <option value="">
-                    {submissionsFeedback.loading ? 'Loading submissions...' : 'Select a submission'}
-                  </option>
-                  {submissions.map((submission) => {
-                    const id = getSubmissionId(submission);
-                    return (
-                      <option key={id} value={id}>
-                        {getSubmissionLabel(submission)}
-                      </option>
-                    );
-                  })}
-                </select>
-                {submissionsFeedback.message && <p className={styles.successText}>{submissionsFeedback.message}</p>}
-                {submissionsFeedback.error && <p className={styles.errorText}>{submissionsFeedback.error}</p>}
-              </>
-            )}
-          </div>
-          <div className={styles.formRow}>
-            <label htmlFor="submissionFile">Document</label>
-            <input
-              id="submissionFile"
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-              onChange={(event) => setFile(event.target.files?.[0] || null)}
-              disabled={isSubmissionDisabled}
-            />
-          </div>
-          <button
-            type="submit"
-            className={styles.primaryButton}
-            disabled={isSubmissionDisabled}
-          >
-            {submitFeedback.loading ? 'Uploading...' : 'Submit Document'}
-          </button>
-        </form>
-        {isSubmissionDisabled && (
-          <p className={styles.infoText}>
-            Submission controls are disabled because the current window is not active or your group membership is unavailable.
-          </p>
-        )}
-        {submitFeedback.message && <p className={styles.successText}>{submitFeedback.message}</p>}
-        {submitFeedback.error && <p className={styles.errorText}>{submitFeedback.error}</p>}
-      </section>
+    <div className={`flex items-center gap-3 ${active ? 'opacity-100' : done ? 'opacity-80' : 'opacity-40'}`}>
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold
+        ${done ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+               : active ? 'border-indigo-500 bg-indigo-500/20 text-indigo-400'
+               : 'border-slate-700 bg-transparent text-slate-500'}`}>
+        {done ? <CheckCircle size={16} /> : number}
+      </div>
+      <span className={`text-sm font-semibold ${active ? 'text-slate-100' : done ? 'text-emerald-400' : 'text-slate-500'}`}>
+        {title}
+      </span>
     </div>
   );
 }
 
-export default StudentSubmissionPage;
+export default function StudentSubmissionPage() {
+  const fileInputRef = useRef(null);
+
+  const [group, setGroup] = useState({ loading: true, id: '', error: '' });
+  const [phases, setPhases] = useState([]);
+  const [selectedPhase, setSelectedPhase] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [subsLoading, setSubsLoading] = useState(false);
+  const [selectedSub, setSelectedSub] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState(TYPE_OPTIONS[0]);
+  const [createErr, setCreateErr] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [file, setFile] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null);
+
+  useEffect(() => {
+    apiClient.get(apiConfig.endpoints.auth.me)
+      .then((r) => {
+        const gid = r.data?.teamId || r.data?.groupId || '';
+        if (!gid) setGroup({ loading: false, id: '', error: 'You are not assigned to a group yet.' });
+        else setGroup({ loading: false, id: gid, error: '' });
+      })
+      .catch(() => setGroup({ loading: false, id: '', error: 'Failed to load your profile.' }));
+  }, []);
+
+  useEffect(() => {
+    apiClient.get(apiConfig.endpoints.phases)
+      .then((r) => setPhases(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setPhases([]));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPhase || !group.id) { setSubmissions([]); setSelectedSub(null); return; }
+    setSubsLoading(true);
+    setSelectedSub(null);
+    setSubmissions([]);
+    setCreating(false);
+    apiClient.get(`${apiConfig.endpoints.submissions.list}?groupId=${group.id}`)
+      .then((r) => {
+        const all = Array.isArray(r.data) ? r.data
+          : Array.isArray(r.data?.data) ? r.data.data
+          : Array.isArray(r.data?.items) ? r.data.items : [];
+        const phaseId = selectedPhase._id || selectedPhase.phaseId || selectedPhase.id;
+        const filtered = all.filter((s) => s.phaseId === phaseId);
+        setSubmissions(filtered);
+      })
+      .catch(() => setSubmissions([]))
+      .finally(() => setSubsLoading(false));
+  }, [selectedPhase, group.id]);
+
+  const handleCreate = async () => {
+    if (!newTitle.trim()) { setCreateErr('Please enter a title.'); return; }
+    setCreateLoading(true); setCreateErr('');
+    try {
+      const phaseId = selectedPhase._id || selectedPhase.phaseId || selectedPhase.id;
+      const res = await apiClient.post(apiConfig.endpoints.submissions.list, {
+        title: newTitle.trim(),
+        type: newType,
+        phaseId,
+        groupId: group.id,
+      });
+      const created = res.data;
+      setSubmissions((prev) => [...prev, created]);
+      setSelectedSub(created);
+      setCreating(false);
+      setNewTitle('');
+    } catch (e) {
+      const msg = e.response?.data?.message || e.message || 'Failed to create.';
+      setCreateErr(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally { setCreateLoading(false); }
+  };
+
+  const handleUpload = async () => {
+    if (!file || !selectedSub) return;
+    setUploading(true); setUploadResult(null);
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await apiClient.post(
+        apiConfig.endpoints.submissionDocuments(getId(selectedSub)),
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
+      const name = res.data?.document?.originalName || file.name;
+      setUploadResult({ ok: true, message: `"${name}" uploaded successfully!` });
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (e) {
+      const msg = e.response?.data?.message || e.message || 'Upload failed.';
+      setUploadResult({ ok: false, message: Array.isArray(msg) ? msg.join(', ') : msg });
+    } finally { setUploading(false); }
+  };
+
+  const step1Done = !!selectedPhase;
+  const step2Done = !!selectedSub;
+  const activeStep = !step1Done ? 1 : !step2Done ? 2 : 3;
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold text-slate-100">Submit Document</h1>
+        <p className="text-sm text-slate-400">Upload files for your project phase.</p>
+      </div>
+
+      <div className="flex items-center gap-3 rounded-xl border border-[#1e293b] bg-[#111827] px-5 py-4">
+        <Step number={1} title="Select Phase" active={activeStep === 1} done={step1Done} />
+        <ChevronRight size={14} className="text-slate-600 shrink-0" />
+        <Step number={2} title="Select Submission" active={activeStep === 2} done={step2Done} />
+        <ChevronRight size={14} className="text-slate-600 shrink-0" />
+        <Step number={3} title="Upload File" active={activeStep === 3} done={false} />
+      </div>
+
+      {group.error && (
+        <div className="rounded-xl border border-red-800/50 bg-red-900/20 px-4 py-3 text-sm text-red-400">
+          {group.error}
+        </div>
+      )}
+
+      {/* STEP 1 */}
+      <div className="rounded-xl border border-[#1e293b] bg-[#111827] p-5 space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Step 1 · Phase</p>
+        {phases.length === 0 ? (
+          <p className="text-sm text-slate-500">No phases available yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-2">
+            {phases.map((p) => {
+              const pid = p._id || p.phaseId || p.id;
+              const isSelected = (selectedPhase?._id || selectedPhase?.phaseId || selectedPhase?.id) === pid;
+              return (
+                <button key={pid} onClick={() => { setSelectedPhase(p); setSelectedSub(null); setUploadResult(null); setFile(null); }}
+                  className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors
+                    ${isSelected ? 'border-indigo-500/60 bg-indigo-500/10 text-indigo-300'
+                      : 'border-[#1e293b] bg-[#0d1526] text-slate-300 hover:border-slate-600 hover:text-slate-100'}`}>
+                  <span className="text-sm font-medium">{p.name || pid}</span>
+                  {isSelected && <CheckCircle size={16} className="text-indigo-400 shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* STEP 2 */}
+      <div className={`rounded-xl border border-[#1e293b] bg-[#111827] p-5 space-y-4 transition-opacity ${step1Done ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Step 2 · Submission</p>
+        {subsLoading ? (
+          <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 size={14} className="animate-spin" /> Loading…</div>
+        ) : (
+          <>
+            {submissions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">Choose an existing submission:</p>
+                <div className="grid grid-cols-1 gap-2">
+                  {submissions.map((s) => {
+                    const sid = getId(s);
+                    const isSelected = getId(selectedSub) === sid;
+                    return (
+                      <button key={sid} onClick={() => { setSelectedSub(s); setCreating(false); setUploadResult(null); setFile(null); }}
+                        className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors
+                          ${isSelected ? 'border-indigo-500/60 bg-indigo-500/10 text-indigo-300'
+                            : 'border-[#1e293b] bg-[#0d1526] text-slate-300 hover:border-slate-600 hover:text-slate-100'}`}>
+                        <div>
+                          <p className="text-sm font-medium">{s.title || 'Untitled'}</p>
+                          <p className="text-xs text-slate-500">{s.type} · {s.status || 'draft'}</p>
+                        </div>
+                        {isSelected && <CheckCircle size={16} className="text-indigo-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {!creating ? (
+              <button onClick={() => { setCreating(true); setSelectedSub(null); }}
+                className="w-full rounded-lg border border-dashed border-slate-600 bg-transparent py-3 text-sm font-medium text-slate-400 hover:border-indigo-500 hover:text-indigo-400 transition-colors">
+                + Create new submission
+              </button>
+            ) : (
+              <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-indigo-400">New Submission</p>
+                  <button onClick={() => setCreating(false)} className="text-slate-500 hover:text-slate-300"><X size={14} /></button>
+                </div>
+                <input type="text" placeholder="Title (e.g. Final Report)" value={newTitle}
+                  onChange={(e) => { setNewTitle(e.target.value); setCreateErr(''); }}
+                  className="w-full rounded-lg border border-[#1e293b] bg-[#0d1526] px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none" />
+                <select value={newType} onChange={(e) => setNewType(e.target.value)}
+                  className="w-full rounded-lg border border-[#1e293b] bg-[#0d1526] px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none">
+                  {TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+                </select>
+                {createErr && <p className="text-xs text-red-400">{createErr}</p>}
+                <button onClick={handleCreate} disabled={createLoading}
+                  className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors">
+                  {createLoading ? 'Creating…' : 'Create'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* STEP 3 */}
+      <div className={`rounded-xl border border-[#1e293b] bg-[#111827] p-5 space-y-4 transition-opacity ${step2Done ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Step 3 · Upload File</p>
+        <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors
+            ${dragging ? 'border-indigo-500 bg-indigo-500/10' : file ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-700 bg-[#0d1526] hover:border-slate-600'}`}>
+          {file ? (
+            <div className="flex flex-col items-center gap-2 text-center">
+              <FileText size={32} className="text-emerald-400" />
+              <p className="text-sm font-semibold text-slate-200">{file.name}</p>
+              <p className="text-xs text-slate-500">{Math.round(file.size / 1024)} KB</p>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                className="mt-1 flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-400 hover:text-slate-200">
+                <X size={12} /> Remove
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-center">
+              <Upload size={28} className="text-slate-500" />
+              <p className="text-sm font-medium text-slate-300">Drag &amp; drop or <span className="text-indigo-400">click to browse</span></p>
+              <p className="text-xs text-slate-500">PDF, DOC, DOCX, PNG, JPG — max 5 MB</p>
+            </div>
+          )}
+        </div>
+        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }} />
+        {uploadResult && (
+          <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm
+            ${uploadResult.ok ? 'border-emerald-800/50 bg-emerald-900/20 text-emerald-400' : 'border-red-800/50 bg-red-900/20 text-red-400'}`}>
+            {uploadResult.ok ? <CheckCircle size={16} /> : <X size={16} />}
+            {uploadResult.message}
+          </div>
+        )}
+        <button onClick={handleUpload} disabled={!file || uploading || !step2Done}
+          className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 transition-colors">
+          {uploading ? (<span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Uploading…</span>) : 'Upload Document'}
+        </button>
+      </div>
+    </div>
+  );
+}

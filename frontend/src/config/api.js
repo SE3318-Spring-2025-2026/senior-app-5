@@ -20,6 +20,7 @@ export const apiConfig = {
     groupById: (groupId) => `/groups/${groupId}`,
     groupMembers: (groupId) => `/groups/${groupId}/members`,
     phases: '/phases',
+    phasesCreate: '/phases',
     phaseById: (phaseId) => `/phases/${phaseId}`,
     submissionDocuments: (submissionId) => `/submissions/${submissionId}/documents`,
     groupCommittee: (groupId) => `/groups/${groupId}/committee`,
@@ -32,9 +33,14 @@ export const apiConfig = {
     groupDisband: (groupId) => `/groups/${groupId}`,
     userSearch: '/users/search',
     invites: '/invites/deliver',
+    groupMyTeam: '/groups/my-team',
+    groupMyInvites: '/groups/my-invites',
+    groupInvites: (groupId) => `/groups/${groupId}/invites`,
+    groupInviteRespond: (inviteId) => `/groups/invites/${inviteId}/respond`,
     phaseSchedule: (phaseId) => `/phases/${phaseId}/schedule`,
     advisorValidation: '/admin/advisor-validation',
     sanitizationExecute: '/admin/sanitization/execute',
+    adminAssignStudentGroup: (studentId) => `/admin/students/${studentId}/group`,
     submissions: {
       list: '/submissions',
       byGroup: (groupId) => `/submissions?groupId=${groupId}`,
@@ -68,8 +74,8 @@ export const apiConfig = {
     groupGradeHistory: (groupId) => `/groups/${groupId}/grade-history`,
     storyPoints: (groupId, sprintId) =>
       `/groups/${groupId}/sprints/${sprintId}/story-points`,
-    overrideStoryPoints: (groupId, sprintId) =>
-      `/groups/${groupId}/sprints/${sprintId}/story-points/override`,
+    overrideStoryPoints: (groupId, sprintId, studentId) =>
+      `/groups/${groupId}/sprints/${sprintId}/story-points/${studentId}`,
     deliverables: '/deliverables',
     rubrics: (deliverableId) => `/deliverables/${deliverableId}/rubrics`,
     rubricById: (deliverableId, rubricId) => `/deliverables/${deliverableId}/rubrics/${rubricId}`,
@@ -79,6 +85,8 @@ export const apiConfig = {
     committeeGrades: (committeeId) => `/committees/${committeeId}/grades`,
     sprintEvaluations: '/sprint-evaluations',
     githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,
+    teamSync: (teamId) => `/teams/${teamId}/sync`,
+    teamStoryPoints: (teamId) => `/teams/${teamId}/story-points`,
   },
 };
 

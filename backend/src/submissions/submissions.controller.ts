@@ -87,8 +87,8 @@ export class SubmissionsController {
   }
 
   @Get('me')
-  @Roles(Role.Student)
-  @ApiOperation({ summary: 'Get submissions for current student user' })
+  @Roles(Role.Student, Role.TeamLeader)
+  @ApiOperation({ summary: 'Get submissions for current student or team leader user' })
   async getMySubmissions(@Req() req: Request & { user: any }) {
     const userGroupId = req.user.groupId;
 
@@ -100,14 +100,14 @@ export class SubmissionsController {
   }
 
   @Post()
-  @Roles(Role.Student, Role.TeamLeader) 
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor)
   @ApiOperation({ summary: 'Create a new submission' })
   async create(
     @Req() req: Request & { user: any },
     @Body() createSubmissionDto: CreateSubmissionDto,
   ) {
     if (
-      req.user.role === Role.Student &&
+      (req.user.role === Role.Student || req.user.role === Role.TeamLeader) &&
       String(createSubmissionDto.groupId) !== String(req.user.groupId)
     ) {
       throw new ForbiddenException(
@@ -118,7 +118,7 @@ export class SubmissionsController {
       req.user,
       createSubmissionDto.groupId,
     );
-    return this.submissionsService.createSubmission(createSubmissionDto);
+    return this.submissionsService.createSubmission(createSubmissionDto, req.user.role);
   }
 
   @Get(':submissionId/completeness')
@@ -171,10 +171,10 @@ export class SubmissionsController {
   }
 
   @Get(':submissionId/documents/:documentIndex')
-  @UseGuards(GroupMemberGuard)
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin)
   @ApiOperation({ summary: 'Download a submission document by index' })
   async downloadDocument(
-    @Req() req: Request & { submission?: any },
+    @Req() req: Request & { user: any; submission?: any },
     @Param('submissionId') submissionId: string,
     @Param('documentIndex') documentIndex: string,
     @Res({ passthrough: true }) res: Response,
@@ -185,10 +185,24 @@ export class SubmissionsController {
       throw new BadRequestException('Invalid document index.');
     }
 
+    const userRole = req.user.role;
+    // For Student/TeamLeader, enforce group membership via service
+    if (userRole === Role.Student || userRole === Role.TeamLeader) {
+      const submission = await this.submissionsService.findById(submissionId);
+      if (!submission) throw new ForbiddenException('Submission not found.');
+      await this.submissionsService.assertAuthorizedGroupMember(req.user, submission.groupId);
+    }
+    // Professor: must be the advisor or a jury member of the group
+    if (userRole === Role.Professor) {
+      const submission = await this.submissionsService.findById(submissionId);
+      if (!submission) throw new ForbiddenException('Submission not found.');
+      await this.submissionsService.assertProfessorCanAccessSubmission(submission, req.user.userId);
+    }
+    // Coordinator, Admin: unrestricted
+
     const file = await this.submissionsService.getDocumentForDownload(
       submissionId,
       parsedIndex,
-      req.submission,
     );
 
     res.setHeader('Content-Type', file.mimeType);
@@ -204,12 +218,27 @@ export class SubmissionsController {
     summary: 'Get all submissions. Filter enforced for students.',
   })
   @ApiQuery({ name: 'groupId', required: false, type: String })
+  @ApiQuery({ name: 'committeeId', required: false, type: String })
   async findAll(
     @Req() req: Request & { user: any },
     @Query('groupId') groupId?: string,
+    @Query('committeeId') committeeId?: string,
   ) {
     const userRole = req.user.role;
     const userGroupId = req.user.groupId;
+
+    if (committeeId) {
+      if (userRole !== Role.Professor) {
+        throw new ForbiddenException(
+          'Only professors can filter submissions by committee.',
+        );
+      }
+      const groupIds = await this.submissionsService.getCommitteeSubmissionGroupIds(
+        committeeId,
+        req.user.userId,
+      );
+      return this.submissionsService.findAll(undefined, groupIds);
+    }
 
     if (userRole === Role.Student) {
       if (!groupId || String(groupId) !== String(userGroupId)) {
@@ -217,6 +246,17 @@ export class SubmissionsController {
           'You can only access data from your own group.',
         );
       }
+    }
+
+    if (userRole === Role.Professor) {
+      if (groupId) {
+        // Validate professor is authorized for the requested group
+        const stub = { groupId } as any;
+        await this.submissionsService.assertProfessorCanAccessSubmission(stub, req.user.userId);
+        return this.submissionsService.findAll(groupId);
+      }
+      // No groupId filter: return all submissions the professor can access
+      return this.submissionsService.findAllForProfessor(req.user.userId);
     }
 
     return this.submissionsService.findAll(groupId);
@@ -236,6 +276,13 @@ export class SubmissionsController {
     ) {
       throw new ForbiddenException(
         'You do not have permission to access this document.',
+      );
+    }
+
+    if (userRole === Role.Professor) {
+      await this.submissionsService.assertProfessorCanAccessSubmission(
+        submission,
+        req.user.userId,
       );
     }
 

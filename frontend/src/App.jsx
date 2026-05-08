@@ -36,6 +36,9 @@ import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
 import SprintConfigPage from './pages/SprintConfigPage';
+import ScrumManagementPage from './pages/ScrumManagementPage';
+import SprintSchedulePage from './pages/SprintSchedulePage';
+import DeliverableManagementPage from './pages/DeliverableManagementPage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -69,6 +72,7 @@ function App() {
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
             <Route path="/grades" element={<GradeDisplayPage />} />
+            <Route path="/professor/submissions" element={<DocumentsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route
               path="/review"
@@ -80,9 +84,19 @@ function App() {
             />
             <Route path="/coordinator-management" element={<CoordinatorManagementPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/scrum" element={<ScrumManagementPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
             <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
-            <Route path="/coordinator/advisor-schedule" element={<AdvisorSchedulePage />} />
+            <Route path="/coordinator/advisor-schedule" element={
+              <ProtectedRoute requiredRole="Coordinator">
+                <AdvisorSchedulePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/coordinator/sprint-schedule" element={
+              <ProtectedRoute requiredRole="Coordinator">
+                <SprintSchedulePage />
+              </ProtectedRoute>
+            } />
             <Route
               path="/coordinator/rubrics"
               element={
@@ -96,6 +110,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="Coordinator">
                   <SprintConfigPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coordinator/deliverables"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <DeliverableManagementPage />
                 </ProtectedRoute>
               }
             />

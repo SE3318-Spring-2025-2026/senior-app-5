@@ -7,6 +7,7 @@ import { Submission } from '../submissions/schemas/submission.schema';
 import { CommitteeEvaluation, EvaluationGrade } from './schemas/committee-evaluation.schema';
 import { CommitteeGradeStatus } from './dto/committee-grade-result.dto';
 import { Committee } from '../committees/schemas/committee.schema';
+import { TeamInvite } from './schemas/team-invite.schema';
 
 describe('GroupsService', () => {
   let service: GroupsService;
@@ -14,6 +15,7 @@ describe('GroupsService', () => {
   let mockSubmissionModel: any;
   let mockEvaluationModel: any;
   let mockCommitteeModel: any;
+  let mockTeamInviteModel: any;
 
   beforeEach(async () => {
     const mockGroup = {
@@ -33,6 +35,7 @@ describe('GroupsService', () => {
     mockSubmissionModel = { find: jest.fn() };
     mockEvaluationModel = { find: jest.fn() };
     mockCommitteeModel = { findOne: jest.fn() };
+    mockTeamInviteModel = { findOne: jest.fn(), find: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -42,6 +45,7 @@ describe('GroupsService', () => {
         { provide: getModelToken('User'), useValue: jest.fn() },
         { provide: getModelToken(CommitteeEvaluation.name), useValue: mockEvaluationModel },
         { provide: getModelToken(Committee.name), useValue: mockCommitteeModel },
+        { provide: getModelToken(TeamInvite.name), useValue: mockTeamInviteModel },
       ],
     }).compile();
 

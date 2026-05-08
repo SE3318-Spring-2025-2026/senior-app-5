@@ -103,11 +103,11 @@ export class SprintConfigsController {
   }
 
   @Get()
-  @Roles(Role.Coordinator)
+  @Roles(Role.Coordinator, Role.Professor)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     operationId: 'listSprintConfigs',
-    summary: 'List all sprint configurations (Coordinator only)',
+    summary: 'List all sprint configurations (Coordinator and Professor)',
   })
   @ApiOkResponse({
     description: 'Sprint configurations returned successfully.',
@@ -128,11 +128,11 @@ export class SprintConfigsController {
   }
 
   @Get(':sprintId')
-  @Roles(Role.Coordinator)
+  @Roles(Role.Coordinator, Role.Professor)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     operationId: 'getSprintConfig',
-    summary: 'Get a sprint configuration by sprintId (Coordinator only)',
+    summary: 'Get a sprint configuration by sprintId (Coordinator and Professor)',
   })
   @ApiOkResponse({
     description: 'Sprint configuration found.',

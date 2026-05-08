@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import styles from '../../pages/DashboardPage.module.css';
 import storyPointsService from '../../utils/storyPointsService';
+import EntitySearchSelect from '../EntitySearchSelect';
+import apiClient from '../../utils/apiClient';
+import apiConfig from '../../config/api';
 
 const SOURCE_META = {
   COORDINATOR_OVERRIDE: { label: 'COORDINATOR_OVERRIDE', className: styles.sourceWarning },
@@ -12,6 +15,8 @@ const SOURCE_META = {
 const StoryPointsPanel = ({ canOverride }) => {
   const [groupId, setGroupId] = useState('');
   const [sprintId, setSprintId] = useState('');
+  const [sprintOptions, setSprintOptions] = useState([]);
+  const [studentEmailMap, setStudentEmailMap] = useState({});
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -22,6 +27,46 @@ const StoryPointsPanel = ({ canOverride }) => {
     () => groupId.trim().length > 0 && sprintId.trim().length > 0,
     [groupId, sprintId],
   );
+
+  useEffect(() => {
+    apiClient
+      .get(apiConfig.endpoints.sprints, { params: { page: 1, limit: 100 } })
+      .then((r) => setSprintOptions(r.data?.data ?? []))
+      .catch(() => setSprintOptions([]));
+  }, []);
+
+  useEffect(() => {
+    const normalizedGroupId = groupId.trim();
+    if (!normalizedGroupId) {
+      setStudentEmailMap({});
+      return;
+    }
+
+    let isCancelled = false;
+    apiClient
+      .get(apiConfig.endpoints.groupById(normalizedGroupId))
+      .then((response) => {
+        if (isCancelled) return;
+        const members = response.data?.members ?? [];
+        const nextMap = members.reduce((acc, member) => {
+          const memberId = String(member?._id ?? '');
+          if (memberId && member?.email) {
+            acc[memberId] = member.email;
+          }
+          return acc;
+        }, {});
+        setStudentEmailMap(nextMap);
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setStudentEmailMap({});
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [groupId]);
 
   useEffect(
     () => () => {
@@ -87,9 +132,9 @@ const StoryPointsPanel = ({ canOverride }) => {
     }
 
     const inputValue = overrideValues[studentId];
-    const nextCompletedPoints = Number(inputValue);
-    if (!Number.isFinite(nextCompletedPoints) || nextCompletedPoints < 0) {
-      toast.error('completedPoints 0 veya daha büyük olmalı.');
+    const nextTargetPoints = Number(inputValue);
+    if (!Number.isFinite(nextTargetPoints) || nextTargetPoints < 0) {
+      toast.error('targetPoints 0 veya daha büyük olmalı.');
       return;
     }
 
@@ -99,12 +144,12 @@ const StoryPointsPanel = ({ canOverride }) => {
           groupId.trim(),
           sprintId.trim(),
           studentId,
-          nextCompletedPoints,
+          nextTargetPoints,
         );
         setRecords((prev) =>
           prev.map((record) => (record.studentId === studentId ? updated : record)),
         );
-        toast.success('Override kaydedildi.');
+        toast.success('Student target point güncellendi.');
       } catch (error) {
         toast.error(error.message);
       }
@@ -115,18 +160,28 @@ const StoryPointsPanel = ({ canOverride }) => {
     <div className={styles.tableWrapper}>
       <h3 style={{ color: '#94a3b8', marginBottom: '12px' }}>Sprint Story Points</h3>
       <div className={styles.storyPointControls}>
-        <input
-          className={styles.storyPointInput}
-          placeholder="Group UUID"
+        <EntitySearchSelect
+          endpoint={apiConfig.endpoints.groups}
+          buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+          getItems={(res) => res.data}
+          returnField="groupId"
+          displayField="groupName"
           value={groupId}
-          onChange={(event) => setGroupId(event.target.value)}
+          onChange={setGroupId}
+          placeholder="Search group by name"
         />
-        <input
+        <select
           className={styles.storyPointInput}
-          placeholder="Sprint UUID"
           value={sprintId}
           onChange={(event) => setSprintId(event.target.value)}
-        />
+        >
+          <option value="">Select sprint…</option>
+          {sprintOptions.map((s) => (
+            <option key={s.sprintId} value={s.sprintId}>
+              {s.sprintId} ({s.targetStoryPoints} pts)
+            </option>
+          ))}
+        </select>
         <button className={styles.smallButton} onClick={loadRecords} disabled={isLoading}>
           {isLoading ? 'Loading...' : 'Load'}
         </button>
@@ -148,9 +203,10 @@ const StoryPointsPanel = ({ canOverride }) => {
         <tbody>
           {records.map((record) => {
             const sourceMeta = SOURCE_META[record.source] || SOURCE_META.MANUAL;
+            const studentLabel = studentEmailMap[record.studentId] || record.studentId;
             return (
               <tr key={record.studentId}>
-                <td>{record.studentId}</td>
+                <td>{studentLabel}</td>
                 <td>{record.completedPoints}</td>
                 <td>{record.targetPoints}</td>
                 <td>
@@ -172,7 +228,7 @@ const StoryPointsPanel = ({ canOverride }) => {
                         min="0"
                         aria-label={`override-${record.studentId}`}
                         className={styles.storyPointNumberInput}
-                        value={overrideValues[record.studentId] ?? record.completedPoints}
+                        value={overrideValues[record.studentId] ?? record.targetPoints}
                         onChange={(event) =>
                           setOverrideValues((prev) => ({
                             ...prev,

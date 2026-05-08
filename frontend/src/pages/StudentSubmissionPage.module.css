@@ -123,3 +123,95 @@
   color: #94a3b8;
   margin-top: 4px;
 }
+
+/* -- File drop zone -- */
+.dropZone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #334155;
+  border-radius: 10px;
+  padding: 24px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: #0f172a;
+  min-height: 88px;
+}
+
+.dropZone:hover:not(.dropZoneDisabled) {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.dropZoneActive {
+  border-color: #6366f1 !important;
+  background: rgba(99, 102, 241, 0.1) !important;
+}
+
+.dropZoneDisabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dropZonePrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.dropZonePrompt svg {
+  color: #475569;
+}
+
+.dropZonePrompt strong {
+  color: #818cf8;
+}
+
+.dropZonePrompt small {
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.fileChosen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  flex-wrap: wrap;
+}
+
+.fileChosen svg {
+  color: #818cf8;
+  flex-shrink: 0;
+}
+
+.fileChosen small {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.clearFile {
+  margin-left: auto;
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 7px;
+  transition: background 0.1s, color 0.1s;
+}
+
+.clearFile:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #f87171;
+  color: #f87171;
+}

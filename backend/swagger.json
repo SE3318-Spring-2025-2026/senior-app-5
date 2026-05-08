@@ -542,6 +542,24 @@
       }
     },
     "/api/v1/groups": {
+      "get": {
+        "operationId": "GroupsController_listGroups",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Paginated list of groups"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List groups with optional name filter (Admin, Coordinator)",
+        "tags": [
+          "Groups"
+        ]
+      },
       "post": {
         "operationId": "GroupsController_createGroup",
         "parameters": [],
@@ -565,7 +583,215 @@
             "bearer": []
           }
         ],
-        "summary": "Create a new group",
+        "summary": "Create a new group (Admin/Coordinator only)",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/api/v1/groups/my-team": {
+      "post": {
+        "operationId": "GroupsController_createMyTeam",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMyTeamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Team created, caller promoted to TeamLeader"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Student creates their own team and becomes TeamLeader",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/api/v1/groups/my-invites": {
+      "get": {
+        "operationId": "GroupsController_getMyInvites",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of pending invites for the logged-in student"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Student views their pending team invites",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}": {
+      "get": {
+        "operationId": "GroupsController_getGroupDetails",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group details returned"
+          },
+          "404": {
+            "description": "Group not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get group details with leader, advisor and members",
+        "tags": [
+          "Groups"
+        ]
+      },
+      "delete": {
+        "operationId": "GroupsAdvisorController_disbandGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "GroupsAdvisor"
+        ]
+      }
+    },
+    "/api/v1/groups/invites/{inviteId}/respond": {
+      "patch": {
+        "operationId": "GroupsController_respondToInvite",
+        "parameters": [
+          {
+            "name": "inviteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RespondToInviteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Invite response recorded"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Student accepts or rejects a team invite",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/invites": {
+      "post": {
+        "operationId": "GroupsController_sendInvite",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendInviteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invite sent"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "TeamLeader sends a team invite to a student by email",
+        "tags": [
+          "Groups"
+        ]
+      },
+      "get": {
+        "operationId": "GroupsController_getGroupInvites",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invite list with statuses"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "TeamLeader views all invites for their group with statuses",
         "tags": [
           "Groups"
         ]
@@ -610,7 +836,7 @@
         ]
       }
     },
-    "/api/v1/groups/{groupId}/validate-statement-of-work": {
+    "/api/v1/groups/{groupId}/validate-sow": {
       "get": {
         "operationId": "GroupsController_validateSow",
         "parameters": [
@@ -633,7 +859,7 @@
             "bearer": []
           }
         ],
-        "summary": "Check SoW status for a group",
+        "summary": "Check SoW status and eligibility for a group",
         "tags": [
           "Groups"
         ]
@@ -1593,6 +1819,382 @@
         ]
       }
     },
+    "/api/v1/submissions/me": {
+      "get": {
+        "operationId": "SubmissionsController_getMySubmissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get submissions for current student or team leader user",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions": {
+      "post": {
+        "operationId": "SubmissionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubmissionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new submission",
+        "tags": [
+          "Submissions"
+        ]
+      },
+      "get": {
+        "operationId": "SubmissionsController_findAll",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "committeeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all submissions. Filter enforced for students.",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/{submissionId}/completeness": {
+      "get": {
+        "operationId": "SubmissionsController_getCompleteness",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check if a submission meets all phase requirements",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/{submissionId}/documents": {
+      "post": {
+        "operationId": "SubmissionsController_uploadFile",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Document uploaded successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a document for a submission",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/{submissionId}/documents/{documentIndex}": {
+      "get": {
+        "operationId": "SubmissionsController_downloadDocument",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "documentIndex",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a submission document by index",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/{id}": {
+      "get": {
+        "operationId": "SubmissionsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get submission details by ID",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/committee/{groupId}": {
+      "get": {
+        "operationId": "SubmissionsController_getSubmissionsForCommittee",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JurySubmissionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List submissions for a committee-assigned group",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/committee/detail/{submissionId}": {
+      "get": {
+        "operationId": "SubmissionsController_getSubmissionDetailForCommittee",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JurySubmissionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get single submission detail for jury member",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/phases": {
+      "get": {
+        "operationId": "PhasesController_listPhases",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Phases"
+        ]
+      },
+      "post": {
+        "operationId": "PhasesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePhaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Phases"
+        ]
+      }
+    },
+    "/api/v1/phases/{phaseId}": {
+      "get": {
+        "operationId": "PhasesController_getPhase",
+        "parameters": [
+          {
+            "name": "phaseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Phases"
+        ]
+      }
+    },
+    "/api/v1/phases/{phaseId}/schedule": {
+      "put": {
+        "operationId": "PhasesController_updateSchedule",
+        "parameters": [
+          {
+            "name": "phaseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePhaseScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Phases"
+        ]
+      }
+    },
     "/api/v1/invites/deliver": {
       "post": {
         "operationId": "InvitesController_deliverInvites",
@@ -1816,29 +2418,6 @@
         ]
       }
     },
-    "/api/v1/groups/{groupId}": {
-      "delete": {
-        "operationId": "GroupsAdvisorController_disbandGroup",
-        "parameters": [
-          {
-            "name": "groupId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "GroupsAdvisor"
-        ]
-      }
-    },
     "/api/v1/schedules": {
       "post": {
         "operationId": "SchedulesController_setSchedule",
@@ -1874,374 +2453,6 @@
         },
         "tags": [
           "Schedules"
-        ]
-      }
-    },
-    "/api/v1/phases": {
-      "get": {
-        "operationId": "PhasesController_listPhases",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Phases"
-        ]
-      },
-      "post": {
-        "operationId": "PhasesController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePhaseDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Phases"
-        ]
-      }
-    },
-    "/api/v1/phases/{phaseId}": {
-      "get": {
-        "operationId": "PhasesController_getPhase",
-        "parameters": [
-          {
-            "name": "phaseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Phases"
-        ]
-      }
-    },
-    "/api/v1/phases/{phaseId}/schedule": {
-      "put": {
-        "operationId": "PhasesController_updateSchedule",
-        "parameters": [
-          {
-            "name": "phaseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdatePhaseScheduleDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Phases"
-        ]
-      }
-    },
-    "/api/v1/submissions/me": {
-      "get": {
-        "operationId": "SubmissionsController_getMySubmissions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get submissions for current student user",
-        "tags": [
-          "Submissions"
-        ]
-      }
-    },
-    "/api/v1/submissions": {
-      "post": {
-        "operationId": "SubmissionsController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSubmissionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create a new submission",
-        "tags": [
-          "Submissions"
-        ]
-      },
-      "get": {
-        "operationId": "SubmissionsController_findAll",
-        "parameters": [
-          {
-            "name": "groupId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get all submissions. Filter enforced for students.",
-        "tags": [
-          "Submissions"
-        ]
-      }
-    },
-    "/api/v1/submissions/{submissionId}/completeness": {
-      "get": {
-        "operationId": "SubmissionsController_getCompleteness",
-        "parameters": [
-          {
-            "name": "submissionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Check if a submission meets all phase requirements",
-        "tags": [
-          "Submissions"
-        ]
-      }
-    },
-    "/api/v1/submissions/{submissionId}/documents": {
-      "post": {
-        "operationId": "SubmissionsController_uploadFile",
-        "parameters": [
-          {
-            "name": "submissionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Document uploaded successfully"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Upload a document for a submission",
-        "tags": [
-          "Submissions"
-        ]
-      }
-    },
-    "/api/v1/submissions/{submissionId}/documents/{documentIndex}": {
-      "get": {
-        "operationId": "SubmissionsController_downloadDocument",
-        "parameters": [
-          {
-            "name": "submissionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "documentIndex",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Download a submission document by index",
-        "tags": [
-          "Submissions"
-        ]
-      }
-    },
-    "/api/v1/submissions/{id}": {
-      "get": {
-        "operationId": "SubmissionsController_findOne",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get submission details by ID",
-        "tags": [
-          "Submissions"
-        ]
-      }
-    },
-    "/api/v1/submissions/committee/{groupId}": {
-      "get": {
-        "operationId": "SubmissionsController_getSubmissionsForCommittee",
-        "parameters": [
-          {
-            "name": "groupId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/JurySubmissionResponseDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List submissions for a committee-assigned group",
-        "tags": [
-          "Submissions"
-        ]
-      }
-    },
-    "/api/v1/submissions/committee/detail/{submissionId}": {
-      "get": {
-        "operationId": "SubmissionsController_getSubmissionDetailForCommittee",
-        "parameters": [
-          {
-            "name": "submissionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/JurySubmissionResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get single submission detail for jury member",
-        "tags": [
-          "Submissions"
         ]
       }
     },
@@ -2486,6 +2697,66 @@
         "tags": [
           "Grades"
         ]
+      },
+      "get": {
+        "operationId": "listDeliverableEvaluations",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deliverable evaluations returned successfully."
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List deliverable evaluations with optional filters",
+        "tags": [
+          "Grades"
+        ]
       }
     },
     "/api/v1/deliverable-evaluations/{evaluationId}": {
@@ -2696,9 +2967,63 @@
         ]
       }
     },
+    "/api/v1/committees/{committeeId}/grades": {
+      "get": {
+        "operationId": "calculateGrade",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committee grade aggregation returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeCalculationResultDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT\n\nMissing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions\n\nInsufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "409": {
+            "description": "Final grade already exists and force=false"
+          },
+          "422": {
+            "description": "Missing preconditions (evaluations not complete, config missing, etc)"
+          },
+          "500": {
+            "description": "Unexpected internal failure\n\nUnexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Calculate and persist final grades for a group",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
     "/api/v1/groups/{groupId}/calculate": {
       "post": {
-        "operationId": "calculateGrade",
+        "operationId": "GradesController_calculateGrade",
         "parameters": [
           {
             "name": "groupId",
@@ -2721,29 +3046,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GradeCalculationResultDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "409": {
-            "description": "Final grade already exists and force=false"
-          },
-          "422": {
-            "description": "Missing preconditions (evaluations not complete, config missing, etc)"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
+            "description": ""
           }
         },
         "security": [
@@ -2751,7 +3054,6 @@
             "access-token": []
           }
         ],
-        "summary": "Calculate and persist final grades for a group",
         "tags": [
           "Grades"
         ]
@@ -3192,6 +3494,338 @@
         ]
       }
     },
+    "/api/v1/reviews": {
+      "post": {
+        "operationId": "createReview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request validation failed"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Caller is not in the committee jury"
+          },
+          "404": {
+            "description": "Submission or committee not found"
+          },
+          "409": {
+            "description": "Review already exists for this reviewer and submission"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a review for a submission",
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}": {
+      "get": {
+        "operationId": "getReview",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid reviewId format"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Review not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get a review by id",
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/comments": {
+      "post": {
+        "operationId": "addReviewComment",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewCommentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid reviewId format or payload"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Caller does not own the review"
+          },
+          "404": {
+            "description": "Review not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Add a comment to a review",
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/comments/{commentId}": {
+      "delete": {
+        "operationId": "deleteReviewComment",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Comment deleted successfully"
+          },
+          "400": {
+            "description": "Invalid reviewId or commentId format"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Caller is not the comment author"
+          },
+          "404": {
+            "description": "Review or comment not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete a review comment",
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/revision-requests": {
+      "post": {
+        "operationId": "createReviewRevisionRequest",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRevisionRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionRequestResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid reviewId format or payload"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Caller does not own the review"
+          },
+          "404": {
+            "description": "Review not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a revision request for a review",
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{reviewId}/grade": {
+      "post": {
+        "operationId": "submitReviewGrade",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitGradeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitGradeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid reviewId format or payload"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Caller does not own the review"
+          },
+          "404": {
+            "description": "Review not found"
+          },
+          "409": {
+            "description": "Grade already submitted"
+          },
+          "422": {
+            "description": "Grade must be between 0 and 100"
+          },
+          "423": {
+            "description": "Grading schedule window is closed"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Submit a grade for a review",
+        "tags": [
+          "Reviews"
+        ]
+      }
+    },
     "/api/v1/sprints": {
       "post": {
         "operationId": "createSprintConfig",
@@ -3242,6 +3876,50 @@
           }
         ],
         "summary": "Create a sprint configuration (Coordinator only)",
+        "tags": [
+          "Sprint Configs"
+        ]
+      },
+      "get": {
+        "operationId": "listSprintConfigs",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sprint configurations returned successfully."
+          },
+          "401": {
+            "description": "Missing or invalid JWT."
+          },
+          "403": {
+            "description": "Requires COORDINATOR role."
+          },
+          "500": {
+            "description": "Unexpected server error."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List all sprint configurations (Coordinator only)",
         "tags": [
           "Sprint Configs"
         ]
@@ -3306,6 +3984,91 @@
           }
         ],
         "summary": "Update an existing sprint configuration (Coordinator only)",
+        "tags": [
+          "Sprint Configs"
+        ]
+      },
+      "get": {
+        "operationId": "getSprintConfig",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sprint configuration found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintConfigResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT."
+          },
+          "403": {
+            "description": "Requires COORDINATOR role."
+          },
+          "404": {
+            "description": "Sprint config not found."
+          },
+          "500": {
+            "description": "Unexpected server error."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get a sprint configuration by sprintId (Coordinator only)",
+        "tags": [
+          "Sprint Configs"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteSprintConfig",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sprint configuration deleted successfully."
+          },
+          "401": {
+            "description": "Missing or invalid JWT."
+          },
+          "403": {
+            "description": "Requires COORDINATOR role."
+          },
+          "404": {
+            "description": "Sprint config not found."
+          },
+          "500": {
+            "description": "Unexpected server error."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete a sprint configuration (Coordinator only)",
         "tags": [
           "Sprint Configs"
         ]
@@ -3516,6 +4279,19 @@
           "sanitizationRunDateTime"
         ]
       },
+      "CreateMyTeamDto": {
+        "type": "object",
+        "properties": {
+          "groupName": {
+            "type": "string",
+            "example": "Team Alpha",
+            "description": "Name of the new team"
+          }
+        },
+        "required": [
+          "groupName"
+        ]
+      },
       "CreateGroupDto": {
         "type": "object",
         "properties": {
@@ -3533,6 +4309,32 @@
         "required": [
           "groupName",
           "leaderUserId"
+        ]
+      },
+      "RespondToInviteDto": {
+        "type": "object",
+        "properties": {
+          "accept": {
+            "type": "boolean",
+            "example": true,
+            "description": "true = accept the invite, false = reject it"
+          }
+        },
+        "required": [
+          "accept"
+        ]
+      },
+      "SendInviteDto": {
+        "type": "object",
+        "properties": {
+          "invitedUserEmail": {
+            "type": "string",
+            "example": "student@example.com",
+            "description": "Email of the student to invite"
+          }
+        },
+        "required": [
+          "invitedUserEmail"
         ]
       },
       "AddMemberDto": {
@@ -4123,73 +4925,6 @@
           "limit"
         ]
       },
-      "DeliverInviteDto": {
-        "type": "object",
-        "properties": {
-          "recipientUserId": {
-            "type": "string",
-            "example": "69e22c0a65cf84775acc127e",
-            "description": "MongoDB ObjectId of the invite recipient user"
-          },
-          "groupId": {
-            "type": "string",
-            "example": "69e22c0a65cf84775acc127f",
-            "description": "MongoDB ObjectId of the group to invite the user to"
-          }
-        },
-        "required": [
-          "recipientUserId",
-          "groupId"
-        ]
-      },
-      "SubmitRequestDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "DecisionRequestDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateRequestStatusDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "TransferAdvisorDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "SetScheduleDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreatePhaseDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 120
-          }
-        },
-        "required": [
-          "name"
-        ]
-      },
-      "UpdatePhaseScheduleDto": {
-        "type": "object",
-        "properties": {
-          "submissionStart": {
-            "type": "string"
-          },
-          "submissionEnd": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "submissionStart",
-          "submissionEnd"
-        ]
-      },
       "CreateSubmissionDto": {
         "type": "object",
         "properties": {}
@@ -4256,6 +4991,73 @@
           "submittedAt",
           "documents"
         ]
+      },
+      "CreatePhaseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdatePhaseScheduleDto": {
+        "type": "object",
+        "properties": {
+          "submissionStart": {
+            "type": "string"
+          },
+          "submissionEnd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "submissionStart",
+          "submissionEnd"
+        ]
+      },
+      "DeliverInviteDto": {
+        "type": "object",
+        "properties": {
+          "recipientUserId": {
+            "type": "string",
+            "example": "69e22c0a65cf84775acc127e",
+            "description": "MongoDB ObjectId of the invite recipient user"
+          },
+          "groupId": {
+            "type": "string",
+            "example": "69e22c0a65cf84775acc127f",
+            "description": "MongoDB ObjectId of the group to invite the user to"
+          }
+        },
+        "required": [
+          "recipientUserId",
+          "groupId"
+        ]
+      },
+      "SubmitRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "DecisionRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateRequestStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TransferAdvisorDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetScheduleDto": {
+        "type": "object",
+        "properties": {}
       },
       "FetchStoryPointsDto": {
         "type": "object",
@@ -4554,19 +5356,6 @@
           "limit"
         ]
       },
-      "CalculateGradeDto": {
-        "type": "object",
-        "properties": {
-          "force": {
-            "type": "boolean",
-            "description": "When false (default), returns 409 if a final grade already exists. When true, recalculates and overwrites D4; a new snapshot is always appended to D5.",
-            "default": false
-          }
-        },
-        "required": [
-          "force"
-        ]
-      },
       "ScaledDeliverableGradeDto": {
         "type": "object",
         "properties": {
@@ -4661,6 +5450,19 @@
           "individualGrades",
           "triggeredBy",
           "calculatedAt"
+        ]
+      },
+      "CalculateGradeDto": {
+        "type": "object",
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "When false (default), returns 409 if a final grade already exists. When true, recalculates and overwrites D4; a new snapshot is always appended to D5.",
+            "default": false
+          }
+        },
+        "required": [
+          "force"
         ]
       },
       "DeliverableResponseDto": {
@@ -5088,6 +5890,223 @@
           "questions"
         ]
       },
+      "CreateReviewDto": {
+        "type": "object",
+        "properties": {
+          "submissionId": {
+            "type": "string",
+            "description": "MongoDB ObjectId of the submission to review",
+            "example": "665f2b8a5f2d8f2e2c123456"
+          },
+          "committeeId": {
+            "type": "string",
+            "description": "UUID of the committee assigned to the submission group",
+            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "submissionId",
+          "committeeId"
+        ]
+      },
+      "ReviewCommentResponseDto": {
+        "type": "object",
+        "properties": {
+          "commentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "authorUserId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "commentId",
+          "text",
+          "authorUserId",
+          "createdAt"
+        ]
+      },
+      "RevisionRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "revisionRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dueDatetime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revisionRequestId",
+          "description",
+          "dueDatetime",
+          "createdAt"
+        ]
+      },
+      "ReviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "reviewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "submissionId": {
+            "type": "string",
+            "description": "MongoDB ObjectId of the reviewed submission"
+          },
+          "committeeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reviewerUserId": {
+            "type": "string"
+          },
+          "grade": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Draft",
+              "Submitted"
+            ]
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewCommentResponseDto"
+            }
+          },
+          "revisionRequests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RevisionRequestResponseDto"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "reviewId",
+          "submissionId",
+          "committeeId",
+          "reviewerUserId",
+          "grade",
+          "status",
+          "comments",
+          "revisionRequests"
+        ]
+      },
+      "AddCommentDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Reviewer comment text",
+            "example": "Please clarify the methodology section.",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "CreateRevisionRequestDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Revision instructions for the student team",
+            "example": "Please upload a revised proposal with the missing risk analysis."
+          },
+          "dueDatetime": {
+            "type": "string",
+            "description": "ISO-8601 deadline for the requested revision",
+            "example": "2026-06-01T12:00:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "description",
+          "dueDatetime"
+        ]
+      },
+      "SubmitGradeDto": {
+        "type": "object",
+        "properties": {
+          "grade": {
+            "type": "number",
+            "description": "Numeric grade assigned by the reviewer",
+            "example": 85,
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "grade"
+        ]
+      },
+      "SubmitGradeResponseDto": {
+        "type": "object",
+        "properties": {
+          "reviewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "grade": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Draft",
+              "Submitted"
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "reviewId",
+          "grade",
+          "status"
+        ]
+      },
       "DeliverableMappingDto": {
         "type": "object",
         "properties": {
@@ -5114,7 +6133,7 @@
           "sprintId": {
             "type": "string",
             "format": "uuid",
-            "description": "Sprint ID — must exist in the Schedule API"
+            "description": "Sprint ID — auto-generated if omitted. If provided, must exist in the Schedule API."
           },
           "targetStoryPoints": {
             "type": "number",
@@ -5130,7 +6149,6 @@
           }
         },
         "required": [
-          "sprintId",
           "targetStoryPoints",
           "deliverableMappings"
         ]

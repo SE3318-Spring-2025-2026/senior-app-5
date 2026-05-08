@@ -35,7 +35,7 @@ export class PhasesController {
   }
 
   @Get(':phaseId')
-  @Roles(Role.Student, Role.Professor, Role.Coordinator, Role.Admin)
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin)
   async getPhase(@Param('phaseId') phaseId: string) {
     return this.phasesService.getPhaseById(phaseId);
   }

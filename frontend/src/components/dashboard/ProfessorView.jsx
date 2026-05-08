@@ -1,18 +1,66 @@
 import { useEffect, useState } from 'react';
-import styles from '../../pages/DashboardPage.module.css';
+import { Link } from 'react-router-dom';
+import { Users, ClipboardList, ArrowRight, TrendingUp, BookOpen, CheckCircle2, PlusCircle } from 'lucide-react';
 import StoryPointsPanel from './StoryPointsPanel';
 import apiClient from '../../utils/apiClient';
 
-const ProfessorView = () => {
+/* ── Shared primitives ───────────────────────────────────── */
+function StatCard({ icon: Icon, label, value, sub, accent = '#6366f1' }) {
+  return (
+    <div style={{ background: '#111827', borderColor: '#1e293b' }} className="rounded-2xl border p-5 flex items-center gap-4">
+      <div style={{ background: `${accent}18`, color: accent }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+        <Icon size={20} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
+        <p className="mt-0.5 text-2xl font-bold text-slate-100 leading-none">{value}</p>
+        {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, icon: Icon, children }) {
+  return (
+    <div style={{ background: '#111827', borderColor: '#1e293b' }} className="rounded-2xl border p-5">
+      <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-4">
+        {Icon && <Icon size={13} />}{title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function QuickActionLink({ to, icon: Icon, label, description, accent = '#6366f1' }) {
+  return (
+    <Link to={to} style={{ borderColor: '#1e293b' }}
+      className="group flex items-center gap-4 rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/5">
+      <div style={{ background: `${accent}18`, color: accent }} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+        <Icon size={18} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-slate-200">{label}</p>
+        <p className="text-xs text-slate-500">{description}</p>
+      </div>
+      <ArrowRight size={16} className="shrink-0 text-slate-600 transition group-hover:text-indigo-400" />
+    </Link>
+  );
+}
+
+/* ── ProfessorView ────────────────────────────────────────── */
+const emptyForm = { groupId: '', title: '', type: '', phaseId: '' };
+
+const ProfessorView = ({ user }) => {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [phases, setPhases] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [formFeedback, setFormFeedback] = useState({ loading: false, message: '', error: '' });
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await apiClient.get('/requests', {
-          params: { status: 'APPROVED', limit: 100 },
-        });
+        const res = await apiClient.get('/requests', { params: { status: 'APPROVED', limit: 100 } });
         const data = res.data?.data ?? res.data ?? [];
         setGroups(Array.isArray(data) ? data : []);
       } catch {
@@ -24,46 +72,193 @@ const ProfessorView = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    apiClient.get('/phases').then((res) => {
+      const data = res.data?.data ?? res.data ?? [];
+      setPhases(Array.isArray(data) ? data : []);
+    }).catch(() => setPhases([]));
+  }, []);
+
+  const handleFormChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleCreateSubmission = async (e) => {
+    e.preventDefault();
+    if (!form.groupId || !form.title.trim() || !form.type.trim() || !form.phaseId) {
+      setFormFeedback({ loading: false, message: '', error: 'Please fill in all fields.' });
+      return;
+    }
+    setFormFeedback({ loading: true, message: '', error: '' });
+    try {
+      await apiClient.post('/submissions', {
+        groupId: form.groupId,
+        title: form.title.trim(),
+        type: form.type.trim(),
+        phaseId: form.phaseId,
+      });
+      setFormFeedback({ loading: false, message: 'Submission created successfully!', error: '' });
+      setForm(emptyForm);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to create submission.';
+      setFormFeedback({ loading: false, message: '', error: Array.isArray(msg) ? msg.join(', ') : msg });
+    }
+  };
+
   return (
-    <div className={styles.roleContainer}>
-      <h2 className={styles.sectionTitle}>Academic Management Portal</h2>
-
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <div className={styles.cardTitle}>Assigned Groups</div>
-          <div className={styles.cardValue}>{loading ? '…' : groups.length}</div>
-        </div>
+    <div className="space-y-6">
+      {/* Welcome banner */}
+      <div
+        style={{ background: 'linear-gradient(135deg,#0f2851 0%,#0f172a 60%)', borderColor: '#1e3a5f' }}
+        className="rounded-2xl border p-6"
+      >
+        <p className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-1">Academic Portal</p>
+        <h2 className="text-xl font-bold text-slate-100">
+          Welcome back, {user?.firstName || 'Professor'} 👋
+        </h2>
+        <p className="mt-1 text-sm text-slate-400">
+          You have <span className="font-semibold text-slate-200">{loading ? '…' : groups.length}</span> assigned group{groups.length !== 1 ? 's' : ''} this semester.
+        </p>
       </div>
 
-      <div className={styles.tableWrapper}>
-        <h3 style={{ color: '#94a3b8', marginBottom: '15px' }}>Current Groups</h3>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard icon={Users}       label="Assigned Groups" value={loading ? '…' : groups.length} sub="active this semester" accent="#38bdf8" />
+        <StatCard icon={CheckCircle2}label="Approved"        value={loading ? '…' : groups.filter((g) => g.status === 'APPROVED').length} sub="requests accepted" accent="#10b981" />
+        <StatCard icon={ClipboardList} label="Submissions"   value="—"                              sub="pending review"      accent="#f59e0b" />
+      </div>
+
+      {/* Assigned Groups table */}
+      <SectionCard title="Assigned Groups" icon={Users}>
         {loading ? (
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Loading…</p>
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-10 rounded-lg bg-slate-800 animate-pulse" />
+            ))}
+          </div>
         ) : groups.length === 0 ? (
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>No assigned groups.</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-slate-500">
+              <Users size={24} />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-300">No assigned groups</p>
+              <p className="mt-1 text-sm text-slate-500">You haven't been assigned to any groups yet.</p>
+            </div>
+          </div>
         ) : (
-          <table className={styles.customTable}>
-            <thead>
-              <tr>
-                <th>Group ID</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((req) => (
-                <tr key={req.requestId ?? req.groupId}>
-                  <td>{req.groupId}</td>
-                  <td>
-                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>
-                      {req.status ?? 'APPROVED'}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="pb-3 text-left text-[11px] font-bold uppercase tracking-widest text-slate-500">Group ID</th>
+                  <th className="pb-3 text-left text-[11px] font-bold uppercase tracking-widest text-slate-500">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50">
+                {groups.map((req) => (
+                  <tr key={req.requestId ?? req.groupId} className="hover:bg-slate-800/30 transition">
+                    <td className="py-3 font-mono text-xs text-slate-300">{req.groupId}</td>
+                    <td className="py-3">
+                      <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
+                        {req.status ?? 'APPROVED'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </SectionCard>
+
+      {/* Create Submission */}
+      <SectionCard title="Create Submission" icon={PlusCircle}>
+        <form onSubmit={handleCreateSubmission} className="space-y-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Group</label>
+            <select
+              name="groupId"
+              value={form.groupId}
+              onChange={handleFormChange}
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Select a group…</option>
+              {groups.map((req) => (
+                <option key={req.groupId} value={req.groupId}>
+                  {req.groupId}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Title</label>
+            <input
+              name="title"
+              value={form.title}
+              onChange={handleFormChange}
+              placeholder="e.g. Milestone 1 Report"
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Type</label>
+            <select
+              name="type"
+              value={form.type}
+              onChange={handleFormChange}
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Select a type…</option>
+              <option value="Report">Report</option>
+              <option value="Presentation">Presentation</option>
+              <option value="Code">Code</option>
+              <option value="Documentation">Documentation</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Phase</label>
+            <select
+              name="phaseId"
+              value={form.phaseId}
+              onChange={handleFormChange}
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Select a phase…</option>
+              {phases.map((p) => (
+                <option key={p.phaseId ?? p._id} value={p.phaseId ?? p._id}>
+                  {p.name ?? p.phaseName ?? p.phaseId ?? p._id}
+                </option>
+              ))}
+            </select>
+          </div>
+          {formFeedback.error && (
+            <p className="text-xs text-red-400">{formFeedback.error}</p>
+          )}
+          {formFeedback.message && (
+            <p className="text-xs text-emerald-400">{formFeedback.message}</p>
+          )}
+          <button
+            type="submit"
+            disabled={formFeedback.loading}
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition"
+          >
+            <PlusCircle size={15} />
+            {formFeedback.loading ? 'Creating…' : 'Create Submission'}
+          </button>
+        </form>
+      </SectionCard>
+
+      {/* Quick Actions */}
+      <SectionCard title="Quick Actions" icon={TrendingUp}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickActionLink to="/grades"  icon={BookOpen}     label="View Grades"         description="Access academic grades"         accent="#10b981" />
+          <QuickActionLink to="/review"  icon={ClipboardList} label="Review Submissions" description="Review and provide feedback"    accent="#38bdf8" />
+        </div>
+      </SectionCard>
+
+      {/* Story Points */}
       <StoryPointsPanel canOverride={false} />
     </div>
   );

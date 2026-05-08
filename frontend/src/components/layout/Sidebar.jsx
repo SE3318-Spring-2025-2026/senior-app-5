@@ -13,7 +13,7 @@ import {
   Star,
   BookOpen,
   GitBranch,
-  Kanban
+  Kanban,
   Package,
   Timer,
 } from 'lucide-react';

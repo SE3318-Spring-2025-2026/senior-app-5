@@ -7,14 +7,17 @@ import {
   StoryPointRecord,
   StoryPointRecordSchema,
 } from './schemas/story-point-record.schema';
-import { SprintConfig, SprintConfigSchema } from './schemas/sprint-config.schema';
 import { User, UserSchema } from '../users/data/user.schema';
+import {
+  SprintConfigEntry,
+  SprintConfigEntrySchema,
+} from '../sprint-configs/schemas/sprint-config.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: StoryPointRecord.name, schema: StoryPointRecordSchema },
-      { name: SprintConfig.name, schema: SprintConfigSchema },
+      { name: SprintConfigEntry.name, schema: SprintConfigEntrySchema },
       { name: User.name, schema: UserSchema },
     ]),
   ],

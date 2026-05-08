@@ -16,6 +16,7 @@ const StoryPointsPanel = ({ canOverride }) => {
   const [groupId, setGroupId] = useState('');
   const [sprintId, setSprintId] = useState('');
   const [sprintOptions, setSprintOptions] = useState([]);
+  const [studentEmailMap, setStudentEmailMap] = useState({});
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -33,6 +34,39 @@ const StoryPointsPanel = ({ canOverride }) => {
       .then((r) => setSprintOptions(r.data?.data ?? []))
       .catch(() => setSprintOptions([]));
   }, []);
+
+  useEffect(() => {
+    const normalizedGroupId = groupId.trim();
+    if (!normalizedGroupId) {
+      setStudentEmailMap({});
+      return;
+    }
+
+    let isCancelled = false;
+    apiClient
+      .get(apiConfig.endpoints.groupById(normalizedGroupId))
+      .then((response) => {
+        if (isCancelled) return;
+        const members = response.data?.members ?? [];
+        const nextMap = members.reduce((acc, member) => {
+          const memberId = String(member?._id ?? '');
+          if (memberId && member?.email) {
+            acc[memberId] = member.email;
+          }
+          return acc;
+        }, {});
+        setStudentEmailMap(nextMap);
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setStudentEmailMap({});
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [groupId]);
 
   useEffect(
     () => () => {
@@ -98,9 +132,9 @@ const StoryPointsPanel = ({ canOverride }) => {
     }
 
     const inputValue = overrideValues[studentId];
-    const nextCompletedPoints = Number(inputValue);
-    if (!Number.isFinite(nextCompletedPoints) || nextCompletedPoints < 0) {
-      toast.error('completedPoints 0 veya daha büyük olmalı.');
+    const nextTargetPoints = Number(inputValue);
+    if (!Number.isFinite(nextTargetPoints) || nextTargetPoints < 0) {
+      toast.error('targetPoints 0 veya daha büyük olmalı.');
       return;
     }
 
@@ -110,12 +144,12 @@ const StoryPointsPanel = ({ canOverride }) => {
           groupId.trim(),
           sprintId.trim(),
           studentId,
-          nextCompletedPoints,
+          nextTargetPoints,
         );
         setRecords((prev) =>
           prev.map((record) => (record.studentId === studentId ? updated : record)),
         );
-        toast.success('Override kaydedildi.');
+        toast.success('Student target point güncellendi.');
       } catch (error) {
         toast.error(error.message);
       }
@@ -169,9 +203,10 @@ const StoryPointsPanel = ({ canOverride }) => {
         <tbody>
           {records.map((record) => {
             const sourceMeta = SOURCE_META[record.source] || SOURCE_META.MANUAL;
+            const studentLabel = studentEmailMap[record.studentId] || record.studentId;
             return (
               <tr key={record.studentId}>
-                <td>{record.studentId}</td>
+                <td>{studentLabel}</td>
                 <td>{record.completedPoints}</td>
                 <td>{record.targetPoints}</td>
                 <td>
@@ -193,7 +228,7 @@ const StoryPointsPanel = ({ canOverride }) => {
                         min="0"
                         aria-label={`override-${record.studentId}`}
                         className={styles.storyPointNumberInput}
-                        value={overrideValues[record.studentId] ?? record.completedPoints}
+                        value={overrideValues[record.studentId] ?? record.targetPoints}
                         onChange={(event) =>
                           setOverrideValues((prev) => ({
                             ...prev,

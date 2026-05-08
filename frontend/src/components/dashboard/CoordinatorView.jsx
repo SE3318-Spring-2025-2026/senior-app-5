@@ -116,7 +116,7 @@ const CoordinatorView = ({ user }) => {
       </SectionCard>
 
       {/* Story Points */}
-      <StoryPointsPanel canOverride />
+      <StoryPointsPanel canOverride={false} />
     </div>
   );
 };

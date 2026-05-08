@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,9 +9,9 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  SprintConfig,
+  SprintConfigEntry,
   SprintConfigDocument,
-} from './schemas/sprint-config.schema';
+} from '../sprint-configs/schemas/sprint-config.schema';
 import {
   StoryPointRecord,
   StoryPointRecordDocument,
@@ -24,6 +25,7 @@ import {
   StudentStoryPointRecordDto,
 } from './dto/story-point-summary.dto';
 import { JiraGithubService } from './jira-github.service';
+import { Role } from '../auth/enums/role.enum';
 
 @Injectable()
 export class StoryPointsService {
@@ -32,7 +34,7 @@ export class StoryPointsService {
   constructor(
     @InjectModel(StoryPointRecord.name)
     private readonly recordModel: Model<StoryPointRecordDocument>,
-    @InjectModel(SprintConfig.name)
+    @InjectModel(SprintConfigEntry.name)
     private readonly sprintConfigModel: Model<SprintConfigDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
@@ -45,8 +47,7 @@ export class StoryPointsService {
     dto: FetchStoryPointsDto,
     requestedBy: string,
   ): Promise<StoryPointSummaryDto> {
-    const sprintConfig = await this.requireSprintConfig(groupId, sprintId);
-    this.assertActiveSprintWindow(sprintConfig);
+    const sprintConfig = await this.requireSprintConfig(sprintId);
 
     const studentIds = dto.studentIds?.length
       ? dto.studentIds
@@ -89,7 +90,7 @@ export class StoryPointsService {
             groupId,
             sprintId,
             completedPoints,
-            targetPoints: sprintConfig.targetStoryPoints,
+            targetPoints: existing?.targetPoints ?? sprintConfig.targetStoryPoints,
             source: StoryPointSource.JIRA_GITHUB,
           },
           { upsert: true, new: true },
@@ -110,14 +111,18 @@ export class StoryPointsService {
     studentId: string,
     dto: OverrideStoryPointsDto,
     requestedBy: string,
+    requesterRole: string,
   ): Promise<StudentStoryPointRecordDto> {
-    const sprintConfig = await this.requireSprintConfig(groupId, sprintId);
+    await this.requireSprintConfig(sprintId);
+    await this.assertOverrideAccess(groupId, studentId, requestedBy, requesterRole);
 
     const existing = await this.recordModel
       .findOne({ studentId, sprintId })
       .exec();
 
-    const oldSource = existing?.source ?? 'NONE';
+    const oldTarget = existing?.targetPoints ?? 'NONE';
+    const existingCompleted = existing?.completedPoints ?? 0;
+    const existingSource = existing?.source ?? StoryPointSource.MANUAL;
 
     const updated = await this.recordModel
       .findOneAndUpdate(
@@ -126,9 +131,9 @@ export class StoryPointsService {
           studentId,
           groupId,
           sprintId,
-          completedPoints: dto.completedPoints,
-          targetPoints: sprintConfig.targetStoryPoints,
-          source: StoryPointSource.COORDINATOR_OVERRIDE,
+          completedPoints: existingCompleted,
+          targetPoints: dto.targetPoints,
+          source: existingSource,
         },
         { upsert: true, new: true },
       )
@@ -139,7 +144,7 @@ export class StoryPointsService {
     }
 
     this.logger.log(
-      `override studentId=${studentId} sprintId=${sprintId} oldSource=${oldSource} newSource=COORDINATOR_OVERRIDE triggeredBy=${requestedBy}`,
+      `override target studentId=${studentId} sprintId=${sprintId} oldTarget=${oldTarget} newTarget=${dto.targetPoints} triggeredBy=${requestedBy}`,
     );
 
     return this.toRecordDto(updated);
@@ -149,33 +154,21 @@ export class StoryPointsService {
     groupId: string,
     sprintId: string,
   ): Promise<StoryPointSummaryDto> {
-    await this.requireSprintConfig(groupId, sprintId);
+    await this.requireSprintConfig(sprintId);
     return this.buildSummary(groupId, sprintId);
   }
 
-  private async requireSprintConfig(
-    groupId: string,
-    sprintId: string,
-  ): Promise<SprintConfig> {
+  private async requireSprintConfig(sprintId: string): Promise<SprintConfigEntry> {
     const config = await this.sprintConfigModel
-      .findOne({ groupId, sprintId })
+      .findOne({ sprintId })
       .exec();
 
     if (!config) {
       throw new UnprocessableEntityException(
-        `Sprint config not found for groupId=${groupId} sprintId=${sprintId}`,
+        `Sprint config not found for sprintId=${sprintId}`,
       );
     }
     return config;
-  }
-
-  private assertActiveSprintWindow(config: SprintConfig): void {
-    const now = new Date();
-    if (now < config.startDate || now > config.endDate) {
-      throw new UnprocessableEntityException(
-        `No active sprint window for sprintId=${config.sprintId}`,
-      );
-    }
   }
 
   private async resolveGroupMemberIds(groupId: string): Promise<string[]> {
@@ -188,6 +181,35 @@ export class StoryPointsService {
     }
 
     return members.map((m) => (m._id as unknown as { toString(): string }).toString());
+  }
+
+  private async assertOverrideAccess(
+    groupId: string,
+    studentId: string,
+    requestedBy: string,
+    requesterRole: string,
+  ): Promise<void> {
+    const requester = await this.userModel
+      .findById(requestedBy, { _id: 1, teamId: 1, role: 1 })
+      .exec();
+    if (!requester) {
+      throw new ForbiddenException('Requester user not found');
+    }
+
+    if (String(requester.teamId ?? '') !== String(groupId)) {
+      throw new ForbiddenException('You can only override targets for your own group');
+    }
+
+    if (requesterRole === Role.Student && String(requestedBy) !== String(studentId)) {
+      throw new ForbiddenException('Students can only override their own target points');
+    }
+
+    const targetUser = await this.userModel
+      .findById(studentId, { _id: 1, teamId: 1 })
+      .exec();
+    if (!targetUser || String(targetUser.teamId ?? '') !== String(groupId)) {
+      throw new NotFoundException(`Student ${studentId} is not in group ${groupId}`);
+    }
   }
 
   private async buildSummary(

@@ -8,6 +8,7 @@ import {
 import apiClient from '../../utils/apiClient';
 import apiConfig from '../../config/api';
 import { uploadSubmissionDocument } from '../../utils/submissionService';
+import StoryPointsPanel from './StoryPointsPanel';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const STATUS_META = {
@@ -488,6 +489,8 @@ const StudentView = ({ user }) => {
           </SectionCard>
         </div>
       )}
+
+      <StoryPointsPanel canOverride />
     </div>
   );
 };

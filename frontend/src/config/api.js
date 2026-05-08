@@ -74,8 +74,8 @@ export const apiConfig = {
     groupGradeHistory: (groupId) => `/groups/${groupId}/grade-history`,
     storyPoints: (groupId, sprintId) =>
       `/groups/${groupId}/sprints/${sprintId}/story-points`,
-    overrideStoryPoints: (groupId, sprintId) =>
-      `/groups/${groupId}/sprints/${sprintId}/story-points/override`,
+    overrideStoryPoints: (groupId, sprintId, studentId) =>
+      `/groups/${groupId}/sprints/${sprintId}/story-points/${studentId}`,
     deliverables: '/deliverables',
     rubrics: (deliverableId) => `/deliverables/${deliverableId}/rubrics`,
     rubricById: (deliverableId, rubricId) => `/deliverables/${deliverableId}/rubrics/${rubricId}`,

@@ -88,27 +88,34 @@ export class StoryPointsController {
   }
 
   @Patch(':studentId')
-  @Roles(Role.Coordinator)
+  @Roles(Role.Student, Role.TeamLeader)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     operationId: 'overrideStoryPoints',
-    summary: 'Override story points for a student (COORDINATOR only)',
+    summary: 'Override target story points for a student (Student and TeamLeader)',
   })
   @ApiOkResponse({
-    description: 'Story point record updated with COORDINATOR_OVERRIDE',
+    description: 'Story point record target updated',
     type: StudentStoryPointRecordDto,
   })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-  @ApiForbiddenResponse({ description: 'Requires COORDINATOR role' })
+  @ApiForbiddenResponse({ description: 'Requires STUDENT or TEAM_LEADER role' })
   @ApiNotFoundResponse({ description: 'Sprint config or student record not found' })
   async overrideStoryPoints(
     @Param('groupId', new ParseUUIDPipe()) groupId: string,
     @Param('sprintId', new ParseUUIDPipe()) sprintId: string,
-    @Param('studentId', new ParseUUIDPipe()) studentId: string,
+    @Param('studentId') studentId: string,
     @Body() dto: OverrideStoryPointsDto,
     @Request() req: RequestWithUser,
   ): Promise<StudentStoryPointRecordDto> {
     const requestedBy = req.user.userId ?? req.user.sub ?? 'unknown';
-    return this.storyPointsService.override(groupId, sprintId, studentId, dto, requestedBy);
+    return this.storyPointsService.override(
+      groupId,
+      sprintId,
+      studentId,
+      dto,
+      requestedBy,
+      req.user.role,
+    );
   }
 }

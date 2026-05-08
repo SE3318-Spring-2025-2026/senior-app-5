@@ -29,6 +29,7 @@ import {
 import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
 import { TeamInvite, TeamInviteDocument, InviteStatus } from './schemas/team-invite.schema';
 import { Role } from '../auth/enums/role.enum';
+import { Team, TeamDocument } from '../teams/schemas/team.schema';
 
 const GRADE_NUMERIC: Record<EvaluationGrade, number> = {
   [EvaluationGrade.A]: 100,
@@ -52,6 +53,8 @@ export class GroupsService {
     private committeeModel: Model<CommitteeDocument>,
     @InjectModel(TeamInvite.name)
     private teamInviteModel: Model<TeamInviteDocument>,
+    @InjectModel(Team.name)
+    private teamModel: Model<TeamDocument>,
   ) {}
 
   async createGroup(createGroupDto: CreateGroupDto): Promise<Group> {
@@ -317,6 +320,24 @@ export class GroupsService {
       role: Role.TeamLeader,
       teamId: saved.groupId,
     }).exec();
+
+    // Mirror this group as a Team document so the integrations layer (JIRA/GitHub
+    // credentials, sync, finalize) has a row to attach credentials to. The Team
+    // doc is keyed by leaderId; pre-link groupId so the auto-finalize cron can
+    // resolve teams without manual coordinator action.
+    await this.teamModel.updateOne(
+      { leaderId: userId },
+      {
+        $setOnInsert: {
+          name: groupName,
+          leaderId: userId,
+        },
+        $set: {
+          groupId: saved.groupId,
+        },
+      },
+      { upsert: true },
+    );
 
     return saved;
   }

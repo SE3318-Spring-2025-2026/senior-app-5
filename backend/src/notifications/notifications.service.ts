@@ -85,6 +85,28 @@ export class NotificationsService {
     return { notificationId: savedNotification._id.toString() };
   }
 
+  async notifySprintScheduled(input: {
+    recipientUserId: string;
+    sprintId: string;
+    sprintName: string;
+    startDate: Date;
+    endDate: Date;
+  }) {
+    const notification = new this.notificationModel({
+      recipientUserId: input.recipientUserId,
+      type: 'SprintScheduled',
+      data: {
+        sprintId: input.sprintId,
+        sprintName: input.sprintName,
+        startDate: input.startDate.toISOString(),
+        endDate: input.endDate.toISOString(),
+        message: `Sprint ${input.sprintName} starts on ${input.startDate.toISOString().slice(0, 10)} and ends on ${input.endDate.toISOString().slice(0, 10)}. Please make sure you have an active sprint open in your JIRA covering this date range.`,
+      },
+    });
+    const saved = await notification.save();
+    return { notificationId: saved._id.toString() };
+  }
+
   async notifyAdvisorReleased(input: AdvisorRequestNotificationInput) {
     const notification = new this.notificationModel({
       recipientUserId: input.recipientUserId,

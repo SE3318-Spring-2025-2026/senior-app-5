@@ -43,6 +43,12 @@ export class SprintConfig {
   @Prop({ type: String, default: 'SCRUM' })
   phase!: string;
 
+  @Prop({ type: String, default: null })
+  name!: string | null;
+
+  @Prop({ type: Boolean, default: false })
+  isFinalized!: boolean;
+
   /**
    * Deliverables this sprint contributes to, with their contribution percentages.
    * Populated by Process 1 (Sprint Configuration) and consumed by Process 8.

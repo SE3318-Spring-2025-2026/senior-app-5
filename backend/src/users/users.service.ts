@@ -148,6 +148,28 @@ export class UsersService {
       .exec();
   }
 
+  async setJiraAccountId(
+    userId: string,
+    jiraAccountId: string | null,
+  ): Promise<UserDocument | null> {
+    if (jiraAccountId === null || jiraAccountId === '') {
+      return this.userModel
+        .findByIdAndUpdate(
+          userId,
+          { $unset: { jiraAccountId: '' } },
+          { returnDocument: 'after' },
+        )
+        .exec();
+    }
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { jiraAccountId },
+        { returnDocument: 'after' },
+      )
+      .exec();
+  }
+
   async unlinkGithubAccount(userId: string): Promise<UserDocument | null> {
     return this.userModel
       .findByIdAndUpdate(

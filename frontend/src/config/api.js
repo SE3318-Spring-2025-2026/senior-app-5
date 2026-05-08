@@ -85,6 +85,12 @@ export const apiConfig = {
     committeeGrades: (committeeId) => `/committees/${committeeId}/grades`,
     sprintEvaluations: '/sprint-evaluations',
     githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,
+    teamSync: (teamId) => `/teams/${teamId}/sync`,
+    teamAdvisorPanel: (teamId) => `/teams/${teamId}/advisor-panel`,
+    teamFinalizeSprintSync: (teamId) => `/teams/${teamId}/finalize-sprint`,
+    teamIntegrations: (teamId) => `/teams/${teamId}/integrations`,
+    teamsList: '/teams',
+    teamMine: '/teams/mine',
   },
 };
 

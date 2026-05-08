@@ -16,6 +16,7 @@ import { SubmissionsModule } from '../submissions/submissions.module';
 import { User, UserSchema } from '../users/data/user.schema';
 import { Committee, CommitteeSchema } from '../committees/schemas/committee.schema';
 import { TeamInvite, TeamInviteSchema } from './schemas/team-invite.schema';
+import { Team, TeamSchema } from '../teams/schemas/team.schema';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TeamInvite, TeamInviteSchema } from './schemas/team-invite.schema';
       { name: CommitteeEvaluation.name, schema: CommitteeEvaluationSchema },
       { name: Committee.name, schema: CommitteeSchema },
       { name: TeamInvite.name, schema: TeamInviteSchema },
+      { name: Team.name, schema: TeamSchema },
     ]),
   ],
   controllers: [GroupsController],

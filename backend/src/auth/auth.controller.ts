@@ -24,6 +24,8 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { LinkGithubDto } from '../users/dto/link-github.dto';
+import { SetJiraAccountDto } from '../users/dto/set-jira-account.dto';
+import { Put } from '@nestjs/common';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { Role } from './enums/role.enum';
@@ -267,5 +269,46 @@ export class AuthController {
       );
     }
     return this.authService.unlinkGithubAccount(userId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Set or update the user’s JIRA Cloud accountId' })
+  @ApiOkResponse({ description: 'JIRA accountId saved' })
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  @Put('users/:userId/integrations/jira')
+  async setJiraAccount(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+    @Body() dto: SetJiraAccountDto,
+  ) {
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this account',
+      );
+    }
+    const user = await this.usersService.setJiraAccountId(
+      userId,
+      dto.jiraAccountId || null,
+    );
+    return { jiraAccountId: user?.jiraAccountId ?? null };
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get the user’s JIRA accountId' })
+  @ApiOkResponse({ description: 'Returns the saved JIRA accountId' })
+  @UseGuards(AuthGuard('jwt'))
+  @Get('users/:userId/integrations/jira')
+  async getJiraAccount(
+    @Req() req: RequestWithUser,
+    @Param('userId') userId: string,
+  ) {
+    if (req.user.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to view this account',
+      );
+    }
+    const user = await this.usersService.findById(userId);
+    return { jiraAccountId: user?.jiraAccountId ?? null };
   }
 }

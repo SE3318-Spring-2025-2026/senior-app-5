@@ -1,20 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
+  IsMongoId,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
 } from 'class-validator';
 
 export class AddJuryMemberDto {
   @ApiProperty({
-    description: 'ID of the user to assign as jury member',
-    format: 'uuid',
+    description: 'MongoDB ObjectId of the user to assign as jury member',
   })
   @IsString()
   @IsNotEmpty()
-  @IsUUID()
+  @IsMongoId()
   userId!: string;
 
   @ApiPropertyOptional({

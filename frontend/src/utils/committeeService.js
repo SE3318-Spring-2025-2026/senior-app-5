@@ -83,7 +83,7 @@ export async function listAdvisors(committeeId) {
 
 export async function addAdvisor(committeeId, advisorUserId) {
   try {
-    const response = await apiClient.post(apiConfig.endpoints.committeeAdvisors(committeeId), { advisorUserId })
+    const response = await apiClient.post(apiConfig.endpoints.committeeAdvisors(committeeId), { advisorId: advisorUserId, assignmentSource: 'PRIMARY_ADVISOR' })
     return response.data
   } catch (error) {
     throw getHttpErrorDetails(error, 'Unable to add advisor.')

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsEnum, IsMongoId, IsNotEmpty } from 'class-validator';
 
 export enum AssignmentSource {
   PRIMARY_ADVISOR = 'PRIMARY_ADVISOR',
@@ -7,8 +7,8 @@ export enum AssignmentSource {
 }
 
 export class AddCommitteeAdvisorDto {
-  @ApiProperty({ description: 'User ID of the advisor to assign', format: 'uuid' })
-  @IsUUID()
+  @ApiProperty({ description: 'User ID of the advisor to assign' })
+  @IsMongoId()
   @IsNotEmpty()
   advisorId!: string;
 

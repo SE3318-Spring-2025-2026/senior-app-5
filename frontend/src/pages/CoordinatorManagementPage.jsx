@@ -740,9 +740,14 @@ function CoordinatorManagementPage() {
           ) : (
             activeCollection.map((item) => {
               const id = getRelationId(item)
+              const label = item?.email ?? item?.advisorEmail ?? item?.groupName ?? id
+              const sub = item?.assignedAt ? `Assigned ${new Date(item.assignedAt).toLocaleString()}` : null
               return (
                 <article key={id} className={styles.listItem}>
-                  <pre>{JSON.stringify(item, null, 2)}</pre>
+                  <div>
+                    <p style={{ fontWeight: 600 }}>{label}</p>
+                    {sub && <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>{sub}</p>}
+                  </div>
                   <button type="button" onClick={() => onRemoveRelation(id)}>
                     Remove
                   </button>

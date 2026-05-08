@@ -122,6 +122,9 @@ export interface ListRequestsInput {
 export interface EnrichedAdvisorRequest extends AdvisorRequest {
   advisorName: string | null;
   advisorEmail: string | null;
+  groupName: string | null;
+  submittedByEmail: string | null;
+  submittedByName: string | null;
 }
 
 export interface PaginatedRequestsResponse {
@@ -743,21 +746,41 @@ export class AdvisorsService {
       ]);
 
       const advisorIds = [...new Set(data.map((r) => r.requestedAdvisorId).filter(Boolean))];
-      const advisorDocs = advisorIds.length
-        ? await this.userModel
-            .find({ _id: { $in: advisorIds } })
-            .select('name email')
-            .lean<User[]>()
-            .exec()
-        : [];
-      const advisorById = new Map(advisorDocs.map((u) => [String((u as any)._id), u]));
+      const submitterIds = [...new Set(data.map((r) => r.submittedBy).filter(Boolean))];
+      const groupIds = [...new Set(data.map((r) => r.groupId).filter(Boolean))];
+
+      const allUserIds = [...new Set([...advisorIds, ...submitterIds])];
+
+      const [userDocs, groupDocs] = await Promise.all([
+        allUserIds.length
+          ? this.userModel
+              .find({ _id: { $in: allUserIds } })
+              .select('name email')
+              .lean<User[]>()
+              .exec()
+          : Promise.resolve([]),
+        groupIds.length
+          ? this.groupModel
+              .find({ groupId: { $in: groupIds } })
+              .select('groupId groupName')
+              .lean<Group[]>()
+              .exec()
+          : Promise.resolve([]),
+      ]);
+
+      const userById = new Map(userDocs.map((u) => [String((u as any)._id), u]));
+      const groupNameById = new Map(groupDocs.map((g) => [g.groupId, g.groupName]));
 
       const enriched: EnrichedAdvisorRequest[] = data.map((r) => {
-        const adv = advisorById.get(String(r.requestedAdvisorId));
+        const adv = userById.get(String(r.requestedAdvisorId));
+        const submitter = userById.get(String(r.submittedBy));
         return {
           ...r,
           advisorName: adv?.name ?? adv?.email ?? null,
           advisorEmail: adv?.email ?? null,
+          groupName: groupNameById.get(r.groupId) ?? null,
+          submittedByEmail: submitter?.email ?? null,
+          submittedByName: submitter?.name ?? null,
         };
       });
 

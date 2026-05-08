@@ -129,6 +129,22 @@ function App() {
               }
             />
             <Route
+              path="/committees"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <CommitteesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/phases"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <PhaseSchedulingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/phases/schedule"
               element={
                 <ProtectedRoute requiredRole="Coordinator">

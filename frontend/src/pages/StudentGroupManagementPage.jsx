@@ -652,16 +652,26 @@ function StudentGroupManagementPage() {
             {committeeResult && (
               <div className={styles.resultBox}>
                 <ul className={styles.resultList}>
-                  <li><strong>Committee ID</strong><span>{committeeResult.id || '—'}</span></li>
                   <li><strong>Committee Name</strong><span>{committeeResult.name || '—'}</span></li>
-                  <li><strong>Group ID</strong><span>{committeeGroupId || '—'}</span></li>
                   <li>
-                    <strong>Jury Members</strong>
-                    <span>{committeeResult.jury?.length ? committeeResult.jury.map((j) => j.name || j.userId).join(', ') : 'None'}</span>
+                    <strong>Advisor</strong>
+                    <span>
+                      {committeeResult.advisors?.length
+                        ? (committeeResult.advisors[0].email ?? committeeResult.advisors[0].name ?? committeeResult.advisors[0].userId ?? '—')
+                        : 'None'}
+                    </span>
                   </li>
                   <li>
-                    <strong>Advisors</strong>
-                    <span>{committeeResult.advisors?.length ? committeeResult.advisors.map((a) => a.name || a.userId).join(', ') : 'None'}</span>
+                    <strong>Jury Members</strong>
+                    <span>
+                      {committeeResult.jury?.length
+                        ? committeeResult.jury.map((j, i) => (
+                            <span key={i} style={{ display: 'block' }}>
+                              {j.email ?? j.name ?? j.userId}
+                            </span>
+                          ))
+                        : 'None'}
+                    </span>
                   </li>
                   <li><strong>Created At</strong><span>{committeeResult.createdAt ? new Date(committeeResult.createdAt).toLocaleDateString() : '—'}</span></li>
                 </ul>

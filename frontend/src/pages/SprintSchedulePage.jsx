@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Timer, RefreshCw } from 'lucide-react'
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
 import { Badge, PageHeader } from '../components/ui'
@@ -32,6 +33,31 @@ function isWindowOpen(schedule) {
   const end = new Date(schedule.endAt || schedule.endDatetime)
   return now >= start && now <= end
 }
+
+function SectionLabel({ icon: Icon, children, action }) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={13} className="text-zinc-600" />}
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          {children}
+        </span>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+function FieldLabel({ children }) {
+  return (
+    <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+      {children}
+    </label>
+  )
+}
+
+const inputCls =
+  'w-full rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40] disabled:opacity-50 disabled:cursor-not-allowed'
 
 function SprintSchedulePage() {
   const [activeSchedule, setActiveSchedule] = useState(null)
@@ -96,76 +122,80 @@ function SprintSchedulePage() {
   return (
     <div>
       <PageHeader
+        eyebrow="Coordinator"
         title="Sprint Evaluation Schedule"
         subtitle="Configure when professors can submit sprint evaluations."
       />
 
-      <div className="grid gap-5 max-w-[760px]">
+      <div className="grid gap-4 max-w-[760px]">
         {/* Current Window */}
-        <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h2 className="text-sm font-bold text-slate-200">Current Window</h2>
-            <div className="flex items-center gap-2.5">
-              <Badge color={open ? 'green' : 'slate'}>
-                {fetchState.loading ? 'Loading…' : open ? 'Open' : 'Closed'}
-              </Badge>
-              <button
-                type="button"
-                onClick={fetchActiveSchedule}
-                disabled={fetchState.loading}
-                className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
+        <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+          <SectionLabel
+            icon={Timer}
+            action={
+              <div className="flex items-center gap-2">
+                <Badge color={open ? 'green' : 'slate'}>
+                  {fetchState.loading ? 'Loading…' : open ? 'Open' : 'Closed'}
+                </Badge>
+                <button
+                  type="button"
+                  onClick={fetchActiveSchedule}
+                  disabled={fetchState.loading}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#26262b] bg-[#18181c] px-3 py-1.5 text-[12px] font-medium text-zinc-300 transition-colors hover:border-[#3a3a40] hover:bg-[#1f1f23] hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={fetchState.loading ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </div>
+            }
+          >
+            Current window
+          </SectionLabel>
 
           {fetchState.error && (
-            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
+            <p className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
               {fetchState.error}
             </p>
           )}
 
           {activeSchedule ? (
-            <div className="rounded-xl border border-[#1e293b] bg-[#080f1f] p-4">
-              <p className="text-sm font-semibold text-slate-200">{formatDateRange(activeSchedule)}</p>
-              <p className="text-xs text-slate-500 mt-1">Phase: {activeSchedule.phase || PHASE}</p>
+            <div className="rounded-xl border border-[#1f1f23] bg-[#0e0e10] p-4">
+              <p className="text-[13px] font-medium text-zinc-200">{formatDateRange(activeSchedule)}</p>
+              <p className="mt-1 text-[11px] text-zinc-600">
+                Phase: <span className="text-zinc-500">{activeSchedule.phase || PHASE}</span>
+              </p>
             </div>
           ) : (
             !fetchState.loading && (
-              <p className="text-sm text-slate-500">No active sprint evaluation schedule found.</p>
+              <p className="text-[13px] text-zinc-600">No active sprint evaluation schedule found.</p>
             )
           )}
         </section>
 
         {/* Create New Window */}
-        <section className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
-          <h2 className="text-sm font-bold text-slate-200 mb-4">Create New Window</h2>
+        <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+          <SectionLabel icon={Timer}>Create new window</SectionLabel>
 
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                Start Date &amp; Time
-              </label>
+              <FieldLabel>Start date &amp; time</FieldLabel>
               <input
                 type="datetime-local"
                 value={form.startAt}
                 onChange={(e) => setForm((prev) => ({ ...prev, startAt: e.target.value }))}
                 required
-                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={inputCls}
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                End Date &amp; Time
-              </label>
+              <FieldLabel>End date &amp; time</FieldLabel>
               <input
                 type="datetime-local"
                 value={form.endAt}
                 onChange={(e) => setForm((prev) => ({ ...prev, endAt: e.target.value }))}
                 required
-                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={inputCls}
               />
             </div>
 
@@ -173,20 +203,20 @@ function SprintSchedulePage() {
               <button
                 type="submit"
                 disabled={createState.loading}
-                className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-md bg-zinc-100 px-4 py-2.5 text-[13px] font-semibold text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-[#26262b] disabled:text-zinc-600"
               >
-                {createState.loading ? 'Creating…' : 'Create Schedule'}
+                {createState.loading ? 'Creating…' : 'Create schedule'}
               </button>
             </div>
           </form>
 
           {createState.message && (
-            <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
+            <p className="mt-3 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2.5 text-[13px] text-emerald-300">
               {createState.message}
             </p>
           )}
           {createState.error && (
-            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
+            <p className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
               {createState.error}
             </p>
           )}

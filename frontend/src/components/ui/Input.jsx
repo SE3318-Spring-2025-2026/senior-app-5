@@ -5,20 +5,20 @@ export function Input({ icon: Icon, error, className, ...props }) {
     <div className="relative">
       {Icon && (
         <Icon
-          size={15}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600"
+          size={14}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
         />
       )}
       <input
         className={clsx(
-          'w-full rounded-xl border bg-[#111827] py-3 text-sm text-slate-200',
-          'placeholder:text-slate-700 transition-colors duration-150',
-          'focus:outline-none focus:ring-2 focus:ring-blue-600/60',
+          'w-full rounded-md border bg-[#0a0a0b] py-2.5 text-[13px] text-zinc-200',
+          'placeholder:text-zinc-600 transition-colors duration-150',
+          'focus:outline-none focus:ring-1',
           'disabled:opacity-50 disabled:cursor-not-allowed',
-          Icon ? 'pl-10 pr-4' : 'px-4',
+          Icon ? 'pl-9 pr-3.5' : 'px-3.5',
           error
-            ? 'border-red-500/50 focus:ring-red-500/30'
-            : 'border-[#1e293b] focus:border-blue-700',
+            ? 'border-rose-500/40 focus:border-rose-500/60 focus:ring-rose-500/20'
+            : 'border-[#26262b] focus:border-[#3a3a40] focus:ring-[#3a3a40]',
           className,
         )}
         {...props}

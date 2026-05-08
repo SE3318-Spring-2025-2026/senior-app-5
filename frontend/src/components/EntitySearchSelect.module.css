@@ -10,7 +10,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #a1a1aa;
   margin-bottom: 6px;
   display: block;
 }
@@ -24,30 +24,30 @@
 .input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
+  border: 1px solid #26262b;
+  border-radius: 8px;
   font-size: 0.875rem;
   outline: none;
-  background: #111827;
-  color: #e2e8f0;
+  background: #0a0a0b;
+  color: #e4e4e7;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .input::placeholder {
-  color: #475569;
+  color: #52525b;
 }
 
 .input:focus {
-  border-color: rgba(37, 99, 235, 0.6);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  border-color: #3a3a40;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
 }
 
 .clearButton {
   padding: 6px 10px;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: #a1a1aa;
   background: none;
-  border: 1px solid #1e293b;
+  border: 1px solid #26262b;
   border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
@@ -55,8 +55,8 @@
 }
 
 .clearButton:hover {
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #18181c;
+  color: #f4f4f5;
 }
 
 .dropdown {
@@ -66,8 +66,8 @@
   right: 0;
   z-index: 200;
   margin-top: 4px;
-  background: #0d1729;
-  border: 1px solid #1e293b;
+  background: #131316;
+  border: 1px solid #1f1f23;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   list-style: none;
@@ -79,7 +79,7 @@
 .status {
   padding: 10px 14px;
   font-size: 0.875rem;
-  color: #64748b;
+  color: #71717a;
 }
 
 .errorStatus {
@@ -95,21 +95,21 @@
 }
 
 .option:hover {
-  background: #1e293b;
+  background: #18181c;
 }
 
 .optionPrimary {
   font-size: 0.875rem;
-  color: #e2e8f0;
+  color: #e4e4e7;
   font-weight: 500;
 }
 
 .optionSecondary {
   font-size: 0.75rem;
-  color: #64748b;
+  color: #71717a;
 }
 
 .hint {
   font-size: 0.75rem;
-  color: #64748b;
+  color: #71717a;
 }

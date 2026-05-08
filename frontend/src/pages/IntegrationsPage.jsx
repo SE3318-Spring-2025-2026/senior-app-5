@@ -79,6 +79,76 @@ const IntegrationsPage = () => {
     return () => { cancelled = true; };
   }, [userId]);
 
+  const renderIntegrationsContent = () => {
+    if (loading) {
+      return (
+        <div className="flex h-44 items-center justify-center gap-2 rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+          <Loader2 size={14} className="animate-spin" /> Loading account...
+        </div>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <div className="rounded-2xl border border-rose-900/40 bg-rose-950/20 p-4 text-[13px] text-rose-300">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            <span>{loadError}</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (!userId) {
+      return (
+        <div className="flex h-44 items-center justify-center rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+          Sign in required
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <GithubConnect userId={userId} />
+        <JiraConnect userId={userId} />
+
+        <div style={{ marginTop: 24 }}>
+          <h3 style={{ color: '#e2e8f0', fontSize: 16, fontWeight: 600 }}>
+            Team Integrations
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>
+            Connect your team&apos;s JIRA and GitHub. You can only configure your own team.
+          </p>
+
+          {myTeamError && (
+            <div style={{
+              marginTop: 12,
+              padding: 10,
+              borderRadius: 8,
+              background: '#450a0a',
+              border: '1px solid #7f1d1d',
+              color: '#fca5a5',
+              fontSize: 13,
+            }}>
+              {myTeamError}
+            </div>
+          )}
+
+          {myTeam ? (
+            <>
+              <IntegrationStatusCard teamId={myTeam.teamId} />
+              <TeamIntegrationsForm team={myTeam} groups={groups} />
+            </>
+          ) : !myTeamError ? (
+            <div style={{ marginTop: 12, color: '#94a3b8', fontSize: 13 }}>
+              Loading your team...
+            </div>
+          ) : null}
+        </div>
+      </>
+    );
+  };
+
   return (
     <div>
       <PageHeader
@@ -181,11 +251,27 @@ const IntegrationsPage = () => {
                 </div>
               ) : null}
             </div>
-          </>
-        ) : (
-          !loadError && (
-            <div className="rounded-2xl border border-[#1e293b] bg-[#111827] px-5 py-8 text-center text-sm text-slate-500">
-              Loading…
+          </div>
+
+          <div className="rounded-2xl border border-[#1f1f23] bg-[#0e0e10] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Quick links
+            </p>
+            <div className="mt-3 space-y-2">
+              <a
+                href="https://docs.github.com/en/apps/oauth-apps"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 text-[12.5px] text-zinc-400 transition hover:text-zinc-100"
+              >
+                <Link2 size={12} /> GitHub OAuth docs ↗
+              </a>
+              <a
+                href="#"
+                className="flex items-center gap-2 text-[12.5px] text-zinc-400 transition hover:text-zinc-100"
+              >
+                <ShieldCheck size={12} /> Permission policy ↗
+              </a>
             </div>
           </div>
         </aside>

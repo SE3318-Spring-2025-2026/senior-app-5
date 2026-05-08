@@ -1,55 +1,62 @@
+/* ================================================================
+   CoordinatorManagementPage — matte black/zinc palette
+   Aligned with StudentView.jsx surfaces.
+   ================================================================ */
+
 /* -- Layout -- */
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
 .header {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 0 0 22px;
+  border-bottom: 1px solid #1c1c20;
+  margin-bottom: 4px;
 }
 
 .badge {
   display: inline-block;
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
-  font-size: 0.75rem;
+  background: #18181c;
+  color: #a1a1aa;
+  font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid #26262b;
   width: fit-content;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 24px;
+  gap: 16px;
   align-items: start;
 }
 
 /* -- Cards -- */
 .card {
-  background: #111827;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 24px;
+  background: #131316;
+  border: 1px solid #1f1f23;
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .cardHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
 }
@@ -58,20 +65,20 @@
 .statusBlock {
   padding: 10px 14px;
   border-radius: 8px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
 }
 
 .error {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(244, 63, 94, 0.08);
   color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(244, 63, 94, 0.25);
 }
 
 .success {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(16, 185, 129, 0.08);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 /* -- Forms -- */
@@ -96,7 +103,7 @@
 
 .filterRow {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   flex-wrap: wrap;
 }
@@ -115,35 +122,35 @@
 
 /* -- Info panels -- */
 .infoPanel {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
+  background: #0e0e10;
+  border: 1px solid #1f1f23;
+  border-radius: 10px;
   padding: 16px;
-  font-size: 0.875rem;
-  color: #cbd5e1;
+  font-size: 0.8125rem;
+  color: #d4d4d8;
 }
 
 .empty {
-  color: #475569;
-  font-size: 0.875rem;
-  font-style: italic;
+  color: #52525b;
+  font-size: 0.8125rem;
+  font-style: normal;
 }
 
 .meta {
-  font-size: 0.8rem;
-  color: #64748b;
+  font-size: 0.75rem;
+  color: #71717a;
 }
 
 .note {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 0.7rem;
+  color: #71717a;
 }
 
 /* -- Lists -- */
 .list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .listItem {
@@ -151,11 +158,17 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
+  background: #18181c;
+  border: 1px solid #1f1f23;
+  border-radius: 10px;
   gap: 8px;
-  color: #cbd5e1;
+  color: #d4d4d8;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.listItem:hover {
+  border-color: #2a2a30;
+  background: #1f1f23;
 }
 
 .itemActions {
@@ -167,168 +180,188 @@
 /* -- Tabs -- */
 .tabs {
   display: flex;
-  gap: 4px;
-  border-bottom: 2px solid #1e293b;
+  gap: 2px;
   flex-wrap: wrap;
+  padding: 4px;
+  background: #0e0e10;
+  border: 1px solid #1f1f23;
+  border-radius: 10px;
+  width: fit-content;
 }
 
 .tab {
-  padding: 8px 14px;
-  font-size: 0.875rem;
-  color: #64748b;
-  background: none;
+  padding: 7px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #a1a1aa;
+  background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  border-radius: 7px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .tab:hover {
-  color: #818cf8;
+  color: #f4f4f5;
+  background: #18181c;
 }
 
 .activeTab {
-  padding: 8px 14px;
-  font-size: 0.875rem;
-  color: #818cf8;
-  background: none;
-  border: none;
-  border-bottom: 2px solid #6366f1;
-  margin-bottom: -2px;
-  cursor: pointer;
+  padding: 7px 14px;
+  font-size: 0.8125rem;
   font-weight: 600;
+  color: #fafafa;
+  background: #1f1f23;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
 }
 
 /* -- Link-style button -- */
 .linkButton {
   background: none;
   border: none;
-  color: #818cf8;
+  color: #d4d4d8;
   font-size: 0.875rem;
   cursor: pointer;
   padding: 0;
-  text-decoration: underline;
+  text-align: left;
+  transition: color 0.15s;
 }
 
 .linkButton:hover {
-  color: #a5b4fc;
+  color: #fafafa;
 }
 
 /* -- Element overrides (h2, label, input, button) -- */
 .header h1 {
-  color: #f1f5f9;
-  font-size: 1.5rem;
-  font-weight: 700;
+  color: #f4f4f5;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
 .card h2 {
-  color: #f1f5f9;
-  font-size: 1rem;
+  color: #f4f4f5;
+  font-size: 0.875rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
 .cardHeader p {
-  color: #64748b;
-  font-size: 0.8rem;
-  margin: 0;
+  color: #71717a;
+  font-size: 0.75rem;
+  margin: 4px 0 0;
 }
 
 .form label,
 .filterRow label,
 .selectRow label {
-  color: #94a3b8;
-  font-size: 0.8rem;
-  font-weight: 500;
+  color: #71717a;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .form input,
 .form select,
+.form textarea,
 .filterRow input,
-.selectRow input {
-  background: #1e293b;
-  border: 1px solid #334155;
+.filterRow select,
+.selectRow input,
+.selectRow select {
+  background: #0a0a0b;
+  border: 1px solid #26262b;
   border-radius: 8px;
-  color: #e2e8f0;
-  font-size: 0.875rem;
-  padding: 8px 12px;
+  color: #e4e4e7;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  padding: 9px 12px;
   width: 100%;
   box-sizing: border-box;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .form input:focus,
 .form select:focus,
+.form textarea:focus,
 .filterRow input:focus,
 .selectRow input:focus {
-  border-color: #6366f1;
+  border-color: #3a3a40;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
 }
 
 .form input::placeholder,
 .filterRow input::placeholder {
-  color: #475569;
+  color: #52525b;
 }
 
 .inlineActions button,
 .filterRow button,
 .selectRow > button {
-  background: #6366f1;
-  color: #f1f5f9;
+  background: #fafafa;
+  color: #09090b;
   border: none;
   border-radius: 8px;
   padding: 8px 16px;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
   white-space: nowrap;
 }
 
-.inlineActions button:hover,
-.filterRow button:hover,
-.selectRow > button:hover {
-  background: #4f46e5;
+.inlineActions button:hover:not(:disabled),
+.filterRow button:hover:not(:disabled),
+.selectRow > button:hover:not(:disabled) {
+  background: #ffffff;
 }
 
 .inlineActions button:disabled,
 .filterRow button:disabled,
 .selectRow > button:disabled {
-  background: #3730a3;
-  opacity: 0.6;
+  background: #26262b;
+  color: #71717a;
   cursor: not-allowed;
 }
 
 .itemActions button {
-  background: transparent;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  color: #94a3b8;
-  font-size: 0.75rem;
-  padding: 4px 10px;
+  background: #131316;
+  border: 1px solid #26262b;
+  border-radius: 7px;
+  color: #a1a1aa;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 5px 12px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .itemActions button:hover {
-  border-color: #6366f1;
-  color: #818cf8;
+  background: #18181c;
+  border-color: #3a3a40;
+  color: #f4f4f5;
 }
 
 .infoPanel pre {
-  color: #cbd5e1;
-  font-size: 0.8rem;
+  color: #d4d4d8;
+  font-size: 0.75rem;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .form small {
-  color: #64748b;
-  font-size: 0.75rem;
+  color: #71717a;
+  font-size: 0.7rem;
 }

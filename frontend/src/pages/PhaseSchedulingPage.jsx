@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, Plus } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { PageHeader } from '../components/ui';
@@ -38,6 +39,35 @@ const formatErrorMessages = (message, defaultMessage = 'Failed to update phase s
 const getPhaseOptionLabel = (phase) =>
   phase.name ? `${phase.name} (${phase.phaseId})` : phase.phaseId;
 
+/* ─── design helpers ────────────────────────────────────────────── */
+function SectionLabel({ icon: Icon, children, action }) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={13} className="text-zinc-600" />}
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          {children}
+        </span>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function FieldLabel({ children, htmlFor }) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+    >
+      {children}
+    </label>
+  );
+}
+
+const inputCls =
+  'w-full rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40] disabled:opacity-50 disabled:cursor-not-allowed';
+
 function PhaseSchedulingPage() {
   const [phases, setPhases] = useState([]);
   const [phaseId, setPhaseId] = useState('');
@@ -48,10 +78,6 @@ function PhaseSchedulingPage() {
   const [status, setStatus] = useState({ loading: false, loadingPhases: true, message: '', errors: [] });
   const [creatingPhase, setCreatingPhase] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
-
-  // Create phase state
-  const [newPhaseName, setNewPhaseName] = useState('');
-  const [createPhaseStatus, setCreatePhaseStatus] = useState({ loading: false, message: '', error: '' });
 
   const selectedPhase = useMemo(
     () => phases.find((phase) => phase.phaseId === phaseId) || null,
@@ -124,7 +150,7 @@ function PhaseSchedulingPage() {
         const withoutDuplicate = currentPhases.filter(
           (phase) => phase.phaseId !== createdPhase.phaseId,
         );
-        return [...withoutDuplicate, createdPhase].sort((a, b) => 
+        return [...withoutDuplicate, createdPhase].sort((a, b) =>
           (a.name || a.phaseId || '').localeCompare(b.name || b.phaseId || '')
         );
       });
@@ -261,252 +287,214 @@ function PhaseSchedulingPage() {
   return (
     <div>
       <PageHeader
+        eyebrow="Coordinator"
         title="Phase Scheduling"
         subtitle={`Date fields use ${timezoneName}; saved as UTC.`}
       />
 
-      <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5 mb-4">
-        <form onSubmit={handleCreatePhase} className="flex flex-col gap-4">
-          <div>
-            <label htmlFor="phaseName" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Phase Name
-            </label>
-            <input
-              id="phaseName"
-              type="text"
-              value={phaseName}
-              disabled={creatingPhase}
-              onChange={(event) => {
-                setPhaseName(event.target.value);
-                setFieldErrors((current) => ({ ...current, phaseName: '' }));
-              }}
-              aria-invalid={Boolean(fieldErrors.phaseName)}
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            {fieldErrors.phaseName && (
-              <p className="text-xs text-red-400 mt-1">{fieldErrors.phaseName}</p>
-            )}
-          </div>
+      <div className="grid gap-4 max-w-[760px]">
+        {/* Create phase */}
+        <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+          <SectionLabel icon={Plus}>Create phase</SectionLabel>
 
-          <div>
-            <button
-              type="submit"
-              disabled={creatingPhase}
-              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {creatingPhase ? 'Creating...' : 'Create Phase'}
-            </button>
-          </div>
-        </form>
-      </div>
+          <form onSubmit={handleCreatePhase} className="flex flex-col gap-4">
+            <div>
+              <FieldLabel htmlFor="phaseName">Phase name</FieldLabel>
+              <input
+                id="phaseName"
+                type="text"
+                value={phaseName}
+                disabled={creatingPhase}
+                onChange={(event) => {
+                  setPhaseName(event.target.value);
+                  setFieldErrors((current) => ({ ...current, phaseName: '' }));
+                }}
+                aria-invalid={Boolean(fieldErrors.phaseName)}
+                placeholder="e.g. Final Submission"
+                className={inputCls}
+              />
+              {fieldErrors.phaseName && (
+                <p className="mt-1 text-[12px] text-rose-400">{fieldErrors.phaseName}</p>
+              )}
+            </div>
 
-      <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Phase Select */}
-          <div>
-            <label htmlFor="phaseId" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Phase
-            </label>
-            <select
-              id="phaseId"
-              value={phaseId}
-              onChange={handlePhaseChange}
-              disabled={status.loadingPhases || status.loading}
-              aria-invalid={Boolean(fieldErrors.phaseId)}
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {status.loadingPhases ? 'Loading phases...' : 'Select a phase'}
-              </option>
-              {phases.map((phase) => (
-                <option key={phase.phaseId} value={phase.phaseId}>
-                  {getPhaseOptionLabel(phase)}
+            <div>
+              <button
+                type="submit"
+                disabled={creatingPhase}
+                className="rounded-md bg-zinc-100 px-4 py-2.5 text-[13px] font-semibold text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-[#26262b] disabled:text-zinc-600"
+              >
+                {creatingPhase ? 'Creating…' : 'Create phase'}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* Schedule */}
+        <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+          <SectionLabel icon={CalendarDays}>Phase schedule</SectionLabel>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div>
+              <FieldLabel htmlFor="phaseId">Phase</FieldLabel>
+              <select
+                id="phaseId"
+                value={phaseId}
+                onChange={handlePhaseChange}
+                disabled={status.loadingPhases || status.loading}
+                aria-invalid={Boolean(fieldErrors.phaseId)}
+                className={inputCls}
+              >
+                <option value="">
+                  {status.loadingPhases ? 'Loading phases…' : 'Select a phase'}
                 </option>
-              ))}
-            </select>
-            {fieldErrors.phaseId && (
-              <p className="text-xs text-red-400 mt-1">{fieldErrors.phaseId}</p>
-            )}
-          </div>
+                {phases.map((phase) => (
+                  <option key={phase.phaseId} value={phase.phaseId}>
+                    {getPhaseOptionLabel(phase)}
+                  </option>
+                ))}
+              </select>
+              {fieldErrors.phaseId && (
+                <p className="mt-1 text-[12px] text-rose-400">{fieldErrors.phaseId}</p>
+              )}
+            </div>
 
-          {/* Current Schedule Preview */}
-          {selectedPhase && (
-            <div className="rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 mt-3 mb-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">
-                Current Schedule
-              </p>
-              <dl className="space-y-3">
-                <div>
-                  <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                    Submission Start
-                  </dt>
-                  <dd className="text-sm text-slate-200 mt-0.5">
-                    {formatDisplayDate(selectedPhase.submissionStart)}
-                  </dd>
-                  <dd className="text-xs text-slate-600 font-mono mt-0.5">
-                    <span className="sr-only">UTC time: </span>
-                    {formatUtcDate(selectedPhase.submissionStart)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                    Submission End
-                  </dt>
-                  <dd className="text-sm text-slate-200 mt-0.5">
-                    {formatDisplayDate(selectedPhase.submissionEnd)}
-                  </dd>
-                  <dd className="text-xs text-slate-600 font-mono mt-0.5">
-                    <span className="sr-only">UTC time: </span>
-                    {formatUtcDate(selectedPhase.submissionEnd)}
-                  </dd>
-                </div>
-              </dl>
+            {selectedPhase && (
+              <div className="rounded-xl border border-[#1f1f23] bg-[#0e0e10] p-4">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                  Current schedule
+                </p>
+                <dl className="space-y-3">
+                  <div>
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                      Submission start
+                    </dt>
+                    <dd className="mt-0.5 text-[13px] text-zinc-200">
+                      {formatDisplayDate(selectedPhase.submissionStart)}
+                    </dd>
+                    <dd className="mt-0.5 font-mono text-[11px] text-zinc-700">
+                      <span className="sr-only">UTC time: </span>
+                      {formatUtcDate(selectedPhase.submissionStart)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                      Submission end
+                    </dt>
+                    <dd className="mt-0.5 text-[13px] text-zinc-200">
+                      {formatDisplayDate(selectedPhase.submissionEnd)}
+                    </dd>
+                    <dd className="mt-0.5 font-mono text-[11px] text-zinc-700">
+                      <span className="sr-only">UTC time: </span>
+                      {formatUtcDate(selectedPhase.submissionEnd)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            <div>
+              <FieldLabel htmlFor="submissionStart">Submission start</FieldLabel>
+              <input
+                id="submissionStart"
+                type="datetime-local"
+                value={submissionStart}
+                disabled={!phaseId || status.loading}
+                onChange={(event) => {
+                  setSubmissionStart(event.target.value);
+                  setFieldErrors((current) => ({ ...current, submissionStart: '' }));
+                }}
+                aria-invalid={Boolean(fieldErrors.submissionStart)}
+                className={inputCls}
+              />
+              {fieldErrors.submissionStart && (
+                <p className="mt-1 text-[12px] text-rose-400">{fieldErrors.submissionStart}</p>
+              )}
+            </div>
+
+            <div>
+              <FieldLabel htmlFor="submissionEnd">Submission end</FieldLabel>
+              <input
+                id="submissionEnd"
+                type="datetime-local"
+                value={submissionEnd}
+                min={submissionStart}
+                disabled={!phaseId || status.loading}
+                onChange={(event) => {
+                  setSubmissionEnd(event.target.value);
+                  setFieldErrors((current) => ({ ...current, submissionEnd: '' }));
+                }}
+                aria-invalid={Boolean(fieldErrors.submissionEnd)}
+                className={inputCls}
+              />
+              {fieldErrors.submissionEnd && (
+                <p className="mt-1 text-[12px] text-rose-400">{fieldErrors.submissionEnd}</p>
+              )}
+            </div>
+
+            <div className="mt-2 flex gap-2">
+              <button
+                type="submit"
+                disabled={status.loading || !phaseId}
+                className="rounded-md bg-zinc-100 px-4 py-2.5 text-[13px] font-semibold text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-[#26262b] disabled:text-zinc-600"
+              >
+                {status.loading ? 'Updating…' : 'Update Phase Schedule'}
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={!phaseId || status.loading}
+                className="rounded-md border border-[#26262b] bg-[#18181c] px-4 py-2.5 text-[13px] font-medium text-zinc-300 transition-colors hover:border-[#3a3a40] hover:bg-[#1f1f23] hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Reset
+              </button>
+            </div>
+          </form>
+
+          {status.message && (
+            <p className="mt-3 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2.5 text-[13px] text-emerald-300">
+              {status.message}
+            </p>
+          )}
+          {status.errors.length > 0 && (
+            <div className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300">
+              {status.errors.length === 1 ? (
+                status.errors[0]
+              ) : (
+                <ul className="list-inside list-disc space-y-1">
+                  {status.errors.map((errorMessage) => (
+                    <li key={errorMessage}>{errorMessage}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
-          {/* Submission Start */}
-          <div>
-            <label htmlFor="submissionStart" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Submission Start
-            </label>
-            <input
-              id="submissionStart"
-              type="datetime-local"
-              value={submissionStart}
-              disabled={!phaseId || status.loading}
-              onChange={(event) => {
-                setSubmissionStart(event.target.value);
-                setFieldErrors((current) => ({ ...current, submissionStart: '' }));
-              }}
-              aria-invalid={Boolean(fieldErrors.submissionStart)}
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            {fieldErrors.submissionStart && (
-              <p className="text-xs text-red-400 mt-1">{fieldErrors.submissionStart}</p>
-            )}
-          </div>
-
-          {/* Submission End */}
-          <div>
-            <label htmlFor="submissionEnd" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              Submission End
-            </label>
-            <input
-              id="submissionEnd"
-              type="datetime-local"
-              value={submissionEnd}
-              min={submissionStart}
-              disabled={!phaseId || status.loading}
-              onChange={(event) => {
-                setSubmissionEnd(event.target.value);
-                setFieldErrors((current) => ({ ...current, submissionEnd: '' }));
-              }}
-              aria-invalid={Boolean(fieldErrors.submissionEnd)}
-              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            {fieldErrors.submissionEnd && (
-              <p className="text-xs text-red-400 mt-1">{fieldErrors.submissionEnd}</p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 mt-2">
-            <button
-              type="submit"
-              disabled={status.loading || !phaseId}
-              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {status.loading ? 'Updating...' : 'Update Phase Schedule'}
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              disabled={!phaseId || status.loading}
-              className="rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Reset
-            </button>
-          </div>
-        </form>
-
-        {/* Status messages */}
-        {status.message && (
-          <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
-            {status.message}
-          </p>
-        )}
-        {status.errors.length > 0 && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
-            {status.errors.length === 1 ? (
-              status.errors[0]
-            ) : (
-              <ul className="list-disc list-inside space-y-1">
-                {status.errors.map((errorMessage) => (
-                  <li key={errorMessage}>{errorMessage}</li>
+          {result && (
+            <div className="mt-4 rounded-xl border border-[#1f1f23] bg-[#0e0e10] p-4">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                Schedule changes
+              </p>
+              <dl className="space-y-3">
+                {[
+                  { label: 'Previous start', value: result.previous.submissionStart },
+                  { label: 'Updated start',  value: result.updated.submissionStart },
+                  { label: 'Previous end',   value: result.previous.submissionEnd },
+                  { label: 'Updated end',    value: result.updated.submissionEnd },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">{label}</dt>
+                    <dd className="mt-0.5 text-[13px] text-zinc-200">{formatDisplayDate(value)}</dd>
+                    <dd className="mt-0.5 font-mono text-[11px] text-zinc-700">
+                      <span className="sr-only">UTC time: </span>
+                      {formatUtcDate(value)}
+                    </dd>
+                  </div>
                 ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {/* Result box */}
-        {result && (
-          <div className="rounded-xl border border-[#1e293b] bg-[#080f1f] p-4 mt-4">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">
-              Schedule Changes
-            </p>
-            <dl className="space-y-3">
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                  Previous Start
-                </dt>
-                <dd className="text-sm text-slate-200 mt-0.5">
-                  {formatDisplayDate(result.previous.submissionStart)}
-                </dd>
-                <dd className="text-xs text-slate-600 font-mono mt-0.5">
-                  <span className="sr-only">UTC time: </span>
-                  {formatUtcDate(result.previous.submissionStart)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                  Updated Start
-                </dt>
-                <dd className="text-sm text-slate-200 mt-0.5">
-                  {formatDisplayDate(result.updated.submissionStart)}
-                </dd>
-                <dd className="text-xs text-slate-600 font-mono mt-0.5">
-                  <span className="sr-only">UTC time: </span>
-                  {formatUtcDate(result.updated.submissionStart)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                  Previous End
-                </dt>
-                <dd className="text-sm text-slate-200 mt-0.5">
-                  {formatDisplayDate(result.previous.submissionEnd)}
-                </dd>
-                <dd className="text-xs text-slate-600 font-mono mt-0.5">
-                  <span className="sr-only">UTC time: </span>
-                  {formatUtcDate(result.previous.submissionEnd)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                  Updated End
-                </dt>
-                <dd className="text-sm text-slate-200 mt-0.5">
-                  {formatDisplayDate(result.updated.submissionEnd)}
-                </dd>
-                <dd className="text-xs text-slate-600 font-mono mt-0.5">
-                  <span className="sr-only">UTC time: </span>
-                  {formatUtcDate(result.updated.submissionEnd)}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        )}
+              </dl>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

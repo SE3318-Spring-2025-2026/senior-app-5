@@ -92,7 +92,7 @@ const StoryPointsPanel = ({ canOverride }) => {
 
   const loadRecords = async () => {
     if (!isReady) {
-      toast.error('Önce groupId ve sprintId girin.');
+      toast.error('Select a group and sprint first.');
       return;
     }
     setIsLoading(true);
@@ -108,7 +108,7 @@ const StoryPointsPanel = ({ canOverride }) => {
 
   const handleFetch = async () => {
     if (!isReady) {
-      toast.error('Önce groupId ve sprintId seçin.');
+      toast.error('Select a group and sprint first.');
       return;
     }
     setIsFetching(true);
@@ -118,7 +118,7 @@ const StoryPointsPanel = ({ canOverride }) => {
         sprintId.trim(),
       );
       syncRecords(summary.records || []);
-      toast.success('Story point verileri yenilendi.');
+      toast.success('Story-point data refreshed.');
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -132,9 +132,9 @@ const StoryPointsPanel = ({ canOverride }) => {
     }
 
     const inputValue = overrideValues[studentId];
-    const nextTargetPoints = Number(inputValue);
-    if (!Number.isFinite(nextTargetPoints) || nextTargetPoints < 0) {
-      toast.error('targetPoints 0 veya daha büyük olmalı.');
+    const nextCompletedPoints = Number(inputValue);
+    if (!Number.isFinite(nextCompletedPoints) || nextCompletedPoints < 0) {
+      toast.error('Completed points must be 0 or greater.');
       return;
     }
 
@@ -149,7 +149,7 @@ const StoryPointsPanel = ({ canOverride }) => {
         setRecords((prev) =>
           prev.map((record) => (record.studentId === studentId ? updated : record)),
         );
-        toast.success('Student target point güncellendi.');
+        toast.success('Override saved.');
       } catch (error) {
         toast.error(error.message);
       }
@@ -158,7 +158,6 @@ const StoryPointsPanel = ({ canOverride }) => {
 
   return (
     <div className={styles.tableWrapper}>
-      <h3 style={{ color: '#94a3b8', marginBottom: '12px' }}>Sprint Story Points</h3>
       <div className={styles.storyPointControls}>
         <EntitySearchSelect
           endpoint={apiConfig.endpoints.groups}
@@ -247,7 +246,9 @@ const StoryPointsPanel = ({ canOverride }) => {
           })}
           {records.length === 0 && (
             <tr>
-              <td colSpan={canOverride ? 5 : 4}>No story point records.</td>
+              <td colSpan={canOverride ? 5 : 4} style={{ color: '#52525b', textAlign: 'center', padding: '24px 0' }}>
+                No story point records.
+              </td>
             </tr>
           )}
         </tbody>

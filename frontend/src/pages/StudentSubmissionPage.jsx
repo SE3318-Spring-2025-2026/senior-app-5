@@ -1,11 +1,13 @@
-import { useRef, useState, useEffect } from 'react';
-import { Upload, FileText, CheckCircle, ChevronRight, X, Loader2 } from 'lucide-react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { Upload, FileText, CheckCircle, ChevronRight, X, Loader2, PenLine } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
+import MarkdownEditor from '../components/MarkdownEditor';
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const getId = (s) => s?._id || s?.id || s?.submissionId || '';
-const TYPE_OPTIONS = ['Report', 'Presentation', 'Source Code', 'Design Document', 'Other'];
+const TYPE_OPTIONS = ['Proposal', 'SOW', 'Report', 'Presentation', 'Source Code', 'Design Document', 'Other'];
+const MARKDOWN_TYPES = new Set(['Proposal', 'SOW', 'REVISED_PROPOSAL']);
 
 function Step({ number, title, active, done }) {
   return (
@@ -25,6 +27,7 @@ function Step({ number, title, active, done }) {
 
 export default function StudentSubmissionPage() {
   const fileInputRef = useRef(null);
+  const saveTimeoutRef = useRef(null);
 
   const [group, setGroup] = useState({ loading: true, id: '', error: '' });
   const [phases, setPhases] = useState([]);
@@ -41,6 +44,10 @@ export default function StudentSubmissionPage() {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
+  const [step3Tab, setStep3Tab] = useState('upload');
+  const [markdownContent, setMarkdownContent] = useState('');
+  const [savingMd, setSavingMd] = useState(false);
+  const [mdSaveResult, setMdSaveResult] = useState(null);
 
   useEffect(() => {
     apiClient.get(apiConfig.endpoints.auth.me)
@@ -77,6 +84,18 @@ export default function StudentSubmissionPage() {
       .finally(() => setSubsLoading(false));
   }, [selectedPhase, group.id]);
 
+  const isMarkdownType = MARKDOWN_TYPES.has(selectedSub?.type);
+
+  const handleSubSelect = (s) => {
+    setSelectedSub(s);
+    setCreating(false);
+    setUploadResult(null);
+    setFile(null);
+    setMdSaveResult(null);
+    setMarkdownContent(s.markdownContent ?? '');
+    setStep3Tab(MARKDOWN_TYPES.has(s.type) ? 'write' : 'upload');
+  };
+
   const handleCreate = async () => {
     if (!newTitle.trim()) { setCreateErr('Please enter a title.'); return; }
     setCreateLoading(true); setCreateErr('');
@@ -90,13 +109,34 @@ export default function StudentSubmissionPage() {
       });
       const created = res.data;
       setSubmissions((prev) => [...prev, created]);
-      setSelectedSub(created);
-      setCreating(false);
+      handleSubSelect(created);
       setNewTitle('');
     } catch (e) {
       const msg = e.response?.data?.message || e.message || 'Failed to create.';
       setCreateErr(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally { setCreateLoading(false); }
+  };
+
+  const handleSaveMd = useCallback(async (content) => {
+    if (!selectedSub) return;
+    setSavingMd(true);
+    setMdSaveResult(null);
+    try {
+      await apiClient.put(`/submissions/${getId(selectedSub)}/content`, { markdownContent: content });
+      setMdSaveResult({ ok: true, message: 'Saved.' });
+    } catch (e) {
+      const msg = e.response?.data?.message || 'Save failed.';
+      setMdSaveResult({ ok: false, message: Array.isArray(msg) ? msg.join(', ') : msg });
+    } finally {
+      setSavingMd(false);
+    }
+  }, [selectedSub]);
+
+  const handleMarkdownChange = (val) => {
+    setMarkdownContent(val);
+    setMdSaveResult(null);
+    clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => handleSaveMd(val), 1500);
   };
 
   const handleUpload = async () => {
@@ -136,7 +176,7 @@ export default function StudentSubmissionPage() {
         <ChevronRight size={14} className="text-slate-600 shrink-0" />
         <Step number={2} title="Select Submission" active={activeStep === 2} done={step2Done} />
         <ChevronRight size={14} className="text-slate-600 shrink-0" />
-        <Step number={3} title="Upload File" active={activeStep === 3} done={false} />
+        <Step number={3} title="Content" active={activeStep === 3} done={false} />
       </div>
 
       {group.error && (
@@ -156,7 +196,7 @@ export default function StudentSubmissionPage() {
               const pid = p._id || p.phaseId || p.id;
               const isSelected = (selectedPhase?._id || selectedPhase?.phaseId || selectedPhase?.id) === pid;
               return (
-                <button key={pid} onClick={() => { setSelectedPhase(p); setSelectedSub(null); setUploadResult(null); setFile(null); }}
+                <button key={pid} onClick={() => { setSelectedPhase(p); setSelectedSub(null); setUploadResult(null); setFile(null); setMarkdownContent(''); }}
                   className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors
                     ${isSelected ? 'border-indigo-500/60 bg-indigo-500/10 text-indigo-300'
                       : 'border-[#1e293b] bg-[#0d1526] text-slate-300 hover:border-slate-600 hover:text-slate-100'}`}>
@@ -184,7 +224,7 @@ export default function StudentSubmissionPage() {
                     const sid = getId(s);
                     const isSelected = getId(selectedSub) === sid;
                     return (
-                      <button key={sid} onClick={() => { setSelectedSub(s); setCreating(false); setUploadResult(null); setFile(null); }}
+                      <button key={sid} onClick={() => handleSubSelect(s)}
                         className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors
                           ${isSelected ? 'border-indigo-500/60 bg-indigo-500/10 text-indigo-300'
                             : 'border-[#1e293b] bg-[#0d1526] text-slate-300 hover:border-slate-600 hover:text-slate-100'}`}>
@@ -230,44 +270,85 @@ export default function StudentSubmissionPage() {
 
       {/* STEP 3 */}
       <div className={`rounded-xl border border-[#1e293b] bg-[#111827] p-5 space-y-4 transition-opacity ${step2Done ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Step 3 · Upload File</p>
-        <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }}
-          onClick={() => fileInputRef.current?.click()}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors
-            ${dragging ? 'border-indigo-500 bg-indigo-500/10' : file ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-700 bg-[#0d1526] hover:border-slate-600'}`}>
-          {file ? (
-            <div className="flex flex-col items-center gap-2 text-center">
-              <FileText size={32} className="text-emerald-400" />
-              <p className="text-sm font-semibold text-slate-200">{file.name}</p>
-              <p className="text-xs text-slate-500">{Math.round(file.size / 1024)} KB</p>
-              <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                className="mt-1 flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-400 hover:text-slate-200">
-                <X size={12} /> Remove
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Step 3 · Content</p>
+          {isMarkdownType && (
+            <div className="flex overflow-hidden rounded-lg border border-[#1e293b] text-xs font-semibold">
+              <button onClick={() => setStep3Tab('write')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${step3Tab === 'write' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                <PenLine size={12} /> Write
               </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-center">
-              <Upload size={28} className="text-slate-500" />
-              <p className="text-sm font-medium text-slate-300">Drag &amp; drop or <span className="text-indigo-400">click to browse</span></p>
-              <p className="text-xs text-slate-500">PDF, DOC, DOCX, PNG, JPG — max 5 MB</p>
+              <button onClick={() => setStep3Tab('upload')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${step3Tab === 'upload' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                <Upload size={12} /> Upload
+              </button>
             </div>
           )}
         </div>
-        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }} />
-        {uploadResult && (
-          <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm
-            ${uploadResult.ok ? 'border-emerald-800/50 bg-emerald-900/20 text-emerald-400' : 'border-red-800/50 bg-red-900/20 text-red-400'}`}>
-            {uploadResult.ok ? <CheckCircle size={16} /> : <X size={16} />}
-            {uploadResult.message}
+
+        {step3Tab === 'write' && isMarkdownType ? (
+          <div className="space-y-3">
+            <MarkdownEditor
+              key={getId(selectedSub)}
+              submissionId={getId(selectedSub)}
+              value={markdownContent}
+              onChange={handleMarkdownChange}
+            />
+            <div className="flex items-center justify-between">
+              {mdSaveResult ? (
+                <span className={`text-xs ${mdSaveResult.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {mdSaveResult.message}
+                </span>
+              ) : <span />}
+              <button
+                onClick={() => handleSaveMd(markdownContent)}
+                disabled={savingMd}
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
+                {savingMd ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : 'Save'}
+              </button>
+            </div>
           </div>
+        ) : (
+          <>
+            <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors
+                ${dragging ? 'border-indigo-500 bg-indigo-500/10' : file ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-700 bg-[#0d1526] hover:border-slate-600'}`}>
+              {file ? (
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <FileText size={32} className="text-emerald-400" />
+                  <p className="text-sm font-semibold text-slate-200">{file.name}</p>
+                  <p className="text-xs text-slate-500">{Math.round(file.size / 1024)} KB</p>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    className="mt-1 flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-400 hover:text-slate-200">
+                    <X size={12} /> Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Upload size={28} className="text-slate-500" />
+                  <p className="text-sm font-medium text-slate-300">Drag &amp; drop or <span className="text-indigo-400">click to browse</span></p>
+                  <p className="text-xs text-slate-500">PDF, DOC, DOCX, PNG, JPG — max 5 MB</p>
+                </div>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }} />
+            {uploadResult && (
+              <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm
+                ${uploadResult.ok ? 'border-emerald-800/50 bg-emerald-900/20 text-emerald-400' : 'border-red-800/50 bg-red-900/20 text-red-400'}`}>
+                {uploadResult.ok ? <CheckCircle size={16} /> : <X size={16} />}
+                {uploadResult.message}
+              </div>
+            )}
+            <button onClick={handleUpload} disabled={!file || uploading || !step2Done}
+              className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 transition-colors">
+              {uploading ? (<span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Uploading…</span>) : 'Upload Document'}
+            </button>
+          </>
         )}
-        <button onClick={handleUpload} disabled={!file || uploading || !step2Done}
-          className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 transition-colors">
-          {uploading ? (<span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Uploading…</span>) : 'Upload Document'}
-        </button>
       </div>
     </div>
   );
-}
+}

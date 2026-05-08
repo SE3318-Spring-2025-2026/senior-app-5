@@ -3,8 +3,14 @@ import { toast } from 'react-hot-toast';
 import { Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import { PageHeader, Card } from '../components/ui';
+import MarkdownEditor from '../components/MarkdownEditor';
 
-const emptyQuestion = () => ({ criteriaName: '', criteriaWeight: '' });
+const emptyQuestion = () => ({
+  criteriaName: '',
+  criteriaWeight: '',
+  criteriaDescription: '',
+  sectionAnchor: '',
+});
 
 const RubricManagementPage = () => {
   const [deliverables, setDeliverables] = useState([]);
@@ -88,6 +94,8 @@ const RubricManagementPage = () => {
       questions: questions.map((q) => ({
         criteriaName: q.criteriaName.trim(),
         criteriaWeight: parseFloat(q.criteriaWeight),
+        ...(q.criteriaDescription.trim() && { criteriaDescription: q.criteriaDescription.trim() }),
+        ...(q.sectionAnchor.trim() && { sectionAnchor: q.sectionAnchor.trim() }),
       })),
     };
 
@@ -193,30 +201,46 @@ const RubricManagementPage = () => {
                     Total weight: {totalWeight.toFixed(3)}
                   </span>
                 </div>
+
                 {questions.map((q, idx) => (
-                  <div key={idx} className="flex gap-2 items-start">
+                  <div key={idx} className="rounded-xl border border-[#1e293b] bg-[#0d1526] p-3 space-y-2">
+                    <div className="flex gap-2 items-start">
+                      <input
+                        type="text"
+                        placeholder="Criteria name"
+                        value={q.criteriaName}
+                        onChange={(e) => handleQuestionChange(idx, 'criteriaName', e.target.value)}
+                        className="flex-1 rounded-lg border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Weight (0-1)"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value={q.criteriaWeight}
+                        onChange={(e) => handleQuestionChange(idx, 'criteriaWeight', e.target.value)}
+                        className="w-28 rounded-lg border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200"
+                      />
+                      <button type="button" onClick={() => removeQuestion(idx)} className="text-slate-500 hover:text-red-400 mt-2">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                    <MarkdownEditor
+                      value={q.criteriaDescription}
+                      onChange={(md) => handleQuestionChange(idx, 'criteriaDescription', md)}
+                      placeholder="Description (optional) — what to look for when grading"
+                    />
                     <input
                       type="text"
-                      placeholder="Criteria name"
-                      value={q.criteriaName}
-                      onChange={(e) => handleQuestionChange(idx, 'criteriaName', e.target.value)}
-                      className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200"
+                      placeholder="Document section anchor (e.g. problem-statement)"
+                      value={q.sectionAnchor}
+                      onChange={(e) => handleQuestionChange(idx, 'sectionAnchor', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                      className="w-full rounded-lg border border-[#1e293b] bg-[#111827] px-3 py-2 text-xs text-slate-300 placeholder-slate-600 font-mono"
                     />
-                    <input
-                      type="number"
-                      placeholder="Weight (0-1)"
-                      step="0.01"
-                      min="0"
-                      max="1"
-                      value={q.criteriaWeight}
-                      onChange={(e) => handleQuestionChange(idx, 'criteriaWeight', e.target.value)}
-                      className="w-28 rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200"
-                    />
-                    <button type="button" onClick={() => removeQuestion(idx)} className="text-slate-500 hover:text-red-400 mt-2">
-                      <Trash2 size={15} />
-                    </button>
                   </div>
                 ))}
+
                 <button type="button" onClick={addQuestion} className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300">
                   <Plus size={13} /> Add Question
                 </button>
@@ -258,11 +282,19 @@ const RubricManagementPage = () => {
                       <Trash2 size={15} />
                     </button>
                   </div>
-                  <ul className="space-y-1">
+                  <ul className="space-y-2">
                     {(r.questions ?? []).map((q) => (
-                      <li key={q.questionId} className="text-xs text-slate-400 flex justify-between">
-                        <span>{q.criteriaName}</span>
-                        <span className="text-slate-600">weight: {q.criteriaWeight}</span>
+                      <li key={q.questionId} className="rounded-lg border border-[#1e293b] bg-[#0d1526] px-3 py-2 space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-medium text-slate-300">{q.criteriaName}</span>
+                          <span className="text-slate-600">weight: {q.criteriaWeight}</span>
+                        </div>
+                        {q.criteriaDescription && (
+                          <p className="text-xs italic text-slate-500">{q.criteriaDescription}</p>
+                        )}
+                        {q.sectionAnchor && (
+                          <p className="font-mono text-xs text-indigo-400/70">§ {q.sectionAnchor}</p>
+                        )}
                       </li>
                     ))}
                   </ul>

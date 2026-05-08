@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, ChevronLeft, Download } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import apiClient from '../utils/apiClient';
-import { Badge, Button, PageHeader } from '../components/ui';
+import { Badge, PageHeader } from '../components/ui';
 
 const statusColor = (status) => {
   if (!status) return 'slate';
@@ -21,19 +23,18 @@ const SubmissionDetailsPage = () => {
   const [status, setStatus] = useState({ loading: true, error: '' });
 
   useEffect(() => {
-    const localUser = localStorage.getItem('user');
-    if (!localUser) {
-      setStatus({ loading: false, error: 'You must be logged in to view this page.' });
-      return;
-    }
-
     const fetchSubmissionDetails = async () => {
+      const localUser = localStorage.getItem('user');
+      if (!localUser) {
+        setStatus({ loading: false, error: 'You must be logged in to view this page.' });
+        return;
+      }
       try {
         const response = await apiClient.get(`/submissions/${id}`);
         setSubmission(response.data);
         setStatus({ loading: false, error: '' });
       } catch (error) {
-        console.error("Fetch error:", error);
+        console.error('Fetch error:', error);
         if (error.response?.status === 403) {
           setStatus({ loading: false, error: 'You do not have permission to view this submission.' });
         } else {
@@ -160,6 +161,29 @@ const SubmissionDetailsPage = () => {
           )}
         </div>
       </div>
+
+      {/* Markdown document content */}
+      {submission.markdownContent && (
+        <div className="mt-4 bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+          <h3 className="text-sm font-bold text-slate-200 mb-4">Document Content</h3>
+          <div className="
+            prose prose-invert prose-sm max-w-none
+            prose-headings:font-bold prose-headings:text-slate-100
+            prose-p:text-slate-300 prose-p:leading-relaxed
+            prose-a:text-indigo-400 prose-a:no-underline hover:prose-a:underline
+            prose-strong:text-slate-200
+            prose-code:rounded prose-code:bg-[#0d1526] prose-code:px-1 prose-code:text-indigo-300
+            prose-pre:border prose-pre:border-[#1e293b] prose-pre:bg-[#0d1526]
+            prose-blockquote:border-l-indigo-500 prose-blockquote:text-slate-400
+            prose-li:text-slate-300
+            prose-img:rounded-xl prose-img:border prose-img:border-[#1e293b]
+          ">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {submission.markdownContent}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

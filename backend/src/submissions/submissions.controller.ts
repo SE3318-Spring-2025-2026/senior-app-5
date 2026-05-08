@@ -98,14 +98,14 @@ export class SubmissionsController {
   }
 
   @Post()
-  @Roles(Role.Student, Role.TeamLeader) 
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor)
   @ApiOperation({ summary: 'Create a new submission' })
   async create(
     @Req() req: Request & { user: any },
     @Body() createSubmissionDto: CreateSubmissionDto,
   ) {
     if (
-      req.user.role === Role.Student &&
+      (req.user.role === Role.Student || req.user.role === Role.TeamLeader) &&
       String(createSubmissionDto.groupId) !== String(req.user.groupId)
     ) {
       throw new ForbiddenException(

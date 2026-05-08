@@ -53,6 +53,15 @@ export class SubmissionsService {
       );
     }
 
+    if (actor.role === Role.Professor) {
+      if (group.advisorUserId !== actor.userId) {
+        throw new ForbiddenException(
+          'You can only create submissions for groups you advise.',
+        );
+      }
+      return;
+    }
+
     if (!actor.userId) {
       throw new ForbiddenException('Authenticated user context is missing.');
     }
@@ -60,6 +69,12 @@ export class SubmissionsService {
     const user = await this.userModel.findById(actor.userId).exec();
     if (!user) {
       throw new ForbiddenException('Authenticated user not found.');
+    }
+
+    if (!user.teamId) {
+      throw new ForbiddenException(
+        'You must be a member of a group to submit.',
+      );
     }
 
     if (user.teamId !== groupId) {

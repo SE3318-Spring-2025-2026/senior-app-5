@@ -9,12 +9,12 @@ import { Model, isValidObjectId } from 'mongoose';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Role } from '../auth/enums/role.enum';
+import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
-import { Submission, SubmissionDocument } from './schemas/submission.schema';
-import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
+import { Submission, SubmissionDocument, SubmissionStatus } from './schemas/submission.schema';
 type SubmissionActor = { userId?: string; role?: string; groupId?: string };
 type UploadedSubmissionFile = {
   originalname: string;
@@ -53,6 +53,15 @@ export class SubmissionsService {
       );
     }
 
+    if (actor.role === Role.Professor) {
+      if (group.advisorUserId !== actor.userId) {
+        throw new ForbiddenException(
+          'You can only create submissions for groups you advise.',
+        );
+      }
+      return;
+    }
+
     if (!actor.userId) {
       throw new ForbiddenException('Authenticated user context is missing.');
     }
@@ -60,6 +69,12 @@ export class SubmissionsService {
     const user = await this.userModel.findById(actor.userId).exec();
     if (!user) {
       throw new ForbiddenException('Authenticated user not found.');
+    }
+
+    if (!user.teamId) {
+      throw new ForbiddenException(
+        'You must be a member of a group to submit.',
+      );
     }
 
     if (user.teamId !== groupId) {
@@ -77,28 +92,89 @@ export class SubmissionsService {
     return submission;
   }
 
-  async createSubmission(createSubmissionDto: CreateSubmissionDto) {
+  async createSubmission(createSubmissionDto: CreateSubmissionDto, actorRole?: string) {
+    if (createSubmissionDto.type === 'SOW') {
+      const eligibility = await this.validateSowEligibility(createSubmissionDto.groupId);
+      if (!eligibility.canProceed) {
+         throw new ForbiddenException(
+          `The SOW cannot be created. Prerequisites are not met. Revised Proposal Status: ${eligibility.revisedProposalStatus}`,
+        );
+      }
+    }
     const phase = await this.phasesService.findByPhaseId(
       createSubmissionDto.phaseId,
     );
-    if (!phase?.submissionStart || !phase?.submissionEnd)
-      throw new BadRequestException(
-        'Submission window is not configured for this phase.',
-      );
-    const now = new Date();
-    if (now < phase.submissionStart || now > phase.submissionEnd)
-      throw new BadRequestException(
-        'Submission is outside the allowed window.',
-      );
+    const isProfessor = actorRole === Role.Professor || actorRole === Role.Admin || actorRole === Role.Coordinator;
+    if (!isProfessor) {
+      if (!phase?.submissionStart || !phase?.submissionEnd)
+        throw new BadRequestException(
+          'Submission window is not configured for this phase.',
+        );
+      const now = new Date();
+      if (now < phase.submissionStart || now > phase.submissionEnd)
+        throw new BadRequestException(
+          'Submission is outside the allowed window.',
+        );
+    }
 
     const submission = new this.submissionModel({
       ...createSubmissionDto,
-      submittedAt: now,
+      submittedAt: new Date(),
     });
     return submission.save();
   }
 
-  async findAll(groupId?: string) {
+  private getJuryUserIds(committee: Pick<Committee, 'jury'>): string[] {
+    return ((committee.jury as any[]) ?? [])
+      .map((member) => member.userId ?? member.reviewerUserId ?? member.id)
+      .filter(Boolean)
+      .map(String);
+  }
+
+  private getCommitteeGroupIds(committee: Pick<Committee, 'groups'>): string[] {
+    return ((committee.groups as any[]) ?? [])
+      .map((group) => group.groupId ?? group.id)
+      .filter(Boolean)
+      .map(String);
+  }
+
+  async getCommitteeSubmissionGroupIds(
+    committeeId: string,
+    professorUserId: string,
+  ): Promise<string[]> {
+    const committee = await this.committeeModel.findOne({ id: committeeId }).exec();
+    if (!committee) {
+      throw new NotFoundException(`Committee with ID '${committeeId}' not found.`);
+    }
+
+    if (!this.getJuryUserIds(committee).includes(String(professorUserId))) {
+      throw new ForbiddenException('Caller is not in the committee jury.');
+    }
+
+    return this.getCommitteeGroupIds(committee);
+  }
+
+  async assertProfessorCanAccessSubmission(
+    submission: SubmissionDocument,
+    professorUserId: string,
+  ): Promise<void> {
+    const committee = await this.committeeModel
+      .findOne({ 'groups.groupId': submission.groupId, 'jury.userId': professorUserId })
+      .exec();
+    if (!committee) {
+      throw new ForbiddenException(
+        'Submission is outside the calling professor committee.',
+      );
+    }
+  }
+
+  async findAll(groupId?: string, committeeGroupIds?: string[]) {
+    if (committeeGroupIds) {
+      return this.submissionModel
+        .find({ groupId: { $in: committeeGroupIds } })
+        .sort({ createdAt: -1 })
+        .exec();
+    }
     const query = groupId ? { groupId } : {};
     return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }
@@ -206,24 +282,14 @@ export class SubmissionsService {
     const submission =
       submissionFromGuard ?? (await this.findById(submissionId));
 
-    // SECURITY: Validate Window (Missing from main, added from current PR)
-    const phase = await this.phasesService.getPhaseById(submission.phaseId);
-    if (!phase.submissionStart || !phase.submissionEnd) {
-      throw new BadRequestException(
-        'Phase submission window is not configured.',
-      );
-    }
-    const now = new Date();
-    if (now < phase.submissionStart) {
-      throw new BadRequestException(
-        'Submission window has not started yet. Upload is not permitted.',
-      );
-    }
-    if (now >= phase.submissionEnd) {
-      throw new BadRequestException(
-        'Submission window has closed. Upload is not permitted.',
-      );
-    }
+    if (submission.type === 'SOW') {
+      const eligibility = await this.validateSowEligibility(submission.groupId);
+      if (!eligibility.canProceed) {
+        throw new ForbiddenException(
+          `The SOW document cannot be uploaded. Prerequisites are not met. Revised Proposal Status.: ${eligibility.revisedProposalStatus}`,
+        );
+      }
+    }  
 
     // Prepare file information
     const decodedFileName = Buffer.from(file.originalname, 'latin1').toString(
@@ -367,4 +433,33 @@ export class SubmissionsService {
     await this.assertJuryMember(userId, submission.groupId);
     return submission;
   }
+  
+   async validateSowEligibility(groupId: string) {
+    // 1. Group Not Found Check 
+    const group = await this.groupModel.findOne({ groupId }).exec();
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found.`);
+    }
+   // Find Revised Proposal
+    const revisedProposal = await this.submissionModel
+      .findOne({ groupId, type: 'REVISED_PROPOSAL' })
+      .sort({ createdAt: -1 }) // En güncel olanı al
+      .exec();
+    //
+    const sow = await this.submissionModel
+      .findOne({ groupId, type: 'SOW' })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    const revisedProposalStatus = revisedProposal ? revisedProposal.status : 'MISSING';
+    const sowStatus = sow ? sow.status : 'NOT_SUBMITTED';
+    const canProceed = revisedProposalStatus === SubmissionStatus.Approved;
+
+    return {
+      sowStatus,
+      revisedProposalStatus,
+      canProceed,
+    };
+
+   }
 }

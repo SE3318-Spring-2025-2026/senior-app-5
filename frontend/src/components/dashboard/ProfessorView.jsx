@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ClipboardList, ArrowRight, TrendingUp, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Users, ClipboardList, ArrowRight, TrendingUp, BookOpen, CheckCircle2, PlusCircle } from 'lucide-react';
 import StoryPointsPanel from './StoryPointsPanel';
 import apiClient from '../../utils/apiClient';
 
@@ -48,9 +48,14 @@ function QuickActionLink({ to, icon: Icon, label, description, accent = '#6366f1
 }
 
 /* ── ProfessorView ────────────────────────────────────────── */
+const emptyForm = { groupId: '', title: '', type: '', phaseId: '' };
+
 const ProfessorView = ({ user }) => {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [phases, setPhases] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [formFeedback, setFormFeedback] = useState({ loading: false, message: '', error: '' });
 
   useEffect(() => {
     const load = async () => {
@@ -66,6 +71,39 @@ const ProfessorView = ({ user }) => {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    apiClient.get('/phases').then((res) => {
+      const data = res.data?.data ?? res.data ?? [];
+      setPhases(Array.isArray(data) ? data : []);
+    }).catch(() => setPhases([]));
+  }, []);
+
+  const handleFormChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleCreateSubmission = async (e) => {
+    e.preventDefault();
+    if (!form.groupId || !form.title.trim() || !form.type.trim() || !form.phaseId) {
+      setFormFeedback({ loading: false, message: '', error: 'Please fill in all fields.' });
+      return;
+    }
+    setFormFeedback({ loading: true, message: '', error: '' });
+    try {
+      await apiClient.post('/submissions', {
+        groupId: form.groupId,
+        title: form.title.trim(),
+        type: form.type.trim(),
+        phaseId: form.phaseId,
+      });
+      setFormFeedback({ loading: false, message: 'Submission created successfully!', error: '' });
+      setForm(emptyForm);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to create submission.';
+      setFormFeedback({ loading: false, message: '', error: Array.isArray(msg) ? msg.join(', ') : msg });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -132,6 +170,84 @@ const ProfessorView = ({ user }) => {
             </table>
           </div>
         )}
+      </SectionCard>
+
+      {/* Create Submission */}
+      <SectionCard title="Create Submission" icon={PlusCircle}>
+        <form onSubmit={handleCreateSubmission} className="space-y-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Group</label>
+            <select
+              name="groupId"
+              value={form.groupId}
+              onChange={handleFormChange}
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Select a group…</option>
+              {groups.map((req) => (
+                <option key={req.groupId} value={req.groupId}>
+                  {req.groupId}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Title</label>
+            <input
+              name="title"
+              value={form.title}
+              onChange={handleFormChange}
+              placeholder="e.g. Milestone 1 Report"
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Type</label>
+            <select
+              name="type"
+              value={form.type}
+              onChange={handleFormChange}
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Select a type…</option>
+              <option value="Report">Report</option>
+              <option value="Presentation">Presentation</option>
+              <option value="Code">Code</option>
+              <option value="Documentation">Documentation</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Phase</label>
+            <select
+              name="phaseId"
+              value={form.phaseId}
+              onChange={handleFormChange}
+              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">Select a phase…</option>
+              {phases.map((p) => (
+                <option key={p.phaseId ?? p._id} value={p.phaseId ?? p._id}>
+                  {p.name ?? p.phaseName ?? p.phaseId ?? p._id}
+                </option>
+              ))}
+            </select>
+          </div>
+          {formFeedback.error && (
+            <p className="text-xs text-red-400">{formFeedback.error}</p>
+          )}
+          {formFeedback.message && (
+            <p className="text-xs text-emerald-400">{formFeedback.message}</p>
+          )}
+          <button
+            type="submit"
+            disabled={formFeedback.loading}
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition"
+          >
+            <PlusCircle size={15} />
+            {formFeedback.loading ? 'Creating…' : 'Create Submission'}
+          </button>
+        </form>
       </SectionCard>
 
       {/* Quick Actions */}

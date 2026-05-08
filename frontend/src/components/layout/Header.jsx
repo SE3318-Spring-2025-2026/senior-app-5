@@ -1,14 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { Monitor, LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const Header = () => {
   const navigate = useNavigate();
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { firstName: 'User' };
+  const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
+  const displayName = user?.name || user?.email || 'User';
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -27,7 +28,7 @@ export const Header = () => {
             Signed in as
           </span>
           <span className="text-sm font-semibold text-slate-200">
-            {user.firstName || 'User'} {user.lastName || ''}
+            {displayName}
           </span>
         </div>
         <button

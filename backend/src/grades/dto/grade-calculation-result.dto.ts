@@ -19,20 +19,14 @@ export class ScaledDeliverableGradeDto {
   teamScalar!: number;
 
   @ApiProperty({
-    example: 0.5,
-    description: 'Category weight from D1 deliverable config',
+    example: 35,
+    description: 'Contribution percentage of this deliverable toward the final grade (0–100)',
   })
-  categoryWeight!: number;
-
-  @ApiProperty({
-    example: 0.35,
-    description: 'Sub-weight from D1 deliverable config',
-  })
-  subWeight!: number;
+  deliverablePercentage!: number;
 
   @ApiProperty({
     example: 22.4,
-    description: 'Scaled grade: rawGrade × teamScalar × categoryWeight × subWeight',
+    description: 'Scaled grade: rawGrade × teamScalar × (deliverablePercentage / 100)',
   })
   scaledGrade!: number;
 }

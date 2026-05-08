@@ -37,6 +37,8 @@ import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
 import SprintConfigPage from './pages/SprintConfigPage';
 import ScrumManagementPage from './pages/ScrumManagementPage';
+import SprintSchedulePage from './pages/SprintSchedulePage';
+import DeliverableManagementPage from './pages/DeliverableManagementPage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -70,6 +72,7 @@ function App() {
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
             <Route path="/grades" element={<GradeDisplayPage />} />
+            <Route path="/professor/submissions" element={<DocumentsPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route
               path="/review"
@@ -89,6 +92,11 @@ function App() {
                 <AdvisorSchedulePage />
               </ProtectedRoute>
             } />
+            <Route path="/coordinator/sprint-schedule" element={
+              <ProtectedRoute requiredRole="Coordinator">
+                <SprintSchedulePage />
+              </ProtectedRoute>
+            } />
             <Route
               path="/coordinator/rubrics"
               element={
@@ -102,6 +110,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="Coordinator">
                   <SprintConfigPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coordinator/deliverables"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <DeliverableManagementPage />
                 </ProtectedRoute>
               }
             />

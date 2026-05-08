@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 import { Role } from './enums/role.enum';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwt: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(email: string, password: string, role: Role = Role.Student) {
@@ -131,7 +133,14 @@ export class AuthService {
     const token = await this.usersService.createPasswordResetToken(email);
     if (token) {
       this.logger.log(`Password reset token generated for email: ${email}`);
-      this.logger.debug(`Password reset token for ${email}: ${token}`);
+      try {
+        await this.mailService.sendPasswordReset(email, token);
+        this.logger.log(`Password reset email successfully sent to ${email}`);
+      } catch (err) {
+        this.logger.error(`Failed to send password reset email to ${email}: ${(err as Error).message}`);
+      }
+    } else {
+      this.logger.warn(`Password reset requested for unknown email: ${email}`);
     }
 
     return {

@@ -11,7 +11,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Group, GroupDocument, GroupStatus } from './group.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
-import { Submission } from '../submissions/schemas/submission.schema';
+import {
+  Submission,
+  SubmissionStatus,
+} from '../submissions/schemas/submission.schema';
 import { User, UserDocument } from '../users/data/user.schema';
 import {
   CommitteeEvaluation,
@@ -70,26 +73,23 @@ export class GroupsService {
       throw new NotFoundException(`Group not found: ${groupId}`);
     }
 
+    const safeFind = async (id: string | null | undefined) => {
+      if (!id) return null;
+      try {
+        return await this.userModel.findById(id).select('_id name email').lean().exec();
+      } catch {
+        return null;
+      }
+    };
+
     const [members, leader, advisor] = await Promise.all([
       this.userModel
         .find({ teamId: groupId })
-        .select('_id name email role -passwordHash')
+        .select('_id name email role')
         .lean()
         .exec(),
-      group.leaderUserId
-        ? this.userModel
-            .findById(group.leaderUserId)
-            .select('_id name email')
-            .lean()
-            .exec()
-        : null,
-      group.advisorUserId
-        ? this.userModel
-            .findById(group.advisorUserId)
-            .select('_id name email')
-            .lean()
-            .exec()
-        : null,
+      safeFind(group.leaderUserId),
+      safeFind(group.assignedAdvisorId ?? group.advisorUserId),
     ]);
 
     return {
@@ -182,24 +182,32 @@ export class GroupsService {
       (sub) => sub.type === 'RevisedProposal',
     );
 
-    const sowStatus = sow ? sow.status : 'Not Submitted';
+    const sowStatus = sow ? String(sow.status) : 'Not Submitted';
     const revisedStatus = revisedProposal
-      ? revisedProposal.status
+      ? String(revisedProposal.status)
       : 'Not Required';
 
     let validationState = 'Pending';
 
     if (
-      sowStatus === 'Approved' &&
-      (revisedStatus === 'Approved' || revisedStatus === 'Not Required')
+      sowStatus === SubmissionStatus.Approved &&
+      (revisedStatus === SubmissionStatus.Approved ||
+        revisedStatus === 'Not Required')
     ) {
-      validationState = 'Approved';
+      validationState = SubmissionStatus.Approved;
     } else if (
+      sowStatus === SubmissionStatus.NeedsRevision ||
+      revisedStatus === SubmissionStatus.NeedsRevision ||
       sowStatus === 'Needs Revision' ||
       revisedStatus === 'Needs Revision'
     ) {
       validationState = 'Needs Revision';
-    } else if (sowStatus === 'Submitted' || revisedStatus === 'Submitted') {
+    } else if (
+      sowStatus === SubmissionStatus.UnderReview ||
+      revisedStatus === SubmissionStatus.UnderReview ||
+      sowStatus === 'Submitted' ||
+      revisedStatus === 'Submitted'
+    ) {
       validationState = 'Submitted';
     }
 

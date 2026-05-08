@@ -194,8 +194,6 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
   const [advisorId, setAdvisorId] = useState('')
   const [source, setSource] = useState('PRIMARY_ADVISOR')
   const [addStatus, setAddStatus] = useState({ message: '', error: '', loading: false })
-  const [advisorList, setAdvisorList] = useState([])
-  const [advisorsLoading, setAdvisorsLoading] = useState(true)
 
   const load = useCallback(async (p = 1) => {
     setLoading(true)
@@ -218,19 +216,16 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
 
   useEffect(() => { load(1) }, [load])
 
-  useEffect(() => {
-    apiClient.get(apiConfig.endpoints.advisors, { params: { page: 1, limit: 100 } })
-      .then(r => setAdvisorList(r.data?.data ?? []))
-      .catch(() => setAdvisorList([]))
-      .finally(() => setAdvisorsLoading(false))
-  }, [])
-
   const handleAdd = async (e) => {
     e.preventDefault()
+    if (!advisorId) {
+      setAddStatus({ loading: false, message: '', error: 'Select an advisor from the search results first.' })
+      return
+    }
     setAddStatus({ loading: true, message: '', error: '' })
     try {
       await apiClient.post(apiConfig.endpoints.committeeAdvisors(committeeId), {
-        advisorUserId: advisorId,
+        advisorId,
         assignmentSource: source,
       })
       setAddStatus({ loading: false, message: 'Advisor added.', error: '' })
@@ -297,21 +292,18 @@ function AdvisorsTab({ committeeId, onAdvisorsLoaded }) {
         onSubmit={handleAdd}
         className="flex flex-col sm:flex-row gap-2 border-t border-[#1e293b] pt-4"
       >
-        <select
-          value={advisorId}
-          onChange={(e) => setAdvisorId(e.target.value)}
-          required
-          className="flex-1 rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
-        >
-          <option value="">
-            {advisorsLoading ? 'Loading advisors…' : 'Select advisor'}
-          </option>
-          {advisorList.map((a) => (
-            <option key={a.advisorId} value={a.advisorId}>
-              {a.name ? `${a.name} (${a.email})` : a.email}
-            </option>
-          ))}
-        </select>
+        <div className="flex-1">
+          <EntitySearchSelect
+            endpoint={apiConfig.endpoints.userSearch}
+            searchField="email"
+            returnField="_id"
+            displayField="email"
+            value={advisorId}
+            onChange={setAdvisorId}
+            placeholder="Search advisor by email"
+            required
+          />
+        </div>
         <select
           value={source}
           onChange={(e) => setSource(e.target.value)}
@@ -493,6 +485,21 @@ function GradingScopeTab({ committeeId, advisorList }) {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [advisorDisplayMap, setAdvisorDisplayMap] = useState({})
+
+  useEffect(() => {
+    apiClient.get(apiConfig.endpoints.advisors, { params: { page: 1, limit: 100 } })
+      .then((r) => {
+        const list = r.data?.data ?? []
+        const map = {}
+        list.forEach((a) => {
+          const key = a.advisorId || a._id
+          if (key) map[key] = a.name ? `${a.name} (${a.email})` : (a.email ?? key)
+        })
+        setAdvisorDisplayMap(map)
+      })
+      .catch(() => {})
+  }, [])
 
   const loadScope = useCallback(async (advisorId, p = 1) => {
     if (!advisorId) return
@@ -534,7 +541,7 @@ function GradingScopeTab({ committeeId, advisorList }) {
             const uid = a.advisorUserId || a._id
             return (
               <option key={uid} value={uid}>
-                {uid}
+                {advisorDisplayMap[uid] || uid}
               </option>
             )
           })}
@@ -728,7 +735,7 @@ export default function CommitteeDetailPage() {
       </div>
 
       {/* Tabs card */}
-      <div className="rounded-2xl border border-[#1e293b] bg-[#111827] overflow-hidden">
+      <div className="rounded-2xl border border-[#1e293b] bg-[#111827]">
         {/* Tab bar */}
         <div className="flex border-b border-[#1e293b] overflow-x-auto">
           {TABS.map((tab, i) => (

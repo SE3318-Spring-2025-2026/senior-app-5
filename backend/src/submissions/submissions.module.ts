@@ -10,7 +10,6 @@ import { Group, GroupSchema } from '../groups/group.entity';
 import { Committee, CommitteeSchema } from '../committees/schemas/committee.schema';
 
 
-
 @Module({
   imports: [
     MongooseModule.forFeature([

@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { GradingType } from '../schemas/rubric.schema';
 
 export class RubricQuestionResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -25,6 +26,9 @@ export class RubricResponseDto {
 
   @ApiProperty()
   isActive!: boolean;
+
+  @ApiProperty({ enum: GradingType })
+  gradingType!: GradingType;
 
   @ApiProperty({ type: [RubricQuestionResponseDto] })
   questions!: RubricQuestionResponseDto[];

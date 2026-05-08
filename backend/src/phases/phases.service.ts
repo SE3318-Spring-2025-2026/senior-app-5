@@ -53,6 +53,7 @@ export class PhasesService {
     const submissionStart = new Date(dto.submissionStart);
     const submissionEnd = new Date(dto.submissionEnd);
 
+    // isNaN kontrolü silindi, sadece iş mantığı (business logic) bırakıldı
     if (submissionEnd <= submissionStart) {
       throw new BadRequestException(
         'submissionEnd must be strictly after submissionStart',
@@ -66,7 +67,7 @@ export class PhasesService {
 
     phase.submissionStart = submissionStart;
     phase.submissionEnd = submissionEnd;
-
+    
     return phase.save();
   }
 }

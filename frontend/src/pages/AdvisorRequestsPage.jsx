@@ -154,7 +154,7 @@ function AdvisorRequestsPage() {
                       {req.groupName || req.groupId || '—'}
                     </td>
                     <td className="px-4 py-3 text-slate-400">
-                      {req.submittedByEmail || req.submittedBy || '—'}
+                      {req.submittedByName || req.submittedByEmail || '—'}
                     </td>
                     <td className="px-4 py-3 text-slate-500">
                       {date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}

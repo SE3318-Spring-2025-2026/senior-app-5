@@ -177,7 +177,7 @@ const StoryPointsPanel = ({ canOverride }) => {
           <option value="">Select sprint…</option>
           {sprintOptions.map((s) => (
             <option key={s.sprintId} value={s.sprintId}>
-              {s.sprintId} ({s.targetStoryPoints} pts)
+              {s.phase ? `${s.phase} ` : ''}Sprint ({s.startDate ? new Date(s.startDate).toLocaleDateString() : s.sprintId}) — {s.targetStoryPoints} pts
             </option>
           ))}
         </select>

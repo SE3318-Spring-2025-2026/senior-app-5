@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Pencil, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import { PageHeader } from '../components/ui';
 
@@ -29,7 +29,6 @@ const DeliverableManagementPage = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [editingName, setEditingName] = useState('');
   const [form, setForm] = useState(emptyForm());
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,27 +45,34 @@ const DeliverableManagementPage = () => {
     }
   };
 
-  useEffect(() => {
-    loadDeliverables();
-  }, []);
+  useEffect(() => { loadDeliverables(); }, []);
 
   const resetForm = () => {
     setEditingId(null);
-    setEditingName('');
     setForm(emptyForm());
     setShowForm(false);
   };
 
   const handleEdit = (d) => {
     setEditingId(d.deliverableId);
-    setEditingName(d.name);
     setForm({ name: d.name, deliverablePercentage: String(d.deliverablePercentage) });
     setShowForm(true);
   };
 
+  const handleDelete = async (d) => {
+    if (!confirm(`Delete "${d.name}"? This cannot be undone.`)) return;
+    try {
+      await apiClient.delete(`/deliverables/${d.deliverableId}`);
+      setDeliverables((prev) => prev.filter((x) => x.deliverableId !== d.deliverableId));
+      toast.success('Deliverable deleted.');
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to delete deliverable.');
+    }
+  };
+
   const validate = () => {
+    if (!form.name.trim()) { toast.error('Name is required.'); return false; }
     const pct = parseFloat(form.deliverablePercentage);
-    if (!editingId && !form.name.trim()) { toast.error('Name is required.'); return false; }
     if (isNaN(pct) || pct < 0 || pct > 100) { toast.error('Weight must be between 0 and 100.'); return false; }
     return true;
   };
@@ -75,16 +81,22 @@ const DeliverableManagementPage = () => {
     e.preventDefault();
     if (!validate()) return;
 
-    const payload = { deliverablePercentage: parseFloat(form.deliverablePercentage) };
+    const pct = parseFloat(form.deliverablePercentage);
 
     setSubmitting(true);
     try {
       if (editingId) {
-        const res = await apiClient.patch(`/deliverables/${editingId}`, payload);
+        const res = await apiClient.patch(`/deliverables/${editingId}`, {
+          name: form.name.trim(),
+          deliverablePercentage: pct,
+        });
         setDeliverables((prev) => prev.map((d) => d.deliverableId === editingId ? res.data : d));
         toast.success('Deliverable updated.');
       } else {
-        const res = await apiClient.post('/deliverables', { ...payload, name: form.name.trim() });
+        const res = await apiClient.post('/deliverables', {
+          name: form.name.trim(),
+          deliverablePercentage: pct,
+        });
         setDeliverables((prev) => [...prev, res.data]);
         toast.success('Deliverable created.');
       }
@@ -122,26 +134,21 @@ const DeliverableManagementPage = () => {
       />
 
       {showForm && (
-        <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
-          <SectionLabel icon={Package}>
-            {editingId ? `Edit · ${editingName}` : 'New deliverable'}
-          </SectionLabel>
-
+        <Card>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">
+            {editingId ? 'Edit Deliverable' : 'New Deliverable'}
+          </p>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!editingId && (
-              <div>
-                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Statement of Work"
-                  className={inputCls}
-                />
-              </div>
-            )}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-400">Name</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Statement of Work"
+                className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200"
+              />
+            </div>
 
             <div>
               <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
@@ -198,15 +205,30 @@ const DeliverableManagementPage = () => {
         ) : (
           <ul className="space-y-2">
             {deliverables.map((d) => (
-              <li
-                key={d.deliverableId}
-                className="flex items-center justify-between gap-2 rounded-xl border border-[#1f1f23] bg-[#0e0e10] p-3.5 transition-colors hover:border-[#2a2a30] hover:bg-[#18181c]"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-zinc-200">{d.name}</p>
-                  <p className="mt-0.5 text-[11px] text-zinc-600">
-                    {d.deliverablePercentage}% of final grade
-                  </p>
+              <li key={d.deliverableId} className="border border-[#1e293b] rounded-xl p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-200">{d.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{d.deliverablePercentage}% of final grade</p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(d)}
+                      className="text-slate-500 hover:text-blue-400"
+                      title="Edit"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(d)}
+                      className="text-slate-500 hover:text-red-400"
+                      title="Delete"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
                 <button
                   type="button"

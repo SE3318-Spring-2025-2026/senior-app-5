@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -140,6 +141,24 @@ export class DeliverablesController {
     return this.deliverablesService.updateDeliverable(
       deliverableId,
       body,
+      this.getActorId(req),
+      this.getCorrelationId(req),
+    );
+  }
+
+  @ApiOperation({ operationId: 'deleteDeliverable', summary: 'Delete a deliverable' })
+  @ApiNotFoundResponse({ description: 'Deliverable not found' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @Roles(Role.Coordinator)
+  @Delete(':deliverableId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteDeliverable(
+    @Param('deliverableId', new ParseUUIDPipe()) deliverableId: string,
+    @Req() req: RequestWithUser,
+  ): Promise<void> {
+    return this.deliverablesService.deleteDeliverable(
+      deliverableId,
       this.getActorId(req),
       this.getCorrelationId(req),
     );

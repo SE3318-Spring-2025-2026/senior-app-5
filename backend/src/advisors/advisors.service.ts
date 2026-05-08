@@ -30,6 +30,7 @@ import {
   ScheduleDocument,
   SchedulePhase,
 } from './schemas/schedule.schema';
+import { validateSprintDateWindow } from './dto/set-schedule.dto';
 
 export interface AdvisorListItem {
   advisorId: string;
@@ -121,6 +122,9 @@ export interface ListRequestsInput {
 export interface EnrichedAdvisorRequest extends AdvisorRequest {
   advisorName: string | null;
   advisorEmail: string | null;
+  groupName: string | null;
+  submittedByEmail: string | null;
+  submittedByName: string | null;
 }
 
 export interface PaginatedRequestsResponse {
@@ -219,14 +223,11 @@ export class AdvisorsService {
       );
     }
 
-    try {
-      await this.scheduleModel
-        .updateMany(
-          { phase: input.phase, isActive: true },
-          { $set: { isActive: false } },
-        )
-        .exec();
+    if (input.phase === SchedulePhase.SPRINT) {
+      validateSprintDateWindow(input.startDatetime, input.endDatetime);
+    }
 
+    try {
       const createdSchedule = await this.scheduleModel.create({
         coordinatorId: input.coordinatorId,
         phase: input.phase,
@@ -745,21 +746,41 @@ export class AdvisorsService {
       ]);
 
       const advisorIds = [...new Set(data.map((r) => r.requestedAdvisorId).filter(Boolean))];
-      const advisorDocs = advisorIds.length
-        ? await this.userModel
-            .find({ _id: { $in: advisorIds } })
-            .select('name email')
-            .lean<User[]>()
-            .exec()
-        : [];
-      const advisorById = new Map(advisorDocs.map((u) => [String((u as any)._id), u]));
+      const submitterIds = [...new Set(data.map((r) => r.submittedBy).filter(Boolean))];
+      const groupIds = [...new Set(data.map((r) => r.groupId).filter(Boolean))];
+
+      const allUserIds = [...new Set([...advisorIds, ...submitterIds])];
+
+      const [userDocs, groupDocs] = await Promise.all([
+        allUserIds.length
+          ? this.userModel
+              .find({ _id: { $in: allUserIds } })
+              .select('name email')
+              .lean<User[]>()
+              .exec()
+          : Promise.resolve([]),
+        groupIds.length
+          ? this.groupModel
+              .find({ groupId: { $in: groupIds } })
+              .select('groupId groupName')
+              .lean<Group[]>()
+              .exec()
+          : Promise.resolve([]),
+      ]);
+
+      const userById = new Map(userDocs.map((u) => [String((u as any)._id), u]));
+      const groupNameById = new Map(groupDocs.map((g) => [g.groupId, g.groupName]));
 
       const enriched: EnrichedAdvisorRequest[] = data.map((r) => {
-        const adv = advisorById.get(String(r.requestedAdvisorId));
+        const adv = userById.get(String(r.requestedAdvisorId));
+        const submitter = userById.get(String(r.submittedBy));
         return {
           ...r,
           advisorName: adv?.name ?? adv?.email ?? null,
           advisorEmail: adv?.email ?? null,
+          groupName: groupNameById.get(r.groupId) ?? null,
+          submittedByEmail: submitter?.email ?? null,
+          submittedByName: submitter?.name ?? null,
         };
       });
 
@@ -987,6 +1008,71 @@ export class AdvisorsService {
     const end = new Date(schedule.endDatetime).getTime();
 
     return now >= start && now <= end;
+  }
+
+  async listSchedules(phase: SchedulePhase): Promise<ScheduleResponse[]> {
+    const docs = (await this.scheduleModel
+      .find({ phase })
+      .sort({ startDatetime: 1 })
+      .lean()
+      .exec()) as ScheduleRecord[];
+
+    return docs.map((s) => ({
+      scheduleId: s.scheduleId ?? '',
+      coordinatorId: s.coordinatorId,
+      phase: s.phase,
+      startDatetime: new Date(s.startDatetime).toISOString(),
+      endDatetime: new Date(s.endDatetime).toISOString(),
+      createdAt: (s.createdAt ?? new Date()).toISOString(),
+    }));
+  }
+
+  async updateSchedule(
+    scheduleId: string,
+    input: { startDatetime: string; endDatetime: string },
+  ): Promise<ScheduleResponse> {
+    const start = new Date(input.startDatetime);
+    const end = new Date(input.endDatetime);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException('Schedule datetimes must be valid dates.');
+    }
+    if (end.getTime() <= start.getTime()) {
+      throw new BadRequestException(
+        'endDatetime must be greater than startDatetime.',
+      );
+    }
+
+    const doc = await this.scheduleModel.findOne({ scheduleId }).exec();
+    if (!doc) {
+      throw new NotFoundException(`Schedule '${scheduleId}' not found.`);
+    }
+    if (doc.phase === SchedulePhase.SPRINT) {
+      validateSprintDateWindow(input.startDatetime, input.endDatetime);
+    }
+
+    doc.startDatetime = start;
+    doc.endDatetime = end;
+    const saved = await doc.save();
+    const savedWithTs = saved as unknown as { createdAt?: Date };
+
+    return {
+      scheduleId: saved.scheduleId,
+      coordinatorId: saved.coordinatorId,
+      phase: saved.phase,
+      startDatetime: saved.startDatetime.toISOString(),
+      endDatetime: saved.endDatetime.toISOString(),
+      createdAt: (savedWithTs.createdAt ?? new Date()).toISOString(),
+    };
+  }
+
+  async deleteSchedule(scheduleId: string): Promise<void> {
+    const result = await this.scheduleModel
+      .deleteOne({ scheduleId })
+      .exec();
+    if (result.deletedCount === 0) {
+      throw new NotFoundException(`Schedule '${scheduleId}' not found.`);
+    }
   }
 
   private async getLatestScheduleByPhase(

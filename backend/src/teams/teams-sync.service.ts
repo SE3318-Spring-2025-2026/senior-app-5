@@ -72,7 +72,7 @@ export class TeamsSyncService {
    * returned — only configuration metadata and probe results.
    */
   async getIntegrationStatus(teamId: string) {
-    const team = await this.teamModel.findById(teamId).exec();
+    const team = await this.teamModel.findOne({ groupId: teamId }).exec();
     if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
 
     const jiraConfigured = !!(
@@ -262,7 +262,7 @@ export class TeamsSyncService {
   // ─────────────────────────────────────────────────────────
 
   async syncStories(teamId: string) {
-    const team = await this.teamModel.findById(teamId).exec();
+    const team = await this.teamModel.findOne({ groupId: teamId }).exec();
     if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
 
     if (!team.jiraDomain || !team.jiraApiToken || !team.jiraProjectKey || !team.jiraEmail) {
@@ -437,7 +437,7 @@ export class TeamsSyncService {
     lockedCount: number;
     studentRecords: { studentId: string; completedPoints: number; targetPoints: number }[];
   }> {
-    const team = await this.teamModel.findById(teamId).exec();
+    const team = await this.teamModel.findOne({ groupId: teamId }).exec();
     if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
 
     const sprintConfig = await this.sprintConfigModel.findOne({ groupId, sprintId }).exec();
@@ -505,7 +505,7 @@ export class TeamsSyncService {
   // ─────────────────────────────────────────────────────────
 
   async getLatestSync(teamId: string) {
-    const team = await this.teamModel.findById(teamId).exec();
+    const team = await this.teamModel.findOne({ groupId: teamId }).exec();
     if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
 
     return this.sprintStoryModel
@@ -517,11 +517,33 @@ export class TeamsSyncService {
   }
 
   // ─────────────────────────────────────────────────────────
+  // PUBLIC: Story points summary (completed vs total)
+  // ─────────────────────────────────────────────────────────
+
+  async getStoryPointsSummary(teamId: string): Promise<{ completedStoryPoints: number; totalStoryPoints: number }> {
+    const team = await this.teamModel.findOne({ groupId: teamId }).exec();
+    if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
+
+    const stories = await this.sprintStoryModel
+      .find({ teamId })
+      .select('work isComplete -_id')
+      .lean()
+      .exec();
+
+    const totalStoryPoints = stories.reduce((sum, s) => sum + (s.work ?? 0), 0);
+    const completedStoryPoints = stories
+      .filter((s) => s.isComplete)
+      .reduce((sum, s) => sum + (s.work ?? 0), 0);
+
+    return { completedStoryPoints, totalStoryPoints };
+  }
+
+  // ─────────────────────────────────────────────────────────
   // PUBLIC: Advisor panel aggregation
   // ─────────────────────────────────────────────────────────
 
   async getAdvisorPanel(teamId: string, groupId?: string): Promise<AdvisorPanelResult> {
-    const team = await this.teamModel.findById(teamId).exec();
+    const team = await this.teamModel.findOne({ groupId: teamId }).exec();
     if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
 
     const stories = await this.sprintStoryModel

@@ -60,6 +60,13 @@ export class UsersService {
     });
   }
 
+  async updateRole(userId: string, role: Role): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { $set: { role } }, { new: true })
+      .select('-passwordHash')
+      .exec();
+  }
+
   async createPasswordResetToken(email: string) {
     const normalizedEmail = email?.toLowerCase().trim();
     if (!normalizedEmail) return null;

@@ -96,7 +96,8 @@ function ScrumManagementPage() {
     setInlineError('team', '');
 
     try {
-      const response = await apiClient.get(`/teams/${teamId}`);
+      // Use the integrations/status endpoint which exists on the backend
+      const response = await apiClient.get(apiConfig.endpoints.teamIntegrationsStatus(teamId));
       setTeamData(response.data || null);
     } catch (error) {
       setInlineError('team', parseApiMessage(error, 'Failed to load team integration status.'));
@@ -235,19 +236,20 @@ function ScrumManagementPage() {
             {loading.team ? (
               <p className="text-[13px] text-zinc-600">Loading integration data…</p>
             ) : (
-              <div className="rounded-xl border border-[#1f1f23] bg-[#0e0e10] px-4">
-                <InfoRow
-                  label="Jira project key"
-                  value={teamData?.jiraProjectKey || 'Not configured'}
-                />
-                <InfoRow
-                  label="Jira domain"
-                  value={teamData?.jiraDomain || 'Not configured'}
-                />
-                <InfoRow
-                  label="GitHub repository"
-                  value={teamData?.githubRepositoryId || 'Not configured'}
-                />
+              <div className="space-y-2 text-sm">
+                <p className="text-slate-300">
+                  Jira Project Key: <span className="text-slate-100">{teamData?.jira?.projectKey || 'Not configured'}</span>
+                </p>
+                <p className="text-slate-300">
+                  Jira Domain: <span className="text-slate-100">{teamData?.jira?.domain || 'Not configured'}</span>
+                </p>
+                <p className="text-slate-300">
+                  GitHub Repository ID:{' '}
+                  <span className="text-slate-100">{teamData?.github?.repository || 'Not configured'}</span>
+                </p>
+                <p className="text-xs text-slate-400">
+                  Update integrations from <Link className="text-blue-400 hover:underline" to="/integrations">Integrations</Link>.
+                </p>
               </div>
             )}
 

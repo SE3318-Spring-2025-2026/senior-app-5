@@ -30,6 +30,7 @@ function GradeDisplayPage() {
 
   // Expandable gradeComponents rows
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [studentEmailMap, setStudentEmailMap] = useState({});
 
   useEffect(() => {
     if (!user) {
@@ -69,15 +70,32 @@ function GradeDisplayPage() {
     setGroupGrade(null);
     setHistory(null);
     setExpandedRows(new Set());
+    setStudentEmailMap({});
     setGroupStatus({ loading: true, error: '', notFound: false });
     setHistoryStatus({ loading: false, error: '', notFound: false });
 
     const gId = groupIdInput.trim();
 
     try {
-      const response = await apiClient.get(apiConfig.endpoints.groupFinalGrade(gId));
-      setGroupGrade(response.data);
+      const [gradeResponse, groupResponse] = await Promise.allSettled([
+        apiClient.get(apiConfig.endpoints.groupFinalGrade(gId)),
+        apiClient.get(apiConfig.endpoints.groupById(gId)),
+      ]);
+
+      if (gradeResponse.status === 'rejected') throw gradeResponse.reason;
+
+      setGroupGrade(gradeResponse.value.data);
       setGroupStatus({ loading: false, error: '', notFound: false });
+
+      if (groupResponse.status === 'fulfilled') {
+        const members = groupResponse.value.data?.members ?? [];
+        const map = members.reduce((acc, m) => {
+          const id = String(m?._id ?? '');
+          if (id && m?.email) acc[id] = m.email;
+          return acc;
+        }, {});
+        setStudentEmailMap(map);
+      }
 
       if (HISTORY_ROLES.has(user.role)) {
         await fetchGradeHistory(gId, 1);
@@ -251,7 +269,7 @@ function GradeDisplayPage() {
           <table className={styles.customTable}>
             <thead>
               <tr>
-                <th>Student ID</th>
+                <th>Student</th>
                 <th>Final Grade</th>
                 <th>Allowance Ratio</th>
                 <th>Calculated At</th>
@@ -260,7 +278,7 @@ function GradeDisplayPage() {
             <tbody>
               {groupGrade.individualGrades.map((ig) => (
                 <tr key={ig.studentId}>
-                  <td>{ig.studentId}</td>
+                  <td>{studentEmailMap[ig.studentId] ?? ig.studentId}</td>
                   <td>{ig.finalGrade?.toFixed(2)}</td>
                   <td>{(ig.individualAllowanceRatio * 100).toFixed(0)}%</td>
                   <td>{new Date(ig.calculatedAt).toLocaleString()}</td>

@@ -6,6 +6,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { MoveStudentDto } from './dto/move-student.dto';
 import { SanitizeGroupsDto } from './dto/sanitize-groups.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Admin')
@@ -51,5 +52,15 @@ export class AdminController {
   @ApiOperation({ summary: 'Send a password reset link to a specific user' })
   async sendPasswordReset(@Param('userId') userId: string) {
     return this.adminService.sendPasswordResetForUser(userId);
+  }
+
+  @Patch('users/:userId/role')
+  @Roles(Role.Coordinator, Role.Admin)
+  @ApiOperation({ summary: "Update a user's role" })
+  async updateUserRole(
+    @Param('userId') userId: string,
+    @Body() body: UpdateUserRoleDto,
+  ) {
+    return this.adminService.updateUserRole(userId, body.role);
   }
 }

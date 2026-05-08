@@ -70,26 +70,23 @@ export class GroupsService {
       throw new NotFoundException(`Group not found: ${groupId}`);
     }
 
+    const safeFind = async (id: string | null | undefined) => {
+      if (!id) return null;
+      try {
+        return await this.userModel.findById(id).select('_id name email').lean().exec();
+      } catch {
+        return null;
+      }
+    };
+
     const [members, leader, advisor] = await Promise.all([
       this.userModel
         .find({ teamId: groupId })
-        .select('_id name email role -passwordHash')
+        .select('_id name email role')
         .lean()
         .exec(),
-      group.leaderUserId
-        ? this.userModel
-            .findById(group.leaderUserId)
-            .select('_id name email')
-            .lean()
-            .exec()
-        : null,
-      group.advisorUserId
-        ? this.userModel
-            .findById(group.advisorUserId)
-            .select('_id name email')
-            .lean()
-            .exec()
-        : null,
+      safeFind(group.leaderUserId),
+      safeFind(group.assignedAdvisorId ?? group.advisorUserId),
     ]);
 
     return {

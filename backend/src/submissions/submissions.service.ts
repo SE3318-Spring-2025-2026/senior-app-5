@@ -15,6 +15,9 @@ import { PhasesService } from '../phases/phases.service';
 import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument, SubmissionStatus } from './schemas/submission.schema';
+import { AddCommentDto } from './dto/add-comment.dto';
+import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
+
 type SubmissionActor = { userId?: string; role?: string; groupId?: string };
 type UploadedSubmissionFile = {
   originalname: string;
@@ -96,7 +99,7 @@ export class SubmissionsService {
     if (createSubmissionDto.type === 'SOW') {
       const eligibility = await this.validateSowEligibility(createSubmissionDto.groupId);
       if (!eligibility.canProceed) {
-         throw new ForbiddenException(
+        throw new ForbiddenException(
           `The SOW cannot be created. Prerequisites are not met. Revised Proposal Status: ${eligibility.revisedProposalStatus}`,
         );
       }
@@ -158,13 +161,11 @@ export class SubmissionsService {
     submission: SubmissionDocument,
     professorUserId: string,
   ): Promise<void> {
-    // Allow if the professor advises the group that owns this submission
     const advisedGroup = await this.groupModel
       .findOne({ groupId: String(submission.groupId), assignedAdvisorId: professorUserId })
       .exec();
     if (advisedGroup) return;
 
-    // Allow if the professor is a jury member of a committee assigned to this group
     const committee = await this.committeeModel
       .findOne({ 'groups.groupId': submission.groupId, 'jury.userId': professorUserId })
       .exec();
@@ -186,18 +187,12 @@ export class SubmissionsService {
     return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }
 
-  /** Returns all submissions the professor can access:
-   *  - Groups where professor is the assigned advisor
-   *  - Groups belonging to committees where professor is a jury member
-   */
   async findAllForProfessor(professorUserId: string) {
-    // Collect groupIds from committees the professor is a jury member of
     const committees = await this.committeeModel
       .find({ 'jury.userId': professorUserId })
       .exec();
     const committeeGroupIds = committees.flatMap((c) => this.getCommitteeGroupIds(c));
 
-    // Collect groupIds where professor is the assigned advisor
     const advisedGroups = await this.groupModel
       .find({ assignedAdvisorId: professorUserId })
       .exec();
@@ -231,15 +226,12 @@ export class SubmissionsService {
       throw new NotFoundException('Submission not found.');
     }
 
-    // 2. SECURITY: Fetch the associated phase and validate submission window
     const phase = await this.phasesService.getPhaseById(submission.phaseId);
     
-    // Check if phase has submission window configured
     if (!phase.submissionStart || !phase.submissionEnd) {
       throw new BadRequestException('Phase submission window is not configured.');
     }
 
-    // Check if current time is within the submission window
     const now = new Date();
     if (now < phase.submissionStart) {
       throw new BadRequestException('Submission window has not started yet. Upload is not permitted.');
@@ -248,7 +240,6 @@ export class SubmissionsService {
       throw new BadRequestException('Submission window has closed. Upload is not permitted.');
     }
 
-    // 3. Prepare file information (metadata) with latin1 decoding fix from main
     const decodedFileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
     const newDocument = {
       originalName: decodedFileName,
@@ -256,7 +247,6 @@ export class SubmissionsService {
       uploadedAt: new Date(),
     };
 
-    // 4. Add the file to the record and update the database
     submission.documents = submission.documents || [];
     submission.documents.push(newDocument);
     await submission.save();
@@ -266,6 +256,7 @@ export class SubmissionsService {
       document: newDocument,
     };
   }
+
   async findOne(id: string): Promise<SubmissionDocument> {
     return this.findById(id);
   }
@@ -324,7 +315,6 @@ export class SubmissionsService {
       }
     }  
 
-    // Prepare file information
     const decodedFileName = Buffer.from(file.originalname, 'latin1').toString(
       'utf8',
     );
@@ -414,8 +404,6 @@ export class SubmissionsService {
       }
     }
 
-    
-
     return {
       submissionId,
       isComplete: missingFields.length === 0,
@@ -438,19 +426,16 @@ export class SubmissionsService {
     }
   }
 
-
   async listSubmissionsForJury(userId: string, groupId: string) {
     await this.assertJuryMember(userId, groupId);
 
-    // Mongoose projection ({ 'documents.storagePath': 0 })  with this we delete storage path safely from response
     return this.submissionModel
       .find({ groupId }, { 'documents.storagePath': 0 })
       .sort({ createdAt: -1 })
       .exec();
   }
 
-
-   async getSubmissionForJury(userId: string, submissionId: string) {
+  async getSubmissionForJury(userId: string, submissionId: string) {
     if (!isValidObjectId(submissionId)) {
       throw new BadRequestException('Invalid Submission ID format.');
     }
@@ -466,19 +451,64 @@ export class SubmissionsService {
     await this.assertJuryMember(userId, submission.groupId);
     return submission;
   }
-  
-   async validateSowEligibility(groupId: string) {
-    // 1. Group Not Found Check 
+
+  async addComment(reviewerUserId: string, submissionId: string, dto: AddCommentDto) {
+    const submission = await this.findById(submissionId);
+    await this.assertJuryMember(reviewerUserId, submission.groupId);
+
+    const newComment = {
+      commentText: dto.commentText,
+      reviewerUserId,
+      createdAt: new Date(),
+    };
+
+    submission.comments = submission.comments || [];
+    submission.comments.push(newComment as any);
+    await submission.save();
+    
+    return submission.comments[submission.comments.length - 1];
+  }
+
+  async listComments(reviewerUserId: string, submissionId: string) {
+    const submission = await this.findById(submissionId);
+    await this.assertJuryMember(reviewerUserId, submission.groupId);
+    return submission.comments || [];
+  }
+
+  async createRevisionRequest(requesterUserId: string, submissionId: string, dto: CreateRevisionRequestDto) {
+    const submission = await this.findById(submissionId);
+    await this.assertJuryMember(requesterUserId, submission.groupId);
+
+    const dueDatetime = new Date(dto.revisionDueDatetime);
+    if (dueDatetime <= new Date()) {
+      throw new BadRequestException('Revision due datetime must be in the future.');
+    }
+
+    const newRevisionRequest = {
+      requesterUserId,
+      revisionDueDatetime: dueDatetime,
+      status: 'PENDING',
+      createdAt: new Date(),
+    };
+
+    submission.revisionRequests = submission.revisionRequests || [];
+    submission.revisionRequests.push(newRevisionRequest as any);
+    await submission.save();
+
+    return submission.revisionRequests[submission.revisionRequests.length - 1];
+  }
+
+  async validateSowEligibility(groupId: string) {
     const group = await this.groupModel.findOne({ groupId }).exec();
     if (!group) {
       throw new NotFoundException(`Group with ID ${groupId} not found.`);
     }
-   // Find Revised Proposal
+
     const revisedProposal = await this.submissionModel
       .findOne({ groupId, type: 'REVISED_PROPOSAL' })
-      .sort({ createdAt: -1 }) // En güncel olanı al
+      .sort({ createdAt: -1 })
       .exec();
-    //
+
     const sow = await this.submissionModel
       .findOne({ groupId, type: 'SOW' })
       .sort({ createdAt: -1 })
@@ -493,6 +523,5 @@ export class SubmissionsService {
       revisedProposalStatus,
       canProceed,
     };
-
-   }
+  }
 }

@@ -102,6 +102,8 @@ function StudentGroupManagementPage() {
   const [requestWithdrawLoadingId, setRequestWithdrawLoadingId] = useState('')
   const [withdrawModalTarget, setWithdrawModalTarget] = useState(null)
   const [withdrawState, setWithdrawState] = useState({ loading: false, message: '', error: '' })
+  const [reopenLoadingId, setReopenLoadingId] = useState('')
+  const [reopenState, setReopenState] = useState({ message: '', error: '' })
 
   // Committee lookup state
   const [committeeGroupId, setCommitteeGroupId] = useState('')
@@ -140,6 +142,13 @@ function StudentGroupManagementPage() {
   const advisorMap = useMemo(
     () => Object.fromEntries(
       advisors.map((a) => [String(a.advisorId || a.id), a.name || a.fullName || a.email || ''])
+    ),
+    [advisors],
+  )
+
+  const advisorEmailMap = useMemo(
+    () => Object.fromEntries(
+      advisors.map((a) => [String(a.advisorId || a.id), a.email || ''])
     ),
     [advisors],
   )
@@ -201,7 +210,13 @@ function StudentGroupManagementPage() {
     try {
       const response = await apiClient.get(apiConfig.endpoints.requests)
       const list = response.data?.data || response.data?.items || response.data || []
-      setRequests(Array.isArray(list) ? list : [])
+      const STATUS_ORDER = { PENDING: 0, APPROVED: 1, REJECTED: 2, WITHDRAWN: 3 }
+      const sorted = (Array.isArray(list) ? list : []).sort((a, b) => {
+        const sa = STATUS_ORDER[String(a.status || '').toUpperCase()] ?? 99
+        const sb = STATUS_ORDER[String(b.status || '').toUpperCase()] ?? 99
+        return sa - sb
+      })
+      setRequests(sorted)
       setRequestState({ loading: false, message: 'Request list loaded.', error: '' })
     } catch (error) {
       const { message } = getApiError(error)
@@ -219,7 +234,7 @@ function StudentGroupManagementPage() {
     setRequestWithdrawLoadingId(String(requestId))
 
     try {
-      await apiClient.patch(apiConfig.endpoints.requestById(requestId), { action: 'withdraw' })
+      await apiClient.patch(apiConfig.endpoints.requestById(requestId), { status: 'WITHDRAWN' })
       setWithdrawState({ loading: false, message: `Request ${requestId} withdrawn.`, error: '' })
       setWithdrawModalTarget(null)
       await fetchRequests()
@@ -232,6 +247,24 @@ function StudentGroupManagementPage() {
       })
     } finally {
       setRequestWithdrawLoadingId('')
+    }
+  }
+
+  const handleReopen = async (request) => {
+    const advisorId = request.requestedAdvisorId || request.advisorId
+    if (!advisorId) return
+    const requestId = getRequestId(request)
+    setReopenLoadingId(String(requestId))
+    setReopenState({ message: '', error: '' })
+    try {
+      await apiClient.post(apiConfig.endpoints.requests, { requestedAdvisorId: advisorId })
+      setReopenState({ message: 'Request re-opened successfully.', error: '' })
+      await fetchRequests()
+    } catch (error) {
+      const { message } = getApiError(error)
+      setReopenState({ message: '', error: message || 'Failed to re-open request.' })
+    } finally {
+      setReopenLoadingId('')
     }
   }
 
@@ -364,13 +397,24 @@ function StudentGroupManagementPage() {
     try {
       await apiClient.patch(apiConfig.endpoints.groupInviteRespond(inviteId), { accept })
       if (accept) {
-        // Refresh user so teamId appears
         try {
           const me = await apiClient.get(apiConfig.endpoints.me)
-          if (me.data && setCurrentUser) setCurrentUser(me.data)
+          if (me.data) {
+            const updated = { ...me.data, teamId: me.data.teamId ?? me.data.groupId ?? null }
+            localStorage.setItem('user', JSON.stringify(updated))
+            setCurrentUser(updated)
+            const newGroupId = updated.teamId || updated.groupId || ''
+            if (newGroupId) {
+              setStatusGroupId(newGroupId)
+              await fetchGroupStatusById(newGroupId)
+            }
+            await fetchRequests()
+            setActiveTab('group-status')
+          }
         } catch { /* ignore */ }
+      } else {
+        fetchMyInvites()
       }
-      fetchMyInvites()
     } catch (error) {
       const { status, message } = getApiError(error)
       setMyInvitesState((prev) => ({
@@ -382,6 +426,14 @@ function StudentGroupManagementPage() {
     }
   }
 
+
+  // Redirect non-team-leaders away from browse-advisors tab after user loads
+  useEffect(() => {
+    if (userLoaded && !isTeamLeader && activeTab === 'browse-advisors') {
+      setActiveTab('my-requests')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLoaded])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAdvisors(advisorPage) }, [advisorPage])
@@ -432,12 +484,14 @@ function StudentGroupManagementPage() {
       </header>
 
       <nav className={styles.tabMenu}>
-        <button
-          className={`${styles.tabButton} ${activeTab === 'browse-advisors' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('browse-advisors')}
-        >
-          Browse Advisors
-        </button>
+        {isTeamLeader && (
+          <button
+            className={`${styles.tabButton} ${activeTab === 'browse-advisors' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('browse-advisors')}
+          >
+            Browse Advisors
+          </button>
+        )}
         <button
           className={`${styles.tabButton} ${activeTab === 'my-requests' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('my-requests')}
@@ -550,19 +604,25 @@ function StudentGroupManagementPage() {
           <SectionCard title="Advisor Requests" description="View statuses and withdraw only pending requests.">
             <StatusMessage state={requestState} />
             <StatusMessage state={withdrawState} />
+            <StatusMessage state={reopenState} />
             {requests.length === 0 ? (
               <p className={styles.emptyState}>No requests found.</p>
             ) : (
               <ul className={styles.list}>
                 {requests.map((request) => {
                   const requestId = getRequestId(request)
-                  const pending = isPending(request)
-                  const advisorDisplay = request.advisorName || request.advisor?.name || getAdvisorName(request.advisorId)
+                  const status = getRequestStatus(request)
+                  const pending = status === 'PENDING'
+                  const withdrawn = status === 'WITHDRAWN'
+                  const advisorId = request.requestedAdvisorId || request.advisorId
+                  const advisorDisplay = request.advisorName || request.advisor?.name || getAdvisorName(advisorId)
+                  const advisorEmail = request.advisorEmail || request.advisor?.email || advisorEmailMap[String(advisorId)] || ''
                   return (
                     <li key={requestId} className={styles.requestRow}>
                       <div>
                         <strong>{advisorDisplay}</strong>
                         <p className={styles.requestMeta}>
+                          {advisorEmail && <span>{advisorEmail} · </span>}
                           {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : ''}
                         </p>
                       </div>
@@ -570,15 +630,28 @@ function StudentGroupManagementPage() {
                         <span
                           className={`${styles.badgeStatus} ${pending ? styles.pending : styles.nonPending}`}
                         >
-                          {getRequestStatus(request) || 'UNKNOWN'}
+                          {status || 'UNKNOWN'}
                         </span>
-                        <button
-                          type="button"
-                          disabled={!isTeamLeader || !pending || Boolean(requestWithdrawLoadingId)}
-                          onClick={() => setWithdrawModalTarget(request)}
-                        >
-                          {requestWithdrawLoadingId === String(requestId) ? 'Withdrawing…' : 'Withdraw'}
-                        </button>
+                        {pending && isTeamLeader && (
+                          <button
+                            type="button"
+                            className={styles.btnDanger}
+                            disabled={Boolean(requestWithdrawLoadingId)}
+                            onClick={() => setWithdrawModalTarget(request)}
+                          >
+                            {requestWithdrawLoadingId === String(requestId) ? 'Withdrawing…' : 'Withdraw'}
+                          </button>
+                        )}
+                        {withdrawn && isTeamLeader && (
+                          <button
+                            type="button"
+                            className={styles.btnGhost}
+                            disabled={Boolean(reopenLoadingId)}
+                            onClick={() => handleReopen(request)}
+                          >
+                            {reopenLoadingId === String(requestId) ? 'Re-opening…' : 'Re-open'}
+                          </button>
+                        )}
                       </div>
                     </li>
                   )
@@ -626,11 +699,44 @@ function StudentGroupManagementPage() {
             {groupStatusResult && (
               <div className={styles.resultBox}>
                 <ul className={styles.resultList}>
+                  {groupStatusResult.groupName && (
+                    <li><strong>Group Name</strong><span>{groupStatusResult.groupName}</span></li>
+                  )}
                   <li><strong>Status</strong><span>{groupStatusResult.status || '—'}</span></li>
-                  <li><strong>Advisor</strong><span>{groupStatusResult.advisorName || getAdvisorName(groupStatusResult.advisorId)}</span></li>
+                  {groupStatusResult.advisorName && (
+                    <li>
+                      <strong>Advisor</strong>
+                      <span>
+                        {groupStatusResult.advisorName}
+                        {groupStatusResult.advisorEmail && groupStatusResult.advisorEmail !== groupStatusResult.advisorName && (
+                          <span style={{ color: '#64748b', fontSize: '0.8rem', display: 'block' }}>
+                            {groupStatusResult.advisorEmail}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  )}
                   <li><strong>Can Submit Request</strong><span>{groupStatusResult.canSubmitRequest ? 'Yes' : 'No'}</span></li>
-                  <li><strong>Blocked Reason</strong><span>{groupStatusResult.blockedReason || '—'}</span></li>
+                  {groupStatusResult.blockedReason && (
+                    <li><strong>Blocked Reason</strong><span>{groupStatusResult.blockedReason}</span></li>
+                  )}
                 </ul>
+                {groupStatusResult.members && groupStatusResult.members.length > 0 && (
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #1e293b' }}>
+                    <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#64748b', margin: '0 0 10px' }}>
+                      Members ({groupStatusResult.members.length})
+                    </p>
+                    <ul className={styles.list}>
+                      {groupStatusResult.members.map((member, i) => (
+                        <li key={i} className={styles.listItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                          <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{member.name || member.email}</span>
+                          {member.name && <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{member.email}</span>}
+                          <span style={{ fontSize: '0.7rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{member.role}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </SectionCard>
@@ -677,6 +783,7 @@ function StudentGroupManagementPage() {
                     <div className={styles.requestActions}>
                       <button
                         type="button"
+                        className={styles.btnGhost}
                         disabled={!!respondingInviteId}
                         onClick={() => handleRespondToInvite(invite.inviteId, true)}
                       >
@@ -684,6 +791,7 @@ function StudentGroupManagementPage() {
                       </button>
                       <button
                         type="button"
+                        className={styles.btnDanger}
                         disabled={!!respondingInviteId}
                         onClick={() => handleRespondToInvite(invite.inviteId, false)}
                       >
@@ -700,14 +808,21 @@ function StudentGroupManagementPage() {
         {activeTab === 'team-invites' && isTeamLeader && (
           <SectionCard title="Team Invites" description="Invite students to your team by email address. Statuses refresh every 10 seconds.">
             <form onSubmit={handleSendInvite} className={styles.form}>
-              <label htmlFor="invite-email">Student Email</label>
-              <input
-                id="invite-email"
-                type="email"
-                placeholder="student@example.com"
+              <label>Student Email</label>
+              <EntitySearchSelect
+                endpoint={apiConfig.endpoints.userSearch}
+                searchField="email"
+                returnField="email"
+                displayField="email"
                 value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                disabled={sendInviteState.loading}
+                onChange={setInviteEmail}
+                placeholder="student@example.com"
+                getItems={(data) =>
+                  (Array.isArray(data) ? data : []).filter(
+                    (u) => String(u.role || '').toLowerCase() === 'student'
+                  )
+                }
+                required
               />
               <button type="submit" disabled={sendInviteState.loading || !inviteEmail.trim()}>
                 {sendInviteState.loading ? 'Sending…' : 'Send Invite'}
@@ -764,11 +879,11 @@ function StudentGroupManagementPage() {
               Are you sure you want to withdraw your request for advisor <strong>{withdrawModalTarget.advisorName || withdrawModalTarget.advisor?.name || getAdvisorName(withdrawModalTarget.advisorId)}</strong>?
             </p>
             <div className={styles.modalActions}>
-              <button type="button" onClick={() => setWithdrawModalTarget(null)} disabled={withdrawState.loading}>
+              <button type="button" className={styles.btnGhost} onClick={() => setWithdrawModalTarget(null)} disabled={withdrawState.loading}>
                 Cancel
               </button>
-              <button type="button" onClick={handleWithdraw} disabled={withdrawState.loading}>
-                {withdrawState.loading ? 'Withdrawing…' : 'Confirm Withdraw'}
+              <button type="button" className={styles.btnDanger} onClick={handleWithdraw} disabled={withdrawState.loading}>
+                {withdrawState.loading ? 'Withdrawing…' : 'Withdraw'}
               </button>
             </div>
           </div>

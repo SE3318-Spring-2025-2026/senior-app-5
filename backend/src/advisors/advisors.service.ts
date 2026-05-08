@@ -118,8 +118,13 @@ export interface ListRequestsInput {
   limit: number;
 }
 
+export interface EnrichedAdvisorRequest extends AdvisorRequest {
+  advisorName: string | null;
+  advisorEmail: string | null;
+}
+
 export interface PaginatedRequestsResponse {
-  data: AdvisorRequest[];
+  data: EnrichedAdvisorRequest[];
   total: number;
   page: number;
   limit: number;
@@ -131,13 +136,22 @@ export interface TransferAdvisorInput {
   newAdvisorId: string;
 }
 
+export interface GroupMember {
+  name: string | null;
+  email: string;
+  role: string;
+}
+
 export interface GroupAssignmentStatusResponse {
   groupId: string;
+  groupName?: string;
   status: GroupAssignmentStatus | 'DISBANDED';
   advisorId: string | null;
   advisorName: string | null;
+  advisorEmail: string | null;
   canSubmitRequest: boolean;
   blockedReason: string | null;
+  members?: GroupMember[];
   updatedAt: string;
 }
 
@@ -695,6 +709,16 @@ export class AdvisorsService {
         throw new NotFoundException('No active group found for this team leader.');
       }
       filter.groupId = group.groupId;
+    } else if (input.callerRole === Role.Student) {
+      const user = await this.userModel
+        .findById(input.callerId)
+        .lean<User>()
+        .exec();
+      const teamId = user?.teamId ?? null;
+      if (!teamId) {
+        return { data: [], total: 0, page: input.page, limit: input.limit };
+      }
+      filter.groupId = teamId;
     } else if (input.callerRole === Role.Professor) {
       filter.requestedAdvisorId = input.callerId;
     } else {
@@ -720,7 +744,26 @@ export class AdvisorsService {
         this.advisorRequestModel.countDocuments(filter).exec(),
       ]);
 
-      return { data, total, page: input.page, limit: input.limit };
+      const advisorIds = [...new Set(data.map((r) => r.requestedAdvisorId).filter(Boolean))];
+      const advisorDocs = advisorIds.length
+        ? await this.userModel
+            .find({ _id: { $in: advisorIds } })
+            .select('name email')
+            .lean<User[]>()
+            .exec()
+        : [];
+      const advisorById = new Map(advisorDocs.map((u) => [String((u as any)._id), u]));
+
+      const enriched: EnrichedAdvisorRequest[] = data.map((r) => {
+        const adv = advisorById.get(String(r.requestedAdvisorId));
+        return {
+          ...r,
+          advisorName: adv?.name ?? adv?.email ?? null,
+          advisorEmail: adv?.email ?? null,
+        };
+      });
+
+      return { data: enriched, total, page: input.page, limit: input.limit };
     } catch {
       throw new InternalServerErrorException('Failed to list advisor requests.');
     }
@@ -736,15 +779,31 @@ export class AdvisorsService {
       throw new NotFoundException('Group was not found.');
     }
 
-    let advisor: Pick<User, 'email'> | null = null;
-    if (group.assignedAdvisorId) {
-      advisor = await this.userModel
-        .findOne({ _id: group.assignedAdvisorId })
-        .lean<User>()
-        .exec();
-    }
+    const [advisor, memberDocs] = await Promise.all([
+      group.assignedAdvisorId
+        ? this.userModel
+            .findOne({ _id: group.assignedAdvisorId })
+            .select('name email')
+            .lean<User>()
+            .exec()
+        : Promise.resolve(null),
+      this.userModel
+        .find({ teamId: group.groupId })
+        .select('name email role')
+        .lean<User[]>()
+        .exec(),
+    ]);
 
-    return this.buildGroupAssignmentStatus(group, advisor);
+    const members: GroupMember[] = memberDocs.map((u) => ({
+      name: u.name ?? null,
+      email: u.email,
+      role: u.role,
+    }));
+
+    return this.buildGroupAssignmentStatus(group, advisor, {
+      groupName: group.groupName,
+      members,
+    });
   }
 
   async transferAdvisor(
@@ -857,16 +916,20 @@ export class AdvisorsService {
 
   private buildGroupAssignmentStatus(
     group: Group,
-    advisor: Pick<User, 'email'> | null,
+    advisor: Pick<User, 'name' | 'email'> | null,
+    extras?: { groupName?: string; members?: GroupMember[] },
   ): GroupAssignmentStatusResponse {
     if (group.status === GroupStatus.DISBANDED) {
       return {
         groupId: group.groupId,
+        groupName: extras?.groupName,
         status: 'DISBANDED',
         advisorId: null,
         advisorName: null,
+        advisorEmail: null,
         canSubmitRequest: false,
         blockedReason: 'Group is disbanded.',
+        members: extras?.members,
         updatedAt: new Date().toISOString(),
       };
     }
@@ -874,22 +937,28 @@ export class AdvisorsService {
     if (group.assignmentStatus === GroupAssignmentStatus.ASSIGNED) {
       return {
         groupId: group.groupId,
+        groupName: extras?.groupName,
         status: GroupAssignmentStatus.ASSIGNED,
         advisorId: group.assignedAdvisorId,
-        advisorName: advisor?.email ?? null,
+        advisorName: advisor?.name ?? advisor?.email ?? null,
+        advisorEmail: advisor?.email ?? null,
         canSubmitRequest: false,
         blockedReason: 'Group is already assigned to an advisor.',
+        members: extras?.members,
         updatedAt: new Date().toISOString(),
       };
     }
 
     return {
       groupId: group.groupId,
+      groupName: extras?.groupName,
       status: GroupAssignmentStatus.UNASSIGNED,
       advisorId: null,
       advisorName: null,
+      advisorEmail: null,
       canSubmitRequest: true,
       blockedReason: null,
+      members: extras?.members,
       updatedAt: new Date().toISOString(),
     };
   }

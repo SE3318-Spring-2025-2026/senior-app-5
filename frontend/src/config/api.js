@@ -85,6 +85,8 @@ export const apiConfig = {
     committeeGrades: (committeeId) => `/committees/${committeeId}/grades`,
     sprintEvaluations: '/sprint-evaluations',
     githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,
+    teamSync: (teamId) => `/teams/${teamId}/sync`,
+    teamStoryPoints: (teamId) => `/teams/${teamId}/story-points`,
   },
 };
 

@@ -160,7 +160,7 @@ export class SubmissionsService {
   ): Promise<void> {
     // Allow if the professor advises the group that owns this submission
     const advisedGroup = await this.groupModel
-      .findOne({ groupId: String(submission.groupId), advisorUserId: professorUserId })
+      .findOne({ groupId: String(submission.groupId), assignedAdvisorId: professorUserId })
       .exec();
     if (advisedGroup) return;
 

@@ -21,6 +21,7 @@ import { SprintEvaluationsModule } from './sprint-evaluations/sprint-evaluations
 import { DeliverablesModule } from './deliverables/deliverables.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SprintConfigsModule } from './sprint-configs/sprint-configs.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { SprintConfigsModule } from './sprint-configs/sprint-configs.module';
     ReviewsModule,
     RubricsModule,
     SprintConfigsModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

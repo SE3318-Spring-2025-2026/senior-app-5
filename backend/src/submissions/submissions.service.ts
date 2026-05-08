@@ -8,6 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { Role } from '../auth/enums/role.enum';
 import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
 import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
@@ -23,7 +24,10 @@ type UploadedSubmissionFile = {
 };
 
 const DEFAULT_UPLOAD_DIR = 'uploads/submissions';
+const DEFAULT_IMAGES_DIR = 'uploads/submissions/images';
 export const MAX_DOCUMENTS_PER_SUBMISSION = 10;
+export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+export const ALLOWED_IMAGE_EXTENSIONS_REGEX = /\.(png|jpg|jpeg|webp|gif)$/i;
 
 @Injectable()
 export class SubmissionsService {
@@ -441,7 +445,83 @@ export class SubmissionsService {
     return submission;
   }
   
-   async validateSowEligibility(groupId: string) {
+  async updateMarkdownContent(
+    submissionId: string,
+    markdownContent: string,
+    actor: SubmissionActor,
+  ): Promise<SubmissionDocument> {
+    const submission = await this.findById(submissionId);
+    await this.assertAuthorizedGroupMember(actor, submission.groupId);
+    submission.markdownContent = markdownContent;
+    return submission.save();
+  }
+
+  private getImagesDirectoryPath() {
+    return path.resolve(
+      process.cwd(),
+      process.env.SUBMISSIONS_IMAGES_DIR ?? DEFAULT_IMAGES_DIR,
+    );
+  }
+
+  async uploadImage(
+    submissionId: string,
+    file: UploadedSubmissionFile,
+    actor: SubmissionActor,
+  ) {
+    const submission = await this.findById(submissionId);
+    await this.assertAuthorizedGroupMember(actor, submission.groupId);
+
+    if (!ALLOWED_IMAGE_EXTENSIONS_REGEX.test(file.originalname)) {
+      throw new BadRequestException(
+        'Only PNG, JPG, JPEG, WEBP, and GIF images are allowed.',
+      );
+    }
+
+    if (file.buffer.length > MAX_IMAGE_SIZE_BYTES) {
+      throw new BadRequestException('Image size exceeds 10 MB limit.');
+    }
+
+    const imageId = randomUUID();
+    const imagesDir = this.getImagesDirectoryPath();
+    await mkdir(imagesDir, { recursive: true });
+
+    const ext = path.extname(file.originalname) || '.bin';
+    const storedFileName = `${submissionId}-${imageId}${ext}`;
+    const storagePath = path.join(imagesDir, storedFileName);
+    await writeFile(storagePath, file.buffer);
+
+    const imageEntry = {
+      imageId,
+      originalName: Buffer.from(file.originalname, 'latin1').toString('utf8'),
+      mimeType: file.mimetype,
+      uploadedAt: new Date(),
+      storagePath,
+    };
+
+    submission.images = submission.images ?? [];
+    submission.images.push(imageEntry as any);
+    await submission.save();
+
+    return { imageId, url: `/submissions/${submissionId}/images/${imageId}` };
+  }
+
+  async getImageForDownload(submissionId: string, imageId: string) {
+    const submission = await this.findById(submissionId);
+    const image = submission.images?.find((img) => img.imageId === imageId);
+    if (!image) throw new NotFoundException('Image not found.');
+    if (!image.storagePath) throw new NotFoundException('Image storage path missing.');
+
+    let buffer: Buffer;
+    try {
+      buffer = await readFile(image.storagePath);
+    } catch {
+      throw new NotFoundException('Stored image file not found.');
+    }
+
+    return { originalName: image.originalName, mimeType: image.mimeType, buffer };
+  }
+
+  async validateSowEligibility(groupId: string) {
     // 1. Group Not Found Check 
     const group = await this.groupModel.findOne({ groupId }).exec();
     if (!group) {

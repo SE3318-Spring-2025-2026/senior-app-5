@@ -23,6 +23,14 @@ export class RubricQuestion {
   /** Weight as a decimal (0–1). Sum of all questions' weights must = 1.0. */
   @Prop({ type: Number, required: true, min: 0, max: 1 })
   criteriaWeight!: number;
+
+  /** Optional description of what to look for when evaluating this criterion. */
+  @Prop({ type: String, required: false, trim: true })
+  criteriaDescription?: string;
+
+  /** Slug of a markdown heading in the submitted document (e.g. "problem-statement"). */
+  @Prop({ type: String, required: false, trim: true })
+  sectionAnchor?: string;
 }
 
 export const RubricQuestionSchema = SchemaFactory.createForClass(RubricQuestion);

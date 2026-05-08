@@ -50,6 +50,26 @@ export class Submission {
     uploadedAt: Date;
     storagePath?: string;
   }>;
+
+  @Prop({ type: String, required: false, default: null })
+  markdownContent?: string | null;
+
+  @Prop([
+    {
+      imageId: { type: String, required: true },
+      originalName: { type: String, required: true },
+      mimeType: { type: String, required: true },
+      uploadedAt: { type: Date, default: Date.now },
+      storagePath: { type: String, required: true },
+    },
+  ])
+  images?: Array<{
+    imageId: string;
+    originalName: string;
+    mimeType: string;
+    uploadedAt: Date;
+    storagePath: string;
+  }>;
 }
 
 export const SubmissionSchema = SchemaFactory.createForClass(Submission);

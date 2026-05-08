@@ -7,6 +7,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -25,6 +26,7 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
+import { UpdateMarkdownContentDto } from './dto/update-markdown-content.dto';
 import { SubmissionsService } from './submissions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -294,5 +296,54 @@ export class SubmissionsController {
     this.validateObjectIdFormat(submissionId, 'submissionId');
     return this.submissionsService.getSubmissionForJury(userId, submissionId);
   }
-  
+
+  @Put(':submissionId/content')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor)
+  @ApiOperation({ summary: 'Save or update markdown content for a submission' })
+  async updateMarkdownContent(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+    @Body() dto: UpdateMarkdownContentDto,
+  ) {
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    return this.submissionsService.updateMarkdownContent(
+      submissionId,
+      dto.markdownContent,
+      req.user,
+    );
+  }
+
+  @Post(':submissionId/images')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  @ApiOperation({ summary: 'Upload an inline image for a markdown submission' })
+  async uploadImage(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+    @UploadedFile() file?: UploadedSubmissionFile,
+  ) {
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    if (!file) throw new BadRequestException('File is required.');
+    return this.submissionsService.uploadImage(submissionId, file, req.user);
+  }
+
+  @Get(':submissionId/images/:imageId')
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin)
+  @ApiOperation({ summary: 'Serve an inline image by imageId' })
+  async getImage(
+    @Param('submissionId') submissionId: string,
+    @Param('imageId') imageId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    const image = await this.submissionsService.getImageForDownload(submissionId, imageId);
+    res.setHeader('Content-Type', image.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return new StreamableFile(image.buffer);
+  }
+
 }

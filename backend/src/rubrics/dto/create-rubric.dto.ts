@@ -1,9 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMinSize,
   IsArray,
   IsEnum,
   IsNumber,
+  IsOptional,
   IsString,
   IsUUID,
   Max,
@@ -30,6 +31,22 @@ export class CreateRubricQuestionDto {
   @Min(0)
   @Max(1)
   criteriaWeight!: number;
+
+  @ApiPropertyOptional({
+    description: 'What to look for when evaluating this criterion',
+    example: 'Check that code follows naming conventions and is well-structured.',
+  })
+  @IsOptional()
+  @IsString()
+  criteriaDescription?: string;
+
+  @ApiPropertyOptional({
+    description: 'Slug of the markdown heading this criterion maps to (e.g. "problem-statement")',
+    example: 'problem-statement',
+  })
+  @IsOptional()
+  @IsString()
+  sectionAnchor?: string;
 }
 
 export class CreateRubricDto {

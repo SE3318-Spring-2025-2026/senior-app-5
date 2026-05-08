@@ -64,6 +64,8 @@ describe('SubmissionsService', () => {
     type: 'INITIAL',
     phaseId: 'phase-1',
     documents: [] as any[],
+    comments: [] as any[],
+    revisionRequests: [] as any[],
     get: jest.fn((field: string) => (makeSubmission as any)[field]),
     save: mockSave,
     ...overrides,
@@ -415,6 +417,92 @@ describe('SubmissionsService', () => {
       });
 
       await expect(service.assertJuryMember('prof-unknown', 'group-1')).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+
+
+  describe('Review Comments and Revision Requests', () => {
+    const reviewerUserId = 'prof-1';
+    const mockCommittee = {
+      groups: [{ groupId: 'group-1' }],
+      jury: [{ userId: 'prof-1' }],
+    };
+
+    beforeEach(() => {
+      mockCommitteeModel.findOne.mockReset();
+    });
+
+    describe('addComment', () => {
+      it('should add a comment successfully', async () => {
+        const submission = makeSubmission({ comments: [] });
+        mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
+        mockCommitteeModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockCommittee) });
+        mockSave.mockResolvedValue(submission);
+
+        const dto = { commentText: 'Harika bir proje!' };
+        const result = await service.addComment(reviewerUserId, validId, dto);
+
+        expect(mockSave).toHaveBeenCalledTimes(1);
+        expect(submission.comments).toHaveLength(1);
+        expect(result.commentText).toBe('Harika bir proje!');
+        expect(result.reviewerUserId).toBe(reviewerUserId);
+      });
+
+      it('should throw ForbiddenException if reviewer is not a jury member', async () => {
+        const submission = makeSubmission();
+        mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
+        mockCommitteeModel.findOne.mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ groups: [{ groupId: 'group-1' }], jury: [{ userId: 'other-prof' }] }),
+        });
+
+        await expect(
+          service.addComment('bad-prof', validId, { commentText: 'Test' }),
+        ).rejects.toThrow(ForbiddenException);
+      });
+    });
+
+    describe('listComments', () => {
+      it('should list comments successfully', async () => {
+        const submission = makeSubmission({ comments: [{ commentText: 'Mevcut Yorum' }] });
+        mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
+        mockCommitteeModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockCommittee) });
+
+        const result = await service.listComments(reviewerUserId, validId);
+        
+        expect(result).toHaveLength(1);
+        expect(result[0].commentText).toBe('Mevcut Yorum');
+      });
+    });
+
+    describe('createRevisionRequest', () => {
+      it('should create a revision request successfully with future date', async () => {
+        const submission = makeSubmission({ revisionRequests: [] });
+        mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
+        mockCommitteeModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockCommittee) });
+        mockSave.mockResolvedValue(submission);
+
+        const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        
+        const result = await service.createRevisionRequest(reviewerUserId, validId, { revisionDueDatetime: futureDate });
+
+        expect(mockSave).toHaveBeenCalledTimes(1);
+        expect(submission.revisionRequests).toHaveLength(1);
+        expect(result.status).toBe('PENDING');
+        expect(result.requesterUserId).toBe(reviewerUserId);
+      });
+
+      it('should throw BadRequestException if revision due date is in the past', async () => {
+        const submission = makeSubmission();
+        mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(submission) });
+        mockCommitteeModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(mockCommittee) });
+
+        const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+        await expect(
+          service.createRevisionRequest(reviewerUserId, validId, { revisionDueDatetime: pastDate }),
+        ).rejects.toThrow(BadRequestException);
+      });
     });
   });
 });

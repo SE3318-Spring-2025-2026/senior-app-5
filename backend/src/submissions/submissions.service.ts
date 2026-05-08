@@ -15,6 +15,8 @@ import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument } from './schemas/submission.schema';
 import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
+import { AddCommentDto } from './dto/add-comment.dto';
+import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
 type SubmissionActor = { userId?: string; role?: string; groupId?: string };
 type UploadedSubmissionFile = {
   originalname: string;
@@ -366,5 +368,52 @@ export class SubmissionsService {
 
     await this.assertJuryMember(userId, submission.groupId);
     return submission;
+  }
+  
+
+  async addComment(reviewerUserId: string, submissionId: string, dto: AddCommentDto) {
+    const submission = await this.findById(submissionId);
+    await this.assertJuryMember(reviewerUserId, submission.groupId);
+
+    const newComment = {
+      commentText: dto.commentText,
+      reviewerUserId,
+      createdAt: new Date(),
+    };
+
+    submission.comments = submission.comments || [];
+    submission.comments.push(newComment as any);
+    await submission.save();
+    
+    return submission.comments[submission.comments.length - 1];
+  }
+
+  async listComments(reviewerUserId: string, submissionId: string) {
+    const submission = await this.findById(submissionId);
+    await this.assertJuryMember(reviewerUserId, submission.groupId);
+    return submission.comments || [];
+  }
+
+  async createRevisionRequest(requesterUserId: string, submissionId: string, dto: CreateRevisionRequestDto) {
+    const submission = await this.findById(submissionId);
+    await this.assertJuryMember(requesterUserId, submission.groupId);
+
+    const dueDatetime = new Date(dto.revisionDueDatetime);
+    if (dueDatetime <= new Date()) {
+      throw new BadRequestException('Revision due datetime must be in the future.');
+    }
+
+    const newRevisionRequest = {
+      requesterUserId,
+      revisionDueDatetime: dueDatetime,
+      status: 'PENDING',
+      createdAt: new Date(),
+    };
+
+    submission.revisionRequests = submission.revisionRequests || [];
+    submission.revisionRequests.push(newRevisionRequest as any);
+    await submission.save();
+
+    return submission.revisionRequests[submission.revisionRequests.length - 1];
   }
 }

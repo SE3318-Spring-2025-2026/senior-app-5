@@ -32,6 +32,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { GroupMemberGuard } from '../auth/guards/group-member.guard';
 import { JurySubmissionResponseDto } from './dto/jury-submission-response.dto';
+import { AddCommentDto } from './dto/add-comment.dto';
+import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_EXTENSIONS_REGEX =
   /\.(pdf|doc|docx|png|jpg|jpeg)$/i;
@@ -265,4 +267,46 @@ export class SubmissionsController {
     return this.submissionsService.getSubmissionForJury(userId, submissionId);
   }
   
+
+  @Post(':submissionId/comments')
+  @Roles(Role.Professor)
+  @ApiOperation({ summary: 'Add a review comment to a submission' })
+  @ApiResponse({ status: 201, description: 'Comment created successfully' })
+  async addComment(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+    @Body() dto: AddCommentDto,
+  ) {
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    const userId = req.user.userId || req.user.sub || req.user._id;
+    return this.submissionsService.addComment(userId, submissionId, dto);
+  }
+
+  @Get(':submissionId/comments')
+  @Roles(Role.Professor)
+  @ApiOperation({ summary: 'List review comments for a submission' })
+  async listComments(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+  ) {
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    const userId = req.user.userId || req.user.sub || req.user._id;
+    return this.submissionsService.listComments(userId, submissionId);
+  }
+
+  @Post(':submissionId/revision-requests')
+  @Roles(Role.Professor)
+  @ApiOperation({ summary: 'Request a revision for a submission' })
+  @ApiResponse({ status: 201, description: 'Revision requested successfully' })
+  async createRevisionRequest(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+    @Body() dto: CreateRevisionRequestDto,
+  ) {
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    const userId = req.user.userId || req.user.sub || req.user._id;
+    return this.submissionsService.createRevisionRequest(userId, submissionId, dto);
+  }
+
+
 }

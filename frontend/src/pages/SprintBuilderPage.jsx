@@ -266,22 +266,34 @@ function SprintBuilderPage() {
         }
       }
 
-      await Promise.all(
-        schedules.map(async (sch) => {
+      // Build all updates first so we can sort before sending.
+      // Sorting decreasing-first frees budget before consuming it, which prevents
+      // the backend's 100% guard from seeing a transient overflow when one sprint's
+      // percentage goes up while another's hasn't come down yet.
+      const updates = schedules
+        .map((sch) => {
           const cfg = liveConfigs.find((c) => c.sprintId === sch.scheduleId)
-          if (!cfg) return
+          if (!cfg) return null
           const entry = mappings[deliverableId]?.[sch.scheduleId]
-          const pct = entry?.checked ? parseFloat(entry.pct) : null
+          const newPct = entry?.checked ? parseFloat(entry.pct) : null
+          const oldPct =
+            (cfg.deliverableMappings ?? []).find((m) => m.deliverableId === deliverableId)
+              ?.contributionPercentage ?? null
           const otherMappings = (cfg.deliverableMappings ?? []).filter(
             (m) => m.deliverableId !== deliverableId,
           )
           const newMappings =
-            pct !== null && !isNaN(pct)
-              ? [...otherMappings, { deliverableId, contributionPercentage: pct }]
+            newPct !== null && !isNaN(newPct)
+              ? [...otherMappings, { deliverableId, contributionPercentage: newPct }]
               : otherMappings
-          await apiClient.patch(`/sprints/${sch.scheduleId}`, { deliverableMappings: newMappings })
-        }),
-      )
+          return { scheduleId: sch.scheduleId, newMappings, netChange: (newPct ?? 0) - (oldPct ?? 0) }
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.netChange - b.netChange) // decreasing changes first
+
+      for (const update of updates) {
+        await apiClient.patch(`/sprints/${update.scheduleId}`, { deliverableMappings: update.newMappings })
+      }
       toast.success('Mappings saved.')
       await load()
     } catch (err) {

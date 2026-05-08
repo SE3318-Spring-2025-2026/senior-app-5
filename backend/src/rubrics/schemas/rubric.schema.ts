@@ -2,6 +2,11 @@ import { randomUUID } from 'crypto';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
+export enum GradingType {
+  BINARY = 'binary',
+  SOFT = 'soft',
+}
+
 export type RubricDocument = HydratedDocument<Rubric>;
 
 /**
@@ -44,6 +49,9 @@ export class Rubric {
    */
   @Prop({ type: Boolean, required: true, default: false, index: true })
   isActive!: boolean;
+
+  @Prop({ type: String, enum: Object.values(GradingType), required: true })
+  gradingType!: GradingType;
 
   @Prop({ type: [RubricQuestionSchema], default: [] })
   questions!: RubricQuestion[];

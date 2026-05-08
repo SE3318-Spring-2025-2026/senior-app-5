@@ -13,6 +13,7 @@ import {
   Star,
   BookOpen,
   GitBranch,
+  Package,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -89,6 +90,7 @@ export const Sidebar = () => {
             <SideNavLink to="/coordinator-management" icon={Settings2} label="Coordinator Suite" />
             <SideNavLink to="/coordinator/advisor-schedule" icon={Calendar} label="Advisor Schedule" />
             <SideNavLink to="/phases/schedule" icon={CalendarDays} label="Phase Scheduling" />
+            <SideNavLink to="/coordinator/deliverables" icon={Package} label="Deliverables" />
             <SideNavLink to="/coordinator/rubrics" icon={BookOpen} label="Rubric Management" />
             <SideNavLink to="/coordinator/sprint-config" icon={GitBranch} label="Sprint Config" />
             <SideNavLink to="/admin" icon={ShieldCheck} label="Admin Panel" matchPrefix />

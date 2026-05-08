@@ -6,8 +6,8 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Connection, Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
 import { ListDeliverablesQueryDto } from './dto/list-deliverables-query.dto';
 import {
@@ -27,8 +27,6 @@ export class DeliverablesService {
   constructor(
     @InjectModel(Deliverable.name)
     private readonly deliverableModel: Model<DeliverableDocument>,
-    @InjectConnection()
-    private readonly connection: Connection,
   ) {}
 
   async listDeliverables(
@@ -86,52 +84,28 @@ export class DeliverablesService {
     actorId: string,
     correlationId?: string,
   ): Promise<DeliverableResponseDto> {
-    let session: ClientSession | null = null;
-
     try {
-      session = await this.connection.startSession();
-      session.startTransaction();
+      await this.ensureUniqueName(dto.name, undefined);
+      await this.ensurePercentageBudget(dto.deliverablePercentage, undefined);
 
-      await this.ensureUniqueName(dto.name, undefined, session);
-      await this.ensurePercentageBudget(
-        dto.deliverablePercentage,
-        undefined,
-        session,
-      );
-
-      const created = await this.deliverableModel.create(
-        [
-          {
-            name: dto.name.trim(),
-            categoryWeight: dto.categoryWeight,
-            subWeight: dto.subWeight,
-            deliverablePercentage: dto.deliverablePercentage,
-          },
-        ],
-        { session },
-      );
-
-      await session.commitTransaction();
-
-      const deliverable = created[0];
+      const created = new this.deliverableModel({
+        name: dto.name.trim(),
+        deliverablePercentage: dto.deliverablePercentage,
+      });
+      await created.save();
 
       this.logger.log(
         JSON.stringify({
           event: 'deliverable.created',
-          deliverableId: deliverable.deliverableId,
+          deliverableId: created.deliverableId,
           actorId,
           correlationId: correlationId ?? null,
         }),
       );
 
-      return this.toResponseDto(deliverable.toObject());
+      return this.toResponseDto(created.toObject());
     } catch (error) {
-      if (session?.inTransaction()) {
-        await session.abortTransaction();
-      }
       throw this.toWriteException(error, correlationId);
-    } finally {
-      await session?.endSession();
     }
   }
 
@@ -141,15 +115,9 @@ export class DeliverablesService {
     actorId: string,
     correlationId?: string,
   ): Promise<DeliverableResponseDto> {
-    let session: ClientSession | null = null;
-
     try {
-      session = await this.connection.startSession();
-      session.startTransaction();
-
       const existing = await this.deliverableModel
         .findOne({ deliverableId })
-        .session(session)
         .exec();
 
       if (!existing) {
@@ -161,26 +129,13 @@ export class DeliverablesService {
       const updatedPercentage =
         dto.deliverablePercentage ?? existing.deliverablePercentage;
 
-      await this.ensurePercentageBudget(
-        updatedPercentage,
-        deliverableId,
-        session,
-      );
-
-      if (dto.categoryWeight !== undefined) {
-        existing.categoryWeight = dto.categoryWeight;
-      }
-
-      if (dto.subWeight !== undefined) {
-        existing.subWeight = dto.subWeight;
-      }
+      await this.ensurePercentageBudget(updatedPercentage, deliverableId);
 
       if (dto.deliverablePercentage !== undefined) {
         existing.deliverablePercentage = dto.deliverablePercentage;
       }
 
-      await existing.save({ session });
-      await session.commitTransaction();
+      await existing.save();
 
       this.logger.log(
         JSON.stringify({
@@ -193,23 +148,16 @@ export class DeliverablesService {
 
       return this.toResponseDto(existing.toObject());
     } catch (error) {
-      if (session?.inTransaction()) {
-        await session.abortTransaction();
-      }
       throw this.toWriteException(error, correlationId);
-    } finally {
-      await session?.endSession();
     }
   }
 
   private async ensureUniqueName(
     name: string,
     excludedDeliverableId: string | undefined,
-    session: ClientSession,
   ): Promise<void> {
     const existing = await this.deliverableModel
       .findOne({ name: name.trim() })
-      .session(session)
       .lean()
       .exec();
 
@@ -226,7 +174,6 @@ export class DeliverablesService {
   private async ensurePercentageBudget(
     nextPercentage: number,
     excludedDeliverableId: string | undefined,
-    session: ClientSession,
   ): Promise<void> {
     const deliverables = await this.deliverableModel
       .find(
@@ -235,7 +182,6 @@ export class DeliverablesService {
           : {},
         { deliverablePercentage: 1, _id: 0 },
       )
-      .session(session)
       .lean()
       .exec();
 
@@ -291,8 +237,6 @@ export class DeliverablesService {
     return {
       deliverableId: deliverable.deliverableId,
       name: deliverable.name,
-      categoryWeight: deliverable.categoryWeight,
-      subWeight: deliverable.subWeight,
       deliverablePercentage: deliverable.deliverablePercentage,
       createdAt: (deliverable as Deliverable & { createdAt: Date }).createdAt,
       updatedAt:

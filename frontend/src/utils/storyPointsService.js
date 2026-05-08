@@ -47,11 +47,11 @@ const fetchAndVerifyStoryPoints = async (groupId, sprintId, studentIds = []) => 
   }
 };
 
-const overrideStoryPoints = async (groupId, sprintId, studentId, completedPoints) => {
+const overrideStoryPoints = async (groupId, sprintId, studentId, targetPoints) => {
   try {
     const response = await apiClient.patch(
-      apiConfig.endpoints.overrideStoryPoints(groupId, sprintId),
-      { studentId, completedPoints },
+      apiConfig.endpoints.overrideStoryPoints(groupId, sprintId, studentId),
+      { targetPoints },
     );
     return response.data;
   } catch (error) {

@@ -167,31 +167,48 @@ const IntegrationsPage = () => {
             <span className="text-[11px] text-zinc-700">1 active</span>
           </div>
 
-          <div className="max-w-lg">
-            {renderIntegrationsContent()}
+          {loadError && (
+            <div className="flex items-start gap-2 rounded-xl border border-rose-900/40 bg-rose-950/20 p-3.5 text-[13px] text-rose-300">
+              <AlertCircle size={14} className="mt-px shrink-0" />
+              <span>{loadError}</span>
+            </div>
+          )}
 
-            {/* Roadmap */}
-            <div className="mt-8">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Coming soon
-                </h2>
-                <span className="text-[11px] text-zinc-700">Planned</span>
+          {loading ? (
+            <div className="flex h-44 items-center justify-center gap-2 rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+              <Loader2 size={14} className="animate-spin" /> Loading account…
+            </div>
+          ) : userId ? (
+            <GithubConnect userId={userId} />
+          ) : (
+            !loadError && (
+              <div className="flex h-44 items-center justify-center rounded-2xl border border-[#1f1f23] bg-[#131316] text-[13px] text-zinc-500">
+                Sign in required
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <IntegrationCard
-                  icon={Kanban}
-                  name="Jira"
-                  description="Pull sprint progress and story points directly from Jira boards."
-                  comingSoon
-                />
-                <IntegrationCard
-                  icon={ShieldCheck}
-                  name="Single Sign-On"
-                  description="University SSO via SAML or institutional identity providers."
-                  comingSoon
-                />
-              </div>
+            )
+          )}
+
+          {/* Roadmap */}
+          <div className="mt-8">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Coming soon
+              </h2>
+              <span className="text-[11px] text-zinc-700">Planned</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <IntegrationCard
+                icon={Kanban}
+                name="Jira"
+                description="Pull sprint progress and story points directly from Jira boards."
+                comingSoon
+              />
+              <IntegrationCard
+                icon={ShieldCheck}
+                name="Single Sign-On"
+                description="University SSO via SAML or institutional identity providers."
+                comingSoon
+              />
             </div>
           </div>
         </div>

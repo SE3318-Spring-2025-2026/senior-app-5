@@ -137,7 +137,7 @@ const IntegrationsPage = () => {
           {myTeam ? (
             <>
               <IntegrationStatusCard teamId={myTeam.teamId} />
-              <TeamIntegrationsForm team={myTeam} groups={groups} />
+              <TeamIntegrationsForm team={myTeam} />
             </>
           ) : !myTeamError ? (
             <div style={{ marginTop: 12, color: '#94a3b8', fontSize: 13 }}>
@@ -210,39 +210,6 @@ const IntegrationsPage = () => {
               workspace. Story points, sprint progress, and contributions flow automatically — without
               manual reporting.
             </p>
-          </div>
-
-            <div style={{ marginTop: 24 }}>
-              <h3 style={{ color: '#e2e8f0', fontSize: 16, fontWeight: 600 }}>
-                Team Integrations
-              </h3>
-              <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>
-                Connect your team's JIRA & GitHub. You can only configure your own team.
-              </p>
-
-              {myTeamError && (
-                <div style={{
-                  marginTop: 12, padding: 10, borderRadius: 8,
-                  background: '#450a0a', border: '1px solid #7f1d1d',
-                  color: '#fca5a5', fontSize: 13,
-                }}>
-                  {myTeamError}
-                </div>
-              )}
-
-              {myTeam ? (
-                <>
-                  <IntegrationStatusCard teamId={myTeam.teamId} />
-                  <TeamIntegrationsForm team={myTeam} />
-                </>
-              ) : !myTeamError ? (
-                <div style={{
-                  marginTop: 12, color: '#94a3b8', fontSize: 13,
-                }}>
-                  Loading your team…
-                </div>
-              ) : null}
-            </div>
           </div>
 
           <div className="rounded-2xl border border-[#1f1f23] bg-[#0e0e10] p-5">

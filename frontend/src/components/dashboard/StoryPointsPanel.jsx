@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import styles from '../../pages/DashboardPage.module.css';
 import storyPointsService from '../../utils/storyPointsService';
+import EntitySearchSelect from '../EntitySearchSelect';
+import apiClient from '../../utils/apiClient';
+import apiConfig from '../../config/api';
 
 const SOURCE_META = {
   COORDINATOR_OVERRIDE: { label: 'COORDINATOR_OVERRIDE', className: styles.sourceWarning },
@@ -12,6 +15,7 @@ const SOURCE_META = {
 const StoryPointsPanel = ({ canOverride }) => {
   const [groupId, setGroupId] = useState('');
   const [sprintId, setSprintId] = useState('');
+  const [sprintOptions, setSprintOptions] = useState([]);
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -22,6 +26,13 @@ const StoryPointsPanel = ({ canOverride }) => {
     () => groupId.trim().length > 0 && sprintId.trim().length > 0,
     [groupId, sprintId],
   );
+
+  useEffect(() => {
+    apiClient
+      .get(apiConfig.endpoints.sprints, { params: { page: 1, limit: 100 } })
+      .then((r) => setSprintOptions(r.data?.data ?? []))
+      .catch(() => setSprintOptions([]));
+  }, []);
 
   useEffect(
     () => () => {
@@ -115,18 +126,28 @@ const StoryPointsPanel = ({ canOverride }) => {
     <div className={styles.tableWrapper}>
       <h3 style={{ color: '#94a3b8', marginBottom: '12px' }}>Sprint Story Points</h3>
       <div className={styles.storyPointControls}>
-        <input
-          className={styles.storyPointInput}
-          placeholder="Group UUID"
+        <EntitySearchSelect
+          endpoint={apiConfig.endpoints.groups}
+          buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+          getItems={(res) => res.data}
+          returnField="groupId"
+          displayField="groupName"
           value={groupId}
-          onChange={(event) => setGroupId(event.target.value)}
+          onChange={setGroupId}
+          placeholder="Search group by name"
         />
-        <input
+        <select
           className={styles.storyPointInput}
-          placeholder="Sprint UUID"
           value={sprintId}
           onChange={(event) => setSprintId(event.target.value)}
-        />
+        >
+          <option value="">Select sprint…</option>
+          {sprintOptions.map((s) => (
+            <option key={s.sprintId} value={s.sprintId}>
+              {s.sprintId} ({s.targetStoryPoints} pts)
+            </option>
+          ))}
+        </select>
         <button className={styles.smallButton} onClick={loadRecords} disabled={isLoading}>
           {isLoading ? 'Loading...' : 'Load'}
         </button>

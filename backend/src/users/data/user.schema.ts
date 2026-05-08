@@ -38,6 +38,10 @@ export class User {
   @Prop()
   githubLinkedAt?: Date;
 
+  /** JIRA Cloud accountId — used to resolve issue assignees to students */
+  @Prop()
+  jiraAccountId?: string;
+
   @Prop()
   passwordResetTokenHash?: string;
 

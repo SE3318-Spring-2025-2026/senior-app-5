@@ -39,6 +39,8 @@ import SprintConfigPage from './pages/SprintConfigPage';
 import ScrumManagementPage from './pages/ScrumManagementPage';
 import SprintSchedulePage from './pages/SprintSchedulePage';
 import DeliverableManagementPage from './pages/DeliverableManagementPage';
+import AdvisorSprintPanel from './pages/AdvisorSprintPanel';
+import SprintFinalizePage from './pages/SprintFinalizePage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -87,6 +89,15 @@ function App() {
             <Route path="/scrum" element={<ScrumManagementPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
             <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
+            <Route path="/advisor/sprint-panel" element={<AdvisorSprintPanel />} />
+            <Route
+              path="/coordinator/sprint-finalize"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <SprintFinalizePage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/coordinator/advisor-schedule" element={
               <ProtectedRoute requiredRole="Coordinator">
                 <AdvisorSchedulePage />

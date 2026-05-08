@@ -44,6 +44,10 @@ function PhaseSchedulingPage() {
   const [status, setStatus] = useState({ loading: false, loadingPhases: true, message: '', errors: [] });
   const [fieldErrors, setFieldErrors] = useState({});
 
+  // Create phase state
+  const [newPhaseName, setNewPhaseName] = useState('');
+  const [createPhaseStatus, setCreatePhaseStatus] = useState({ loading: false, message: '', error: '' });
+
   const selectedPhase = useMemo(
     () => phases.find((phase) => phase.phaseId === phaseId) || null,
     [phaseId, phases],
@@ -192,12 +196,77 @@ function PhaseSchedulingPage() {
     applyPhaseSchedule(selectedPhase);
   };
 
+  const handleCreatePhase = async (event) => {
+    event.preventDefault();
+    const trimmedName = newPhaseName.trim();
+    if (!trimmedName) {
+      setCreatePhaseStatus({ loading: false, message: '', error: 'Phase name is required.' });
+      return;
+    }
+    setCreatePhaseStatus({ loading: true, message: '', error: '' });
+    try {
+      const response = await apiClient.post(apiConfig.endpoints.phases, { name: trimmedName });
+      const created = response.data;
+      setPhases((current) => [...current, created]);
+      setNewPhaseName('');
+      setCreatePhaseStatus({
+        loading: false,
+        message: `Phase "${created.name || trimmedName}" created successfully (ID: ${created.phaseId || created._id}).`,
+        error: '',
+      });
+    } catch (error) {
+      const details = error.response?.data?.message || error.message || 'Failed to create phase.';
+      setCreatePhaseStatus({
+        loading: false,
+        message: '',
+        error: Array.isArray(details) ? details.join(', ') : details,
+      });
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="Phase Scheduling"
         subtitle={`Date fields use ${timezoneName}; saved as UTC.`}
       />
+
+      {/* Create New Phase */}
+      <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5 mb-6">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Create New Phase</h2>
+        <form onSubmit={handleCreatePhase} className="flex gap-3 items-end">
+          <div className="flex-1">
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              Phase Name
+            </label>
+            <input
+              type="text"
+              value={newPhaseName}
+              onChange={(e) => setNewPhaseName(e.target.value)}
+              placeholder="e.g. Phase 1 — Project Proposal"
+              disabled={createPhaseStatus.loading}
+              className="w-full rounded-xl border border-[#1e293b] bg-[#080f1f] px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={createPhaseStatus.loading || !newPhaseName.trim()}
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {createPhaseStatus.loading ? 'Creating...' : 'Create Phase'}
+          </button>
+        </form>
+        {createPhaseStatus.message && (
+          <p className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 mt-3">
+            {createPhaseStatus.message}
+          </p>
+        )}
+        {createPhaseStatus.error && (
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-3">
+            {createPhaseStatus.error}
+          </p>
+        )}
+      </div>
 
       <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

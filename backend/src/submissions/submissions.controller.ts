@@ -116,7 +116,7 @@ export class SubmissionsController {
       req.user,
       createSubmissionDto.groupId,
     );
-    return this.submissionsService.createSubmission(createSubmissionDto);
+    return this.submissionsService.createSubmission(createSubmissionDto, req.user.role);
   }
 
   @Get(':submissionId/completeness')
@@ -169,10 +169,10 @@ export class SubmissionsController {
   }
 
   @Get(':submissionId/documents/:documentIndex')
-  @UseGuards(GroupMemberGuard)
+  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin)
   @ApiOperation({ summary: 'Download a submission document by index' })
   async downloadDocument(
-    @Req() req: Request & { submission?: any },
+    @Req() req: Request & { user: any; submission?: any },
     @Param('submissionId') submissionId: string,
     @Param('documentIndex') documentIndex: string,
     @Res({ passthrough: true }) res: Response,
@@ -183,10 +183,18 @@ export class SubmissionsController {
       throw new BadRequestException('Invalid document index.');
     }
 
+    const userRole = req.user.role;
+    // For Student/TeamLeader, enforce group membership via service
+    if (userRole === Role.Student || userRole === Role.TeamLeader) {
+      const submission = await this.submissionsService.findById(submissionId);
+      if (!submission) throw new ForbiddenException('Submission not found.');
+      await this.submissionsService.assertAuthorizedGroupMember(req.user, submission.groupId);
+    }
+    // Professor, Coordinator, Admin: no group membership check for download
+
     const file = await this.submissionsService.getDocumentForDownload(
       submissionId,
       parsedIndex,
-      req.submission,
     );
 
     res.setHeader('Content-Type', file.mimeType);

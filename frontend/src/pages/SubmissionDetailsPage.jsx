@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, ChevronLeft } from 'lucide-react';
+import { FileText, ChevronLeft, Download } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import { Badge, Button, PageHeader } from '../components/ui';
 
@@ -127,9 +127,33 @@ const SubmissionDetailsPage = () => {
                     <FileText size={14} className="text-slate-500 shrink-0" />
                     {doc.originalName}
                   </span>
-                  <span className="text-xs text-slate-500">
-                    {new Date(doc.uploadedAt).toLocaleDateString()}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500">
+                      {new Date(doc.uploadedAt).toLocaleDateString()}
+                    </span>
+                    <button
+                      className="flex items-center gap-1.5 rounded-lg border border-[#1e293b] bg-[#0d1526] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-600 hover:text-slate-100 transition-colors"
+                      onClick={async () => {
+                        try {
+                          const resp = await apiClient.get(
+                            `/submissions/${submission._id}/documents/${index}`,
+                            { responseType: 'blob' },
+                          );
+                          const url = URL.createObjectURL(resp.data);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = doc.originalName;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch (err) {
+                          alert('Download failed: ' + (err.response?.data?.message || err.message));
+                        }
+                      }}
+                    >
+                      <Download size={12} />
+                      Download
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

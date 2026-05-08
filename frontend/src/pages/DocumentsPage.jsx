@@ -35,7 +35,7 @@ const DocumentsPage = () => {
         let endpoint = apiConfig.endpoints.submissions.list
         const userGroupId = localUser.teamId || localUser.groupId
 
-        if (localUser.role === 'Student') {
+        if (localUser.role === 'Student' || localUser.role === 'TeamLeader') {
           if (!userGroupId) {
             setStatus({
               loading: false,
@@ -44,10 +44,15 @@ const DocumentsPage = () => {
             return
           }
           endpoint = apiConfig.endpoints.submissions.byGroup(userGroupId)
-        } else if (localUser.role !== 'Coordinator') {
+        } else if (
+          localUser.role !== 'Coordinator' &&
+          localUser.role !== 'Professor' &&
+          localUser.role !== 'Admin'
+        ) {
           setStatus({ loading: false, error: 'Unrecognized user role. Access denied.' })
           return
         }
+        // Professor, Coordinator, Admin: use the full list endpoint (no filter)
 
         const response = await apiClient.get(endpoint)
         setSubmissions(response.data)
@@ -75,7 +80,7 @@ const DocumentsPage = () => {
     <div className="space-y-6">
       <PageHeader
         title="Documents & Submissions"
-        subtitle="View and manage project submissions for your group."
+        subtitle="View and manage project submissions."
       />
 
       {status.error && (

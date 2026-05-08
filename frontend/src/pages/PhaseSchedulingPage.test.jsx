@@ -68,7 +68,7 @@ describe('PhaseSchedulingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Create Phase/i }));
 
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith(apiConfig.endpoints.phaseCreate, {
+      expect(apiClient.post).toHaveBeenCalledWith(apiConfig.endpoints.phasesCreate, {
         name: 'Proposal',
       });
       expect(screen.getByRole('option', { name: 'Proposal (phase-created)' })).toBeTruthy();

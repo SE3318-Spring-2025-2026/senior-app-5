@@ -29,10 +29,10 @@ const formatUtcDate = (value) => {
   return Number.isNaN(date.getTime()) ? 'Invalid UTC value' : date.toISOString();
 };
 
-const formatErrorMessages = (message) => {
+const formatErrorMessages = (message, defaultMessage = 'Failed to update phase schedule.') => {
   if (Array.isArray(message)) return message;
   if (typeof message === 'string' && message.trim()) return [message];
-  return ['Failed to update phase schedule.'];
+  return [defaultMessage];
 };
 
 const getPhaseOptionLabel = (phase) =>
@@ -111,7 +111,7 @@ function PhaseSchedulingPage() {
     setStatus({ loading: false, loadingPhases: false, message: '', errors: [] });
 
     try {
-      const response = await apiClient.post(apiConfig.endpoints.phaseCreate, {
+      const response = await apiClient.post(apiConfig.endpoints.phasesCreate, {
         name: trimmedName,
       });
       const createdPhase = response.data;
@@ -120,12 +120,15 @@ function PhaseSchedulingPage() {
         const withoutDuplicate = currentPhases.filter(
           (phase) => phase.phaseId !== createdPhase.phaseId,
         );
-        return [...withoutDuplicate, createdPhase];
+        return [...withoutDuplicate, createdPhase].sort((a, b) => 
+          (a.name || a.phaseId || '').localeCompare(b.name || b.phaseId || '')
+        );
       });
       setPhaseId(createdPhase.phaseId);
       setSubmissionStart(toInputValue(createdPhase.submissionStart));
       setSubmissionEnd(toInputValue(createdPhase.submissionEnd));
       setPhaseName('');
+      setFieldErrors({});
       setStatus({
         loading: false,
         loadingPhases: false,
@@ -142,7 +145,7 @@ function PhaseSchedulingPage() {
         loading: false,
         loadingPhases: false,
         message: '',
-        errors: formatErrorMessages(details),
+        errors: formatErrorMessages(details, 'Failed to create phase.'),
       });
     } finally {
       setCreatingPhase(false);

@@ -35,9 +35,8 @@ import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
 import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
-import SprintConfigPage from './pages/SprintConfigPage';
+import SprintBuilderPage from './pages/SprintBuilderPage';
 import ScrumManagementPage from './pages/ScrumManagementPage';
-import SprintSchedulePage from './pages/SprintSchedulePage';
 import DeliverableManagementPage from './pages/DeliverableManagementPage';
 import AdvisorSprintPanel from './pages/AdvisorSprintPanel';
 import SprintFinalizePage from './pages/SprintFinalizePage';
@@ -103,11 +102,12 @@ function App() {
                 <AdvisorSchedulePage />
               </ProtectedRoute>
             } />
-            <Route path="/coordinator/sprint-schedule" element={
+            <Route path="/coordinator/sprint-builder" element={
               <ProtectedRoute requiredRole="Coordinator">
-                <SprintSchedulePage />
+                <SprintBuilderPage />
               </ProtectedRoute>
             } />
+            <Route path="/coordinator/sprint-schedule" element={<Navigate to="/coordinator/sprint-builder" replace />} />
             <Route
               path="/coordinator/rubrics"
               element={
@@ -118,11 +118,7 @@ function App() {
             />
             <Route
               path="/coordinator/sprint-config"
-              element={
-                <ProtectedRoute requiredRole="Coordinator">
-                  <SprintConfigPage />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/coordinator/sprint-builder" replace />}
             />
             <Route
               path="/coordinator/deliverables"

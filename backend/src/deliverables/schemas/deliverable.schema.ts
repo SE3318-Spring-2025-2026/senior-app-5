@@ -12,12 +12,6 @@ export class Deliverable {
   @Prop({ type: String, required: true, unique: true, trim: true })
   name!: string;
 
-  @Prop({ type: Number, required: true, min: 0, max: 1 })
-  categoryWeight!: number;
-
-  @Prop({ type: Number, required: true, min: 0, max: 1 })
-  subWeight!: number;
-
   @Prop({ type: Number, required: true, min: 0, max: 100 })
   deliverablePercentage!: number;
 }

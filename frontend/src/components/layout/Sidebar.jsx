@@ -14,6 +14,7 @@ import {
   BookOpen,
   GitBranch,
   Package,
+  Timer,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -73,6 +74,7 @@ export const Sidebar = () => {
           <>
             <SectionHeader label="Professor" />
             <SideNavLink to="/review" icon={ClipboardCheck} label="Review" />
+            <SideNavLink to="/professor/submissions" icon={FileText} label="Submissions" />
             <SideNavLink to="/advisor/sprint-evaluation" icon={Star} label="Sprint Evaluation" />
           </>
         )}
@@ -93,6 +95,7 @@ export const Sidebar = () => {
             <SideNavLink to="/coordinator/deliverables" icon={Package} label="Deliverables" />
             <SideNavLink to="/coordinator/rubrics" icon={BookOpen} label="Rubric Management" />
             <SideNavLink to="/coordinator/sprint-config" icon={GitBranch} label="Sprint Config" />
+            <SideNavLink to="/coordinator/sprint-schedule" icon={Timer} label="Sprint Schedule" />
             <SideNavLink to="/admin" icon={ShieldCheck} label="Admin Panel" matchPrefix />
           </>
         )}

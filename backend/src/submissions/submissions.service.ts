@@ -54,6 +54,15 @@ export class SubmissionsService {
       );
     }
 
+    if (actor.role === Role.Professor) {
+      if (group.advisorUserId !== actor.userId) {
+        throw new ForbiddenException(
+          'You can only create submissions for groups you advise.',
+        );
+      }
+      return;
+    }
+
     if (!actor.userId) {
       throw new ForbiddenException('Authenticated user context is missing.');
     }
@@ -61,6 +70,12 @@ export class SubmissionsService {
     const user = await this.userModel.findById(actor.userId).exec();
     if (!user) {
       throw new ForbiddenException('Authenticated user not found.');
+    }
+
+    if (!user.teamId) {
+      throw new ForbiddenException(
+        'You must be a member of a group to submit.',
+      );
     }
 
     if (user.teamId !== groupId) {
@@ -78,7 +93,7 @@ export class SubmissionsService {
     return submission;
   }
 
-  async createSubmission(createSubmissionDto: CreateSubmissionDto) {
+  async createSubmission(createSubmissionDto: CreateSubmissionDto, actorRole?: string) {
     if (createSubmissionDto.type === 'SOW') {
       const eligibility = await this.validateSowEligibility(createSubmissionDto.groupId);
       if (!eligibility.canProceed) {
@@ -90,19 +105,22 @@ export class SubmissionsService {
     const phase = await this.phasesService.findByPhaseId(
       createSubmissionDto.phaseId,
     );
-    if (!phase?.submissionStart || !phase?.submissionEnd)
-      throw new BadRequestException(
-        'Submission window is not configured for this phase.',
-      );
-    const now = new Date();
-    if (now < phase.submissionStart || now > phase.submissionEnd)
-      throw new BadRequestException(
-        'Submission is outside the allowed window.',
-      );
+    const isProfessor = actorRole === Role.Professor || actorRole === Role.Admin || actorRole === Role.Coordinator;
+    if (!isProfessor) {
+      if (!phase?.submissionStart || !phase?.submissionEnd)
+        throw new BadRequestException(
+          'Submission window is not configured for this phase.',
+        );
+      const now = new Date();
+      if (now < phase.submissionStart || now > phase.submissionEnd)
+        throw new BadRequestException(
+          'Submission is outside the allowed window.',
+        );
+    }
 
     const submission = new this.submissionModel({
       ...createSubmissionDto,
-      submittedAt: now,
+      submittedAt: new Date(),
     });
     return submission.save();
   }
@@ -273,25 +291,6 @@ export class SubmissionsService {
         );
       }
     }  
-
-    // SECURITY: Validate Window (Missing from main, added from current PR)
-    const phase = await this.phasesService.getPhaseById(submission.phaseId);
-    if (!phase.submissionStart || !phase.submissionEnd) {
-      throw new BadRequestException(
-        'Phase submission window is not configured.',
-      );
-    }
-    const now = new Date();
-    if (now < phase.submissionStart) {
-      throw new BadRequestException(
-        'Submission window has not started yet. Upload is not permitted.',
-      );
-    }
-    if (now >= phase.submissionEnd) {
-      throw new BadRequestException(
-        'Submission window has closed. Upload is not permitted.',
-      );
-    }
 
     // Prepare file information
     const decodedFileName = Buffer.from(file.originalname, 'latin1').toString(

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
 import { SectionCard, StatusBlock, Button, PageHeader } from '../../components/ui'
+import { openNativeDatePicker } from '../../utils/openPicker'
 
 const formatLocalDateTime = (isoString) => {
   const date = new Date(isoString)
@@ -46,6 +47,7 @@ function SanitizationPage() {
             <input
               type="datetime-local"
               value={sanitizationDate}
+              onClick={openNativeDatePicker}
               onChange={(e) => setSanitizationDate(e.target.value)}
               required
               className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"

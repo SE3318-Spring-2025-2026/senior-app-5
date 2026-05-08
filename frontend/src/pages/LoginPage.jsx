@@ -85,9 +85,10 @@ export const LoginPage = () => {
         url="https://prod.spline.design/S1fJvpaMlLiE3E3K/scene.splinecode"
         style={{
           position: 'fixed',
-          inset: 0,
-          width: '100vw',
-          height: '100vh',
+          left: '-18vw',
+          width: '124vw',
+          height: '158vh',
+          top: '-40vh',
           zIndex: 0,
           pointerEvents: 'auto',
         }}
@@ -100,6 +101,8 @@ export const LoginPage = () => {
           background: 'radial-gradient(circle at 30% 50%, rgba(59, 130, 246, 0.04), transparent 64%)',
         }}
       />
+
+      <div className="login-spline-veil pointer-events-none fixed inset-0 z-[12]" aria-hidden />
 
       <div className="pointer-events-none relative z-20 flex min-h-screen w-full">
 
@@ -140,29 +143,97 @@ export const LoginPage = () => {
             RIGHT — Transparent glass form panel
         ═══════════════════════════════════════ */}
         <section
-          className="pointer-events-auto flex w-full flex-col items-center justify-center px-6 py-14 lg:w-115 lg:flex-none"
+          className="pointer-events-auto relative flex w-full flex-col items-center justify-center overflow-hidden px-6 py-14 lg:w-115 lg:flex-none"
           style={{
-            background: '#000000',
+            background:
+              'linear-gradient(165deg, #1c1c1f 0%, #151517 38%, #0f0f11 72%, #141416 100%)',
             borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
 
+        {/* Large masked logo — soft vignette into panel (not a small inline mark) */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-[-11%] z-0 w-[min(120vw,40rem)] -translate-x-1/2 sm:top-[-9%] sm:w-[min(110vw,44rem)] lg:top-[-7%] lg:w-[min(48rem,95%)]"
+          aria-hidden
+        >
+          <div
+            className="relative aspect-square w-full"
+            style={{
+              WebkitMaskImage:
+                'radial-gradient(ellipse 52% 46% at 50% 44%, #000 0%, rgba(0,0,0,0.42) 26%, rgba(0,0,0,0.18) 46%, rgba(0,0,0,0.06) 58%, rgba(0,0,0,0.02) 68%, transparent 76%)',
+              maskImage:
+                'radial-gradient(ellipse 52% 46% at 50% 44%, #000 0%, rgba(0,0,0,0.42) 26%, rgba(0,0,0,0.18) 46%, rgba(0,0,0,0.06) 58%, rgba(0,0,0,0.02) 68%, transparent 76%)',
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskSize: '100% 100%',
+              maskSize: '100% 100%',
+            }}
+          >
+            <img
+              src="/red-team-badge.png"
+              alt=""
+              className="h-full w-full scale-110 object-contain object-center opacity-40 [mix-blend-mode:screen] sm:scale-100"
+            />
+            {/* Extra veil — blends logos into panel */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 62% 54% at 50% 44%, rgba(20, 20, 22, 0) 32%, rgba(17, 17, 19, 0.45) 58%, rgba(15, 15, 17, 0.82) 78%, rgba(12, 12, 14, 0.92) 100%)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Large masked logo — bottom (mirror vignette) */}
+        <div
+          className="pointer-events-none absolute bottom-[-14%] left-1/2 z-0 w-[min(120vw,40rem)] -translate-x-1/2 sm:bottom-[-11%] sm:w-[min(110vw,44rem)] lg:bottom-[-8%] lg:w-[min(48rem,95%)]"
+          aria-hidden
+        >
+          <div
+            className="relative aspect-square w-full"
+            style={{
+              WebkitMaskImage:
+                'radial-gradient(ellipse 52% 46% at 50% 58%, #000 0%, rgba(0,0,0,0.42) 26%, rgba(0,0,0,0.18) 46%, rgba(0,0,0,0.06) 58%, rgba(0,0,0,0.02) 68%, transparent 76%)',
+              maskImage:
+                'radial-gradient(ellipse 52% 46% at 50% 58%, #000 0%, rgba(0,0,0,0.42) 26%, rgba(0,0,0,0.18) 46%, rgba(0,0,0,0.06) 58%, rgba(0,0,0,0.02) 68%, transparent 76%)',
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskSize: '100% 100%',
+              maskSize: '100% 100%',
+            }}
+          >
+            <img
+              src="/blue-team-badge.png"
+              alt=""
+              className="h-full w-full scale-110 object-contain object-center opacity-40 [mix-blend-mode:screen] sm:scale-100"
+            />
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 62% 54% at 50% 58%, rgba(20, 20, 22, 0) 32%, rgba(17, 17, 19, 0.45) 58%, rgba(15, 15, 17, 0.82) 78%, rgba(12, 12, 14, 0.92) 100%)',
+              }}
+            />
+          </div>
+        </div>
+
         {/* Mobile logo */}
-        <div className="mb-8 flex items-center gap-3 lg:hidden">
+        <div className="relative z-10 mb-8 flex items-center gap-3 lg:hidden">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
             <Monitor size={18} className="text-white" />
           </div>
           <span className="text-lg font-bold text-slate-100 tracking-tight">ThesisOS</span>
         </div>
 
-        <div className="w-full max-w-sm">
+        <div className="relative z-10 w-full max-w-sm">
 
           {/* Heading */}
           <div className="mb-7">
             <h2 className="mb-1.5 text-2xl font-bold tracking-tight text-slate-100">
               Welcome back
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm leading-relaxed text-zinc-400">
               Access your project workspace and rubrics.
             </p>
           </div>
@@ -184,7 +255,7 @@ export const LoginPage = () => {
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
-                className="block text-[11px] font-bold uppercase tracking-widest text-slate-400"
+                className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500"
               >
                 Institutional Email
               </label>
@@ -220,7 +291,7 @@ export const LoginPage = () => {
             <div className="space-y-1.5">
               <label
                 htmlFor="password"
-                className="block text-[11px] font-bold uppercase tracking-widest text-slate-400"
+                className="block text-[11px] font-bold uppercase tracking-widest text-zinc-500"
               >
                 Password
               </label>
@@ -250,7 +321,7 @@ export const LoginPage = () => {
                   type="button"
                   aria-label="Toggle password visibility"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-500 transition-colors hover:text-zinc-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-500 transition-[color,box-shadow] duration-200 hover:text-red-300 hover:shadow-[0_0_36px_rgba(239,68,68,0.4),0_0_56px_rgba(239,68,68,0.22)]"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -268,13 +339,13 @@ export const LoginPage = () => {
                   className="h-4 w-4 cursor-pointer rounded border border-[#3a3a40] bg-[#0a0a0b] accent-zinc-400
                              transition-all duration-150 group-hover:border-zinc-400 group-hover:shadow-md group-hover:shadow-zinc-500/10"
                 />
-                <span className="text-slate-400 transition-colors duration-150 group-hover:text-slate-300">
+                <span className="text-zinc-400 transition-colors duration-150 group-hover:text-zinc-300">
                   Remember Me
                 </span>
               </label>
               <a
                 href="/forgot-password"
-                className="text-sm font-semibold text-slate-300 transition-colors hover:text-slate-100"
+                className="text-sm font-semibold text-zinc-300 transition-colors hover:text-zinc-100"
               >
                 Forgot Password?
               </a>
@@ -284,9 +355,10 @@ export const LoginPage = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 w-full rounded-xl border border-[#2a2a30] bg-[#18181c] py-3 text-sm font-bold text-slate-100 tracking-wide
-                         transition-all duration-150 hover:border-[#3a3a40] hover:bg-[#202026] hover:shadow-lg hover:shadow-black/25
-                         active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 w-full rounded-xl border border-zinc-200 bg-white py-3 text-sm font-bold text-zinc-950 tracking-wide
+                         transition-[transform,border-color,box-shadow] duration-200 hover:border-zinc-300 hover:bg-white
+                         hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.35),0_0_52px_-4px_rgba(239,68,68,0.42),0_0_88px_-8px_rgba(239,68,68,0.28)]
+                         active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-none"
             >
               {isSubmitting ? 'Authenticating…' : 'Sign In'}
             </button>
@@ -294,7 +366,7 @@ export const LoginPage = () => {
             {/* ── Divider ── */}
             <div className="flex items-center gap-3 py-1">
               <div className="h-px flex-1 bg-white/10" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                 Don't have an account?
               </span>
               <div className="h-px flex-1 bg-white/10" />
@@ -306,7 +378,8 @@ export const LoginPage = () => {
               onClick={() => navigate('/register')}
               className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-[#2a2a30]
                          bg-[#121216] py-3 text-sm font-semibold text-slate-300
-                         transition-all duration-150 hover:border-[#3a3a40] hover:bg-[#18181c] hover:text-slate-100"
+                         transition-[transform,border-color,background-color,color,box-shadow] duration-200 hover:border-[#454548]
+                         hover:bg-[#18181c] hover:text-slate-100 hover:shadow-[0_0_48px_-6px_rgba(239,68,68,0.36),0_0_80px_-12px_rgba(239,68,68,0.22)]"
             >
               <UserPlus size={16} />
               Register
@@ -316,17 +389,17 @@ export const LoginPage = () => {
 
           {/* ── Footer ── */}
           <footer className="mt-8 text-center">
-            <p className="text-[13px] text-slate-500">
+            <p className="text-[13px] text-zinc-500">
               Trouble logging in?{' '}
-              <a href="#" className="ml-1 font-semibold text-slate-200 transition-colors hover:text-slate-50">
+              <a href="#" className="ml-1 font-semibold text-zinc-300 transition-colors hover:text-zinc-50">
                 Contact Faculty IT Support
               </a>
             </p>
             <div className="mt-3 flex justify-center gap-5">
-              <a href="#" className="text-[11px] font-semibold uppercase tracking-widest text-slate-600 transition-colors hover:text-slate-400">
+              <a href="#" className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-400">
                 Privacy Policy
               </a>
-              <a href="#" className="text-[11px] font-semibold uppercase tracking-widest text-slate-600 transition-colors hover:text-slate-400">
+              <a href="#" className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-400">
                 Terms of Service
               </a>
             </div>

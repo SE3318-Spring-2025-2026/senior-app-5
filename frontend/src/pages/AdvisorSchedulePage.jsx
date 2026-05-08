@@ -3,6 +3,7 @@ import { CalendarClock, RefreshCw } from 'lucide-react'
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
 import { Badge, PageHeader } from '../components/ui'
+import { openNativeDatePicker } from '../utils/openPicker'
 
 const PHASE = 'ADVISOR_SELECTION'
 
@@ -182,6 +183,7 @@ function AdvisorSchedulePage() {
               <input
                 type="datetime-local"
                 value={form.startAt}
+                onClick={openNativeDatePicker}
                 onChange={(e) => setForm((prev) => ({ ...prev, startAt: e.target.value }))}
                 required
                 className={inputCls}
@@ -193,6 +195,7 @@ function AdvisorSchedulePage() {
               <input
                 type="datetime-local"
                 value={form.endAt}
+                onClick={openNativeDatePicker}
                 onChange={(e) => setForm((prev) => ({ ...prev, endAt: e.target.value }))}
                 required
                 className={inputCls}

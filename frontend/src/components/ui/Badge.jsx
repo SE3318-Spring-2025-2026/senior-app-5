@@ -1,18 +1,19 @@
 import clsx from 'clsx';
 
 const colorMap = {
-  blue:   'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  green:  'bg-green-500/15 text-green-400 border-green-500/30',
-  yellow: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-  red:    'bg-red-500/15 text-red-400 border-red-500/30',
-  slate:  'bg-slate-500/15 text-slate-400 border-slate-500/30',
+  blue:   'bg-sky-500/10 text-sky-300 border-sky-500/25',
+  green:  'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+  yellow: 'bg-amber-500/10 text-amber-300 border-amber-500/25',
+  red:    'bg-rose-500/10 text-rose-300 border-rose-500/25',
+  slate:  'bg-[#18181c] text-zinc-300 border-[#26262b]',
+  zinc:   'bg-[#18181c] text-zinc-300 border-[#26262b]',
 };
 
 export function Badge({ color = 'slate', children, className }) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
         colorMap[color] ?? colorMap.slate,
         className,
       )}

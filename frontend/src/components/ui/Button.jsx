@@ -2,17 +2,17 @@ import clsx from 'clsx';
 
 const variants = {
   primary:
-    'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-[0.98]',
+    'bg-zinc-100 text-zinc-950 hover:bg-white active:scale-[0.99]',
   ghost:
-    'border border-[#1e293b] bg-[#111827] text-slate-300 hover:border-slate-600 hover:bg-[#1a2438] hover:text-slate-100',
+    'border border-[#26262b] bg-[#18181c] text-zinc-300 hover:border-[#3a3a40] hover:bg-[#1f1f23] hover:text-zinc-100',
   danger:
-    'border border-red-500/30 bg-red-600/10 text-red-400 hover:bg-red-600/20 hover:border-red-500/60',
+    'border border-rose-500/25 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15 hover:border-rose-500/40 hover:text-rose-200',
 };
 
 const sizes = {
-  sm: 'rounded-lg px-3 py-1.5 text-xs',
-  md: 'rounded-xl px-4 py-2.5 text-sm',
-  lg: 'rounded-xl px-5 py-3 text-sm',
+  sm: 'rounded-md px-3 py-1.5 text-[12px]',
+  md: 'rounded-md px-3.5 py-2 text-[13px]',
+  lg: 'rounded-md px-4 py-2.5 text-[13px]',
 };
 
 export function Button({
@@ -28,7 +28,7 @@ export function Button({
     <button
       disabled={disabled || loading}
       className={clsx(
-        'inline-flex items-center justify-center gap-2 font-bold tracking-wide transition-all duration-150',
+        'inline-flex items-center justify-center gap-1.5 font-semibold tracking-tight transition-colors duration-150',
         'disabled:cursor-not-allowed disabled:opacity-60',
         variants[variant],
         sizes[size],
@@ -38,7 +38,7 @@ export function Button({
     >
       {loading ? (
         <>
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
           {children}
         </>
       ) : (

@@ -5,6 +5,7 @@ import { AdminService } from './admin.service';
 import { Group, GroupSchema } from '../groups/group.entity';
 import { User, UserSchema } from '../users/data/user.schema'; 
 import { UsersModule } from '../users/users.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { UsersModule } from '../users/users.module';
       { name: User.name, schema: UserSchema } 
     ]),
     UsersModule,
+    MailModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

@@ -39,8 +39,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
-import { ForbiddenException } from '@nestjs/common';
-import { SubmissionsService } from '../submissions/submissions.service';
+
 interface RequestWithUser extends ExpressRequest {
   user: { userId?: string; sub?: string; _id?: string; role: string };
 }
@@ -53,7 +52,6 @@ export class GroupsController {
   constructor(
     private readonly groupsService: GroupsService,
     private readonly committeesService: CommitteesService,
-    private readonly submissionsService: SubmissionsService,
   ) {}
 
   @ApiOperation({ summary: 'List groups with optional name filter (Admin, Coordinator)' })
@@ -166,19 +164,11 @@ export class GroupsController {
     return this.groupsService.addMember(groupId, body.memberUserId);
   }
 
-  @Get(':groupId/validate-sow')
-  @ApiOperation({ summary: 'Check SoW status and eligibility for a group' })
+  @Get(':groupId/validate-statement-of-work')
+  @ApiOperation({ summary: 'Check SoW status for a group' })
   @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
-  async validateSow(
-    @Param('groupId') groupId: string,
-    @Request() req: RequestWithUser & { user: { groupId?: string } } 
-  ) {
-    const userRole = req.user.role;
-    const userGroupId = req.user.groupId;
-    if ((userRole === Role.Student || userRole === Role.TeamLeader) && String(userGroupId) !== String(groupId)) {
-      throw new ForbiddenException('You cannot validate SOW status for another group.');
-    }
-    return this.submissionsService.validateSowEligibility(groupId);
+  async validateSow(@Param('groupId') groupId: string) {
+    return this.groupsService.validateStatementOfWork(groupId);
   }
 
   @ApiOperation({
@@ -246,7 +236,4 @@ export class GroupsController {
       })),
     };
   }
-  
-
-
 }

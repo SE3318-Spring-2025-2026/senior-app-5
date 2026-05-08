@@ -45,4 +45,11 @@ export class AdminController {
   async getActivityLogs() {
     return this.adminService.getActivityLogs();
   }
+
+  @Post('users/:userId/send-password-reset')
+  @Roles(Role.Admin, Role.Coordinator)
+  @ApiOperation({ summary: 'Send a password reset link to a specific user' })
+  async sendPasswordReset(@Param('userId') userId: string) {
+    return this.adminService.sendPasswordResetForUser(userId);
+  }
 }

@@ -67,9 +67,9 @@ export class UsersService {
     const user = await this.findByEmail(normalizedEmail);
     if (!user) return null;
 
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = crypto.randomInt(100000, 999999).toString();
     const tokenHash = this.hashPasswordResetToken(token);
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 15);
 
     await this.userModel
       .findByIdAndUpdate(

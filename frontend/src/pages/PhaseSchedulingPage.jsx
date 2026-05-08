@@ -258,34 +258,6 @@ function PhaseSchedulingPage() {
     applyPhaseSchedule(selectedPhase);
   };
 
-  const handleCreatePhase = async (event) => {
-    event.preventDefault();
-    const trimmedName = newPhaseName.trim();
-    if (!trimmedName) {
-      setCreatePhaseStatus({ loading: false, message: '', error: 'Phase name is required.' });
-      return;
-    }
-    setCreatePhaseStatus({ loading: true, message: '', error: '' });
-    try {
-      const response = await apiClient.post(apiConfig.endpoints.phases, { name: trimmedName });
-      const created = response.data;
-      setPhases((current) => [...current, created]);
-      setNewPhaseName('');
-      setCreatePhaseStatus({
-        loading: false,
-        message: `Phase "${created.name || trimmedName}" created successfully (ID: ${created.phaseId || created._id}).`,
-        error: '',
-      });
-    } catch (error) {
-      const details = error.response?.data?.message || error.message || 'Failed to create phase.';
-      setCreatePhaseStatus({
-        loading: false,
-        message: '',
-        error: Array.isArray(details) ? details.join(', ') : details,
-      });
-    }
-  };
-
   return (
     <div>
       <PageHeader

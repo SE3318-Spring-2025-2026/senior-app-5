@@ -186,6 +186,32 @@ export class SubmissionsService {
     return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }
 
+  /** Returns all submissions the professor can access:
+   *  - Groups where professor is the assigned advisor
+   *  - Groups belonging to committees where professor is a jury member
+   */
+  async findAllForProfessor(professorUserId: string) {
+    // Collect groupIds from committees the professor is a jury member of
+    const committees = await this.committeeModel
+      .find({ 'jury.userId': professorUserId })
+      .exec();
+    const committeeGroupIds = committees.flatMap((c) => this.getCommitteeGroupIds(c));
+
+    // Collect groupIds where professor is the assigned advisor
+    const advisedGroups = await this.groupModel
+      .find({ assignedAdvisorId: professorUserId })
+      .exec();
+    const advisedGroupIds = advisedGroups.map((g) => String(g.groupId));
+
+    const allGroupIds = [...new Set([...committeeGroupIds, ...advisedGroupIds])];
+    if (allGroupIds.length === 0) return [];
+
+    return this.submissionModel
+      .find({ groupId: { $in: allGroupIds } })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
   async uploadDocumentForUser(userId: string, submissionId: string, file: Express.Multer.File) {
     if (!isValidObjectId(submissionId)) {
       throw new NotFoundException('Submission not found.');

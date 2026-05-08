@@ -190,7 +190,13 @@ export class SubmissionsController {
       if (!submission) throw new ForbiddenException('Submission not found.');
       await this.submissionsService.assertAuthorizedGroupMember(req.user, submission.groupId);
     }
-    // Professor, Coordinator, Admin: no group membership check for download
+    // Professor: must be the advisor or a jury member of the group
+    if (userRole === Role.Professor) {
+      const submission = await this.submissionsService.findById(submissionId);
+      if (!submission) throw new ForbiddenException('Submission not found.');
+      await this.submissionsService.assertProfessorCanAccessSubmission(submission, req.user.userId);
+    }
+    // Coordinator, Admin: unrestricted
 
     const file = await this.submissionsService.getDocumentForDownload(
       submissionId,
@@ -238,6 +244,17 @@ export class SubmissionsController {
           'You can only access data from your own group.',
         );
       }
+    }
+
+    if (userRole === Role.Professor) {
+      if (groupId) {
+        // Validate professor is authorized for the requested group
+        const stub = { groupId } as any;
+        await this.submissionsService.assertProfessorCanAccessSubmission(stub, req.user.userId);
+        return this.submissionsService.findAll(groupId);
+      }
+      // No groupId filter: return all submissions the professor can access
+      return this.submissionsService.findAllForProfessor(req.user.userId);
     }
 
     return this.submissionsService.findAll(groupId);

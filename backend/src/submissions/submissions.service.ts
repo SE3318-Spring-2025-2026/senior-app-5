@@ -158,6 +158,13 @@ export class SubmissionsService {
     submission: SubmissionDocument,
     professorUserId: string,
   ): Promise<void> {
+    // Allow if the professor advises the group that owns this submission
+    const advisedGroup = await this.groupModel
+      .findOne({ groupId: String(submission.groupId), advisorUserId: professorUserId })
+      .exec();
+    if (advisedGroup) return;
+
+    // Allow if the professor is a jury member of a committee assigned to this group
     const committee = await this.committeeModel
       .findOne({ 'groups.groupId': submission.groupId, 'jury.userId': professorUserId })
       .exec();

@@ -14,8 +14,7 @@ import { Group, GroupDocument, GroupStatus } from '../groups/group.entity';
 import { PhasesService } from '../phases/phases.service';
 import { User, UserDocument } from '../users/data/user.schema';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
-import { Submission, SubmissionDocument } from './schemas/submission.schema';
-import { Committee, CommitteeDocument } from '../committees/schemas/committee.schema';
+import { Submission, SubmissionDocument, SubmissionStatus } from './schemas/submission.schema';
 type SubmissionActor = { userId?: string; role?: string; groupId?: string };
 type UploadedSubmissionFile = {
   originalname: string;
@@ -454,7 +453,7 @@ export class SubmissionsService {
 
     const revisedProposalStatus = revisedProposal ? revisedProposal.status : 'MISSING';
     const sowStatus = sow ? sow.status : 'NOT_SUBMITTED';
-    const canProceed = revisedProposalStatus === 'APPROVED';
+    const canProceed = revisedProposalStatus === SubmissionStatus.Approved;
 
     return {
       sowStatus,

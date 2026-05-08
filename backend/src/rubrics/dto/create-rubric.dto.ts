@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   ArrayMinSize,
   IsArray,
+  IsEnum,
   IsNumber,
   IsString,
   IsUUID,
@@ -10,6 +11,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { GradingType } from '../schemas/rubric.schema';
 
 export class CreateRubricQuestionDto {
   @ApiProperty({
@@ -44,6 +46,14 @@ export class CreateRubricDto {
   })
   @IsString()
   name!: string;
+
+  @ApiProperty({
+    description: 'Grading scale applied to all questions in this rubric',
+    enum: GradingType,
+    example: GradingType.SOFT,
+  })
+  @IsEnum(GradingType)
+  gradingType!: GradingType;
 
   @ApiProperty({
     description: 'Array of evaluation criteria questions',

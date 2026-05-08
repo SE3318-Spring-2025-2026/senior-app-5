@@ -36,6 +36,7 @@ import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
 import SprintConfigPage from './pages/SprintConfigPage';
+import DeliverableManagementPage from './pages/DeliverableManagementPage';
 
 const RootRedirect = () => {
   const { isAuthenticated } = useAuth();
@@ -100,6 +101,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="Coordinator">
                   <SprintConfigPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coordinator/deliverables"
+              element={
+                <ProtectedRoute requiredRole="Coordinator">
+                  <DeliverableManagementPage />
                 </ProtectedRoute>
               }
             />

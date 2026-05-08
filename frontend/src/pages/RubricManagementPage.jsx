@@ -14,6 +14,7 @@ const RubricManagementPage = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [rubricName, setRubricName] = useState('');
+  const [gradingType, setGradingType] = useState('soft');
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,9 +27,16 @@ const RubricManagementPage = () => {
       .catch(() => setDeliverables([]));
   }, []);
 
+  const resetForm = () => {
+    setShowForm(false);
+    setRubricName('');
+    setGradingType('soft');
+    setQuestions([emptyQuestion()]);
+  };
+
   const loadRubrics = async (deliverable) => {
     setSelectedDeliverable(deliverable);
-    setShowForm(false);
+    resetForm();
     setLoadingRubrics(true);
     try {
       const res = await apiClient.get(`/deliverables/${deliverable.deliverableId}/rubrics`, { params: { limit: 100 } });
@@ -76,6 +84,7 @@ const RubricManagementPage = () => {
     const payload = {
       deliverableId: selectedDeliverable.deliverableId,
       name: rubricName.trim(),
+      gradingType,
       questions: questions.map((q) => ({
         criteriaName: q.criteriaName.trim(),
         criteriaWeight: parseFloat(q.criteriaWeight),
@@ -86,9 +95,7 @@ const RubricManagementPage = () => {
     try {
       const res = await apiClient.post(`/deliverables/${selectedDeliverable.deliverableId}/rubrics`, payload);
       setRubrics((prev) => [...prev, res.data]);
-      setShowForm(false);
-      setRubricName('');
-      setQuestions([emptyQuestion()]);
+      resetForm();
       toast.success('Rubric created.');
     } catch (err) {
       toast.error(err?.response?.data?.message ?? 'Failed to create rubric.');
@@ -155,6 +162,30 @@ const RubricManagementPage = () => {
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-400">Grading Type</label>
+                <div className="flex gap-3">
+                  {[
+                    { value: 'soft', label: 'Soft', hint: 'A=100 B=80 C=60 D=50 F=0' },
+                    { value: 'binary', label: 'Binary', hint: 'S=100 F=0' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setGradingType(opt.value)}
+                      className={`flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
+                        gradingType === opt.value
+                          ? 'border-blue-500 bg-blue-600/20 text-blue-300'
+                          : 'border-[#1e293b] text-slate-400 hover:border-slate-600'
+                      }`}
+                    >
+                      <span className="font-semibold">{opt.label}</span>
+                      <span className="ml-2 text-xs opacity-60">{opt.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-slate-400">Questions</p>
@@ -215,7 +246,14 @@ const RubricManagementPage = () => {
               {rubrics.map((r) => (
                 <li key={r.rubricId} className="border border-[#1e293b] rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-slate-200">{r.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-200">{r.name}</span>
+                      {r.gradingType && (
+                        <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-slate-700 text-slate-300 uppercase">
+                          {r.gradingType}
+                        </span>
+                      )}
+                    </div>
                     <button type="button" onClick={() => handleDeleteRubric(r.rubricId)} className="text-slate-500 hover:text-red-400">
                       <Trash2 size={15} />
                     </button>

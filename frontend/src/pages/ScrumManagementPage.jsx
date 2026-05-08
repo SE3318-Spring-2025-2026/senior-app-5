@@ -88,22 +88,40 @@ function ScrumManagementPage() {
 
     try {
       const response = await apiClient.get(apiConfig.endpoints.teamSync(teamId));
-      const data = response.data || {};
+      const raw = response.data;
 
-      const summary = {
-        syncRunId: data.syncRunId || data.lastSyncRunId || '',
-        totalIssues: data.totalIssues ?? 0,
-        linkedCount: data.linkedCount ?? 0,
-        syncedAt: data.syncedAt || data.lastSyncedAt || null,
-      };
-
-      const issueRows = Array.isArray(data.issues)
-        ? data.issues
-        : Array.isArray(data.data)
-        ? data.data
+      // Backend GET /teams/:id/sync returns the sprint-stories array directly
+      // (no envelope). Derive summary fields from it; preserve any prior
+      // syncRunId since GET does not expose it.
+      const issueRows = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.issues)
+        ? raw.issues
+        : Array.isArray(raw?.data)
+        ? raw.data
         : [];
 
-      setSyncSummary(summary);
+      const latestSyncedAt = issueRows.reduce((latest, row) => {
+        if (!row?.syncedAt) return latest;
+        const t = new Date(row.syncedAt).getTime();
+        return Number.isFinite(t) && t > latest ? t : latest;
+      }, 0);
+
+      const linkedCount = issueRows.filter(
+        (r) => r && r.githubStatus && r.githubStatus !== 'no_branch',
+      ).length;
+
+      setSyncSummary((prev) => ({
+        syncRunId: prev?.syncRunId || raw?.syncRunId || raw?.lastSyncRunId || '',
+        totalIssues: issueRows.length || raw?.totalIssues || 0,
+        linkedCount: linkedCount || raw?.linkedCount || 0,
+        syncedAt:
+          (latestSyncedAt && new Date(latestSyncedAt).toISOString()) ||
+          raw?.syncedAt ||
+          raw?.lastSyncedAt ||
+          prev?.syncedAt ||
+          null,
+      }));
       setIssues(issueRows);
     } catch (error) {
       const status = error?.response?.status;
@@ -287,23 +305,45 @@ function ScrumManagementPage() {
                       <th className="py-2 pr-4">Issue Key</th>
                       <th className="py-2 pr-4">Summary</th>
                       <th className="py-2 pr-4">Status</th>
-                      <th className="py-2 pr-4">Branch Found</th>
-                      <th className="py-2">PR Found</th>
+                      <th className="py-2 pr-4">Points</th>
+                      <th className="py-2 pr-4">Branch</th>
+                      <th className="py-2 pr-4">PR</th>
+                      <th className="py-2 pr-4">GitHub</th>
+                      <th className="py-2">Complete</th>
                     </tr>
                   </thead>
                   <tbody>
                     {issues.map((issue) => {
-                      const branchFound = Boolean(issue.githubBranchFound);
-                      const prFound = Boolean(issue.githubPrFound);
-                      const rowClass = !branchFound || !prFound ? 'bg-amber-500/10' : '';
+                      const gh = issue.githubStatus || 'no_branch';
+                      const branchFound = gh !== 'no_branch';
+                      const prFound = gh !== 'no_branch' && gh !== 'no_pr';
+                      const complete = !!issue.isComplete;
+                      const rowClass = complete
+                        ? 'bg-emerald-500/5'
+                        : !branchFound || !prFound
+                        ? 'bg-amber-500/10'
+                        : '';
+
+                      const ghLabel = {
+                        no_branch: { text: 'No Branch', color: 'text-slate-400' },
+                        no_pr: { text: 'No PR', color: 'text-amber-400' },
+                        pr_not_merged: { text: 'PR Open', color: 'text-sky-400' },
+                        author_mismatch: { text: 'Author Mismatch', color: 'text-fuchsia-400' },
+                        verified: { text: 'Verified ✓', color: 'text-emerald-400' },
+                      }[gh] || { text: gh, color: 'text-slate-300' };
 
                       return (
                         <tr key={issue.issueKey || issue.key} className={`border-b border-[#1e293b] ${rowClass}`}>
-                          <td className="py-2 pr-4 text-slate-100">{issue.issueKey || issue.key || '—'}</td>
+                          <td className="py-2 pr-4 text-slate-100 font-mono">{issue.issueKey || issue.key || '—'}</td>
                           <td className="py-2 pr-4 text-slate-300">{issue.summary || '—'}</td>
-                          <td className="py-2 pr-4 text-slate-300">{issue.status || '—'}</td>
+                          <td className="py-2 pr-4 text-slate-300">{issue.resolution || issue.status || '—'}</td>
+                          <td className="py-2 pr-4 text-slate-300">{issue.work ?? 0}</td>
                           <td className="py-2 pr-4 text-slate-300">{branchFound ? 'Yes' : 'No'}</td>
-                          <td className="py-2 text-slate-300">{prFound ? 'Yes' : 'No'}</td>
+                          <td className="py-2 pr-4 text-slate-300">{prFound ? 'Yes' : 'No'}</td>
+                          <td className={`py-2 pr-4 ${ghLabel.color}`}>{ghLabel.text}</td>
+                          <td className={`py-2 ${complete ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
+                            {complete ? '✓ YES' : 'no'}
+                          </td>
                         </tr>
                       );
                     })}

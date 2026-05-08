@@ -212,8 +212,7 @@ const IntegrationsPage = () => {
             </div>
           </div>
         </div>
-      )}
-
+      <aside>
       <div className="max-w-lg">
         {userId ? (
           <>
@@ -251,7 +250,9 @@ const IntegrationsPage = () => {
                 </div>
               ) : null}
             </div>
-          </div>
+          </>
+        ) : null}
+      </div>
 
           <div className="rounded-2xl border border-[#1f1f23] bg-[#0e0e10] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">

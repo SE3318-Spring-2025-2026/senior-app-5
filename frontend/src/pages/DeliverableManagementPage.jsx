@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package } from 'lucide-react';
 import apiClient from '../utils/apiClient';
-import { PageHeader } from '../components/ui';
+import { PageHeader, Card } from '../components/ui';
 
 const emptyForm = () => ({ name: '', deliverablePercentage: '' });
 
@@ -183,7 +183,7 @@ const DeliverableManagementPage = () => {
               </button>
             </div>
           </form>
-        </section>
+        </Card>
       )}
 
       <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">

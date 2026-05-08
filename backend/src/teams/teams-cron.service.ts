@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -10,7 +10,7 @@ import {
 } from '../story-points/schemas/sprint-config.schema';
 
 @Injectable()
-export class TeamsCronService {
+export class TeamsCronService implements OnApplicationBootstrap {
   private readonly logger = new Logger(TeamsCronService.name);
 
   constructor(
@@ -19,6 +19,25 @@ export class TeamsCronService {
     private sprintConfigModel: Model<SprintConfigDocument>,
     private readonly teamsSyncService: TeamsSyncService,
   ) {}
+
+  /**
+   * On boot, kick off a sync in the background so the UI shows fresh data
+   * without waiting until the next 02:00 UTC cron tick. We delay slightly so
+   * the rest of the app finishes wiring up first, and we never block startup.
+   * Disable by setting SKIP_BOOT_SYNC=1.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    if (process.env.SKIP_BOOT_SYNC === '1') {
+      this.logger.log('Boot sync skipped (SKIP_BOOT_SYNC=1).');
+      return;
+    }
+    setTimeout(() => {
+      this.dailySync().catch((err) => {
+        this.logger.error(`Boot sync failed: ${err.message}`);
+      });
+    }, 5000);
+    this.logger.log('Boot sync scheduled (5s after startup).');
+  }
 
   /** Runs every day at 02:00 UTC */
   @Cron(CronExpression.EVERY_DAY_AT_2AM)

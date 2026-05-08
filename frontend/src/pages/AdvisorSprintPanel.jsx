@@ -7,6 +7,7 @@ const GITHUB_STATUS_LABEL = {
   no_branch: { label: 'No Branch', color: '#94a3b8' },
   no_pr: { label: 'No PR', color: '#f59e0b' },
   pr_not_merged: { label: 'PR Open', color: '#3b82f6' },
+  author_mismatch: { label: 'Author Mismatch', color: '#a855f7' },
   verified: { label: 'Verified ✓', color: '#22c55e' },
 };
 
@@ -170,7 +171,7 @@ function AdvisorSprintPanel() {
   }, [selectedTeam, groups]);
 
   const load = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!selectedTeam) return;
     setData(null);
     setStatus({ loading: true, error: '' });
@@ -184,6 +185,18 @@ function AdvisorSprintPanel() {
       setStatus({ loading: false, error: '' });
     } catch (err) {
       const msg = err.response?.data?.message ?? 'Failed to load sprint data.';
+      setStatus({ loading: false, error: msg });
+    }
+  };
+
+  const runSync = async () => {
+    if (!selectedTeam) return;
+    setStatus({ loading: true, error: '' });
+    try {
+      await apiClient.post(apiConfig.endpoints.teamSync(selectedTeam.teamId));
+      await load();
+    } catch (err) {
+      const msg = err.response?.data?.message ?? 'Failed to run sync.';
       setStatus({ loading: false, error: msg });
     }
   };
@@ -243,6 +256,21 @@ function AdvisorSprintPanel() {
           }}
         >
           {status.loading ? 'Loading…' : 'Load Panel'}
+        </button>
+        <button
+          type="button"
+          onClick={runSync}
+          disabled={status.loading || !teamId}
+          style={{
+            padding: '10px 20px', borderRadius: '6px', background: '#0f172a',
+            color: '#e2e8f0', fontWeight: 700,
+            border: '1px solid #334155',
+            cursor: status.loading || !teamId ? 'not-allowed' : 'pointer',
+            opacity: status.loading || !teamId ? 0.6 : 1,
+          }}
+          title="Trigger an immediate JIRA + GitHub sync for this team"
+        >
+          Run Sync Now
         </button>
       </form>
 

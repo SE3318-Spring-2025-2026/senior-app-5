@@ -80,6 +80,52 @@ it('should update submissionEnd minimum when submissionStart changes later', () 
     });
   });
 
+  it('creates a phase and selects it for scheduling', async () => {
+    const createdPhase = {
+      phaseId: 'phase-created',
+      name: 'Proposal',
+      submissionStart: null,
+      submissionEnd: null,
+    };
+
+    apiClient.get.mockResolvedValueOnce({ data: mockPhases });
+    apiClient.post.mockResolvedValueOnce({ data: createdPhase });
+
+    render(<PhaseSchedulingPage />);
+
+    fireEvent.change(await screen.findByLabelText(/Phase Name/i), {
+      target: { value: '  Proposal  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Create Phase/i }));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(apiConfig.endpoints.phasesCreate, {
+        name: 'Proposal',
+      });
+      expect(screen.getByRole('option', { name: 'Proposal (phase-created)' })).toBeTruthy();
+      expect(screen.getByLabelText(/^Phase$/i).value).toBe('phase-created');
+      expect(screen.getByText(/Phase Proposal created successfully/i)).toBeTruthy();
+    });
+  });
+
+  it('shows API errors when phase creation fails', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: mockPhases });
+    apiClient.post.mockRejectedValueOnce({
+      response: { data: { message: 'Requires COORDINATOR role.' } },
+    });
+
+    render(<PhaseSchedulingPage />);
+
+    fireEvent.change(await screen.findByLabelText(/Phase Name/i), {
+      target: { value: 'Proposal' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Create Phase/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Requires COORDINATOR role/i)).toBeTruthy();
+    });
+  });
+
   it('loads and displays the selected phase schedule', async () => {
     // mockPhases tanımlı varsayılıyor (testin üst kısımlarından gelmeli)
     renderWithPhases();

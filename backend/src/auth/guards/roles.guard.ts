@@ -23,8 +23,15 @@ export class RolesGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException('You must be logged in');
     }
-    if (!requiredRoles.includes(user.role)) {
-      throw new ForbiddenException('Insufficient permissions');
+    const callerRole = (user.role ?? '').toString();
+    const callerRoleLc = callerRole.toLowerCase();
+    const matched = requiredRoles.some(
+      (r) => r === callerRole || r.toLowerCase() === callerRoleLc,
+    );
+    if (!matched) {
+      throw new ForbiddenException(
+        `Insufficient permissions. Required: ${requiredRoles.join(', ')}. Your role: ${callerRole || '<none>'}.`,
+      );
     }
     return true;
   }

@@ -13,7 +13,6 @@ const IntegrationsPage = () => {
   const [loadError, setLoadError] = useState(null);
 
   const [myTeam, setMyTeam] = useState(null);
-  const [groups, setGroups] = useState([]);
   const [myTeamError, setMyTeamError] = useState('');
 
   useEffect(() => {
@@ -37,28 +36,18 @@ const IntegrationsPage = () => {
     let cancelled = false;
     (async () => {
       try {
-        const [mineRes, groupsRes] = await Promise.all([
-          apiClient.get(apiConfig.endpoints.teamMine).catch((err) => {
-            if (cancelled) return null;
-            const status = err?.response?.status;
-            if (status === 401 || status === 403) {
-              setMyTeamError(
-                'Only Team Leaders can configure team integrations. Create a team first.',
-              );
-            } else {
-              setMyTeamError(err?.response?.data?.message || 'Failed to load your team.');
-            }
-            return null;
-          }),
-          apiClient.get(apiConfig.endpoints.groups, { params: { page: 1, limit: 100 } })
-            .catch(() => ({ data: { data: [] } })),
-        ]);
+        const mineRes = await apiClient.get(apiConfig.endpoints.teamMine);
         if (cancelled) return;
-        setMyTeam(mineRes?.data ?? null);
-        setGroups(groupsRes.data?.data ?? groupsRes.data ?? []);
+        setMyTeam(mineRes.data ?? null);
       } catch (err) {
-        if (!cancelled) {
-          setMyTeamError(err?.response?.data?.message || 'Failed to load team data.');
+        if (cancelled) return;
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          setMyTeamError(
+            'Only Team Leaders can configure team integrations. Create a team first.',
+          );
+        } else {
+          setMyTeamError(err?.response?.data?.message || 'Failed to load your team.');
         }
       }
     })();
@@ -105,7 +94,7 @@ const IntegrationsPage = () => {
               {myTeam ? (
                 <>
                   <IntegrationStatusCard teamId={myTeam.teamId} />
-                  <TeamIntegrationsForm team={myTeam} groups={groups} />
+                  <TeamIntegrationsForm team={myTeam} />
                 </>
               ) : !myTeamError ? (
                 <div style={{

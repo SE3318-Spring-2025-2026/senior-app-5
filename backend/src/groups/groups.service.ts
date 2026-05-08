@@ -110,6 +110,10 @@ export class GroupsService {
     page: number,
     limit: number,
     name?: string,
+    /** When provided, restricts results to groups advised by this user. */
+    advisorUserId?: string,
+    /** When provided, restricts results to these specific groupIds. */
+    onlyGroupIds?: string[],
   ): Promise<{
     data: Array<{
       groupId: string;
@@ -127,6 +131,18 @@ export class GroupsService {
     if (name?.trim()) {
       const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.groupName = { $regex: escaped, $options: 'i' };
+    }
+    if (advisorUserId) {
+      filter.$or = [
+        { advisorUserId },
+        { assignedAdvisorId: advisorUserId },
+      ];
+    }
+    if (onlyGroupIds) {
+      if (onlyGroupIds.length === 0) {
+        return { data: [], total: 0, page, limit };
+      }
+      filter.groupId = { $in: onlyGroupIds };
     }
     const skip = (page - 1) * limit;
     const [docs, total] = await Promise.all([

@@ -11,6 +11,7 @@ import { SprintStory, SprintStorySchema } from './schemas/sprint-story.schema';
 import { User, UserSchema } from '../users/data/user.schema';
 import { SprintConfig, SprintConfigSchema } from '../story-points/schemas/sprint-config.schema';
 import { StoryPointRecord, StoryPointRecordSchema } from '../story-points/schemas/story-point-record.schema';
+import { Group, GroupSchema } from '../groups/group.entity';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { StoryPointRecord, StoryPointRecordSchema } from '../story-points/schema
       { name: User.name, schema: UserSchema },
       { name: SprintConfig.name, schema: SprintConfigSchema },
       { name: StoryPointRecord.name, schema: StoryPointRecordSchema },
+      { name: Group.name, schema: GroupSchema },
     ]),
   ],
   controllers: [TeamsController],

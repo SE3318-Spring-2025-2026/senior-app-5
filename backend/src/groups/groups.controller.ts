@@ -54,13 +54,38 @@ export class GroupsController {
     private readonly committeesService: CommitteesService,
   ) {}
 
-  @ApiOperation({ summary: 'List groups with optional name filter (Admin, Coordinator)' })
+  @ApiOperation({
+    summary:
+      'List groups. Admin/Coordinator see all; Professor sees groups they advise; TeamLeader/Student see only their own group.',
+  })
   @ApiOkResponse({ description: 'Paginated list of groups' })
   @Get()
-  @Roles(Role.Admin, Role.Coordinator)
+  @Roles(Role.Admin, Role.Coordinator, Role.Professor, Role.TeamLeader, Role.Student)
   @HttpCode(HttpStatus.OK)
-  async listGroups(@Query() query: ListGroupsQueryDto) {
-    return this.groupsService.findAll(query.page, query.limit, query.name);
+  async listGroups(
+    @Query() query: ListGroupsQueryDto,
+    @Request() req: RequestWithUser,
+  ) {
+    const callerId = req.user.userId ?? req.user.sub ?? req.user._id ?? '';
+    const role = (req.user.role ?? '').toLowerCase();
+
+    if (role === 'teamleader' || role === 'student') {
+      // Members only see their own group. user.teamId === groupId in this app.
+      const ownGroupId = (req.user as any).groupId ?? (req.user as any).teamId ?? null;
+      if (!ownGroupId) {
+        return { data: [], total: 0, page: query.page ?? 1, limit: query.limit ?? 20 };
+      }
+      return this.groupsService.findAll(
+        query.page,
+        query.limit,
+        query.name,
+        undefined,
+        [ownGroupId],
+      );
+    }
+
+    const advisorScope = role === 'professor' ? callerId : undefined;
+    return this.groupsService.findAll(query.page, query.limit, query.name, advisorScope);
   }
 
   // ─── Student: create own team ─────────────────────────────────────────────

@@ -9,6 +9,10 @@ export class SetJiraAccountDto {
   })
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.trim() ?? '')
+  @Transform(({ value }) => {
+    if (value === null || value === undefined) return '';
+    // Strip ?cloudId=... or any querystring users sometimes paste from URL.
+    return String(value).split('?')[0].trim();
+  })
   jiraAccountId!: string;
 }

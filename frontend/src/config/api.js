@@ -92,6 +92,7 @@ export const apiConfig = {
     teamIntegrationsStatus: (teamId) => `/teams/${teamId}/integrations/status`,
     teamsList: '/teams',
     teamMine: '/teams/mine',
+    teamJiraDiscover: '/teams/jira/discover',
     teamStoryPoints: (teamId) => `/teams/${teamId}/story-points`,
   },
 };

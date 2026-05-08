@@ -20,15 +20,13 @@ import {
 import clsx from 'clsx';
 
 const navLinkBase =
-  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150';
-const navLinkDefault = 'text-slate-400 hover:text-slate-200 hover:bg-white/5';
-const navLinkActive = 'bg-blue-600/15 text-blue-400 border-l-2 border-blue-500 rounded-l-none';
+  'group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors duration-150';
+const navLinkDefault = 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-200';
+const navLinkActive = 'bg-white/[0.06] text-zinc-100';
 
 function SideNavLink({ to, icon: Icon, label, matchPrefix }) {
   const location = useLocation();
-  const active = matchPrefix
-    ? location.pathname.startsWith(to)
-    : undefined;
+  const active = matchPrefix ? location.pathname.startsWith(to) : undefined;
 
   return (
     <NavLink
@@ -38,15 +36,28 @@ function SideNavLink({ to, icon: Icon, label, matchPrefix }) {
         clsx(navLinkBase, (matchPrefix ? active : isActive) ? navLinkActive : navLinkDefault)
       }
     >
-      <Icon size={16} className="shrink-0" />
-      <span>{label}</span>
+      {({ isActive }) => {
+        const isOn = matchPrefix ? active : isActive;
+        return (
+          <>
+            <span
+              className={clsx(
+                'absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full transition-colors',
+                isOn ? 'bg-zinc-100' : 'bg-transparent'
+              )}
+            />
+            <Icon size={15} className={clsx('shrink-0 transition-colors', isOn ? 'text-zinc-100' : 'text-zinc-500 group-hover:text-zinc-300')} />
+            <span>{label}</span>
+          </>
+        );
+      }}
     </NavLink>
   );
 }
 
 function SectionHeader({ label }) {
   return (
-    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600 px-3 pt-4 pb-1">
+    <p className="px-3 pb-1.5 pt-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
       {label}
     </p>
   );
@@ -58,8 +69,9 @@ export const Sidebar = () => {
   const role = user.role;
 
   return (
-    <aside className="w-60 flex-none bg-[#080f1f] border-r border-[#1e293b] flex flex-col py-4 px-3 overflow-y-auto">
+    <aside className="flex w-60 flex-none flex-col overflow-y-auto border-r border-[#1c1c20] bg-[#0e0e10] px-2.5 py-4">
       <nav className="flex flex-col gap-0.5">
+        <SectionHeader label="General" />
         <SideNavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
         <SideNavLink to="/integrations" icon={Link2} label="Integrations" />
 
@@ -73,7 +85,7 @@ export const Sidebar = () => {
 
         {role === 'TeamLeader' && (
           <>
-            <SectionHeader label="Team Leader Menu" />
+            <SectionHeader label="Team Leader" />
             <SideNavLink to="/scrum" icon={GitBranch} label="Scrum" />
           </>
         )}
@@ -109,6 +121,10 @@ export const Sidebar = () => {
           </>
         )}
       </nav>
+
+      <div className="mt-auto border-t border-[#1c1c20] pt-3">
+        <p className="px-3 text-[10px] text-zinc-700">v1.0 · ThesisOS</p>
+      </div>
     </aside>
   );
 };

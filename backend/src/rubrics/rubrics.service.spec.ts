@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RubricsService } from './rubrics.service';
 import { Rubric } from './schemas/rubric.schema';
@@ -7,18 +7,6 @@ import { SprintEvaluation } from '../sprint-evaluations/schemas/sprint-evaluatio
 
 describe('RubricsService', () => {
   let service: RubricsService;
-
-  const session = {
-    startTransaction: jest.fn(),
-    commitTransaction: jest.fn(),
-    abortTransaction: jest.fn(),
-    endSession: jest.fn(),
-    inTransaction: jest.fn().mockReturnValue(true),
-  };
-
-  const mockConnection = {
-    startSession: jest.fn().mockResolvedValue(session),
-  };
 
   const mockRubricModel = {
     find: jest.fn(),
@@ -47,10 +35,6 @@ describe('RubricsService', () => {
           provide: getModelToken(SprintEvaluation.name),
           useValue: mockSprintEvaluationModel,
         },
-        {
-          provide: getConnectionToken(),
-          useValue: mockConnection,
-        },
       ],
     }).compile();
 
@@ -72,6 +56,7 @@ describe('RubricsService', () => {
                   deliverableId: '33333333-3333-4333-8333-333333333333',
                   name: 'Sprint 1 SCRUM Rubric',
                   isActive: true,
+                  gradingType: 'soft',
                   questions: [
                     {
                       questionId: '55555555-5555-4555-8555-555555555551',
@@ -112,6 +97,7 @@ describe('RubricsService', () => {
         deliverableId: '33333333-3333-4333-8333-333333333333',
         name: 'Sprint 1 SCRUM Rubric',
         isActive: true,
+        gradingType: 'soft',
         questions: [
           {
             questionId: '55555555-5555-4555-8555-555555555551',
@@ -129,6 +115,7 @@ describe('RubricsService', () => {
           deliverableId: '33333333-3333-4333-8333-333333333333',
           name: 'Sprint 1 SCRUM Rubric',
           isActive: true,
+          gradingType: 'soft',
           questions: [
             {
               questionId: '55555555-5555-4555-8555-555555555551',
@@ -151,6 +138,7 @@ describe('RubricsService', () => {
       {
         deliverableId: '33333333-3333-4333-8333-333333333333',
         name: 'Sprint 1 SCRUM Rubric',
+        gradingType: 'soft' as never,
         questions: [
           {
             criteriaName: 'Team planning quality',
@@ -166,7 +154,7 @@ describe('RubricsService', () => {
     );
 
     expect(result.rubricId).toBe('44444444-4444-4444-8444-444444444441');
-    expect(session.commitTransaction).toHaveBeenCalled();
+    expect(result.gradingType).toBe('soft');
     expect(mockRubricModel.updateMany).toHaveBeenCalled();
   });
 
@@ -176,6 +164,7 @@ describe('RubricsService', () => {
         {
           deliverableId: '33333333-3333-4333-8333-333333333333',
           name: 'Bad Rubric',
+          gradingType: 'soft' as never,
           questions: [
             {
               criteriaName: 'Team planning quality',
@@ -244,13 +233,16 @@ describe('RubricsService', () => {
   });
 
   it('maps unexpected errors to 500', async () => {
-    mockConnection.startSession.mockRejectedValueOnce(new Error('boom'));
+    mockRubricModel.updateMany.mockReturnValue({
+      exec: jest.fn().mockRejectedValueOnce(new Error('boom')),
+    });
 
     await expect(
       service.createRubric(
         {
           deliverableId: '33333333-3333-4333-8333-333333333333',
           name: 'Sprint 1 SCRUM Rubric',
+          gradingType: 'soft' as never,
           questions: [
             {
               criteriaName: 'Team planning quality',

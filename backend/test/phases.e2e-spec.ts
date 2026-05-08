@@ -250,10 +250,12 @@ describe('PhasesController (E2E)', () => {
         submissionEnd: now.toISOString(),
       };
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .put(`/phases/${phaseWithoutScheduleId}/schedule`)
         .send(dto)
         .expect(400);
+
+      expect(response.body.message).toContain('submissionEnd must be strictly after submissionStart');
     });
 
     it('should reject when submissionStart and submissionEnd are identical', async () => {
@@ -271,6 +273,20 @@ describe('PhasesController (E2E)', () => {
       expect(response.body.message).toContain(
         'submissionEnd must be strictly after submissionStart',
       );
+    });
+
+    it('should reject when submissionEnd is not a valid date string', async () => {
+      const dto = {
+        submissionStart: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        submissionEnd: 'next tuesday',
+      };
+
+      const response = await request(app.getHttpServer())
+        .put(`/phases/${phaseWithoutScheduleId}/schedule`)
+        .send(dto)
+        .expect(400);
+
+      expect(response.body.message).toContain('submissionStart and submissionEnd must be valid dates');
     });
 
     it('should reject when submissionStart is missing', async () => {

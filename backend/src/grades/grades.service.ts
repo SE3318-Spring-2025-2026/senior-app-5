@@ -490,7 +490,7 @@ export class GradesService {
     for (const deliverableId of deliverableIds) {
       if (!deliverableConfigMap.has(deliverableId)) {
         throw new UnprocessableEntityException(
-          `Deliverable config (categoryWeight/subWeight) not found for deliverableId=${deliverableId}.`,
+          `Deliverable config not found for deliverableId=${deliverableId}.`,
         );
       }
     }
@@ -507,8 +507,7 @@ export class GradesService {
       const scaledGrade =
         deliverableEval.rawGrade *
         teamScalar *
-        deliverable.categoryWeight *
-        deliverable.subWeight;
+        (deliverable.deliverablePercentage / 100);
 
       teamGradeRaw += scaledGrade;
 
@@ -516,8 +515,7 @@ export class GradesService {
         deliverableId: deliverableEval.deliverableId,
         rawGrade: deliverableEval.rawGrade,
         teamScalar,
-        categoryWeight: deliverable.categoryWeight,
-        subWeight: deliverable.subWeight,
+        deliverablePercentage: deliverable.deliverablePercentage,
         scaledGrade: Number(scaledGrade.toFixed(2)),
       });
     }

@@ -22,6 +22,8 @@ describe('SubmissionsController', () => {
     createSubmission: jest.fn(),
     getCompleteness: jest.fn(),
     assertAuthorizedGroupMember: jest.fn(),
+    getCommitteeSubmissionGroupIds: jest.fn(),
+    assertProfessorCanAccessSubmission: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -186,6 +188,21 @@ describe('SubmissionsController', () => {
       expect(service.findAll).toHaveBeenCalledWith(undefined);
     });
 
+    it('should allow Professor to filter submissions by assigned committee', async () => {
+      const req = { user: { role: 'Professor', userId: 'prof-1' } };
+      mockSubmissionsService.getCommitteeSubmissionGroupIds.mockResolvedValue([
+        'group-1',
+      ]);
+
+      await controller.findAll(req as any, undefined, 'committee-1');
+
+      expect(service.getCommitteeSubmissionGroupIds).toHaveBeenCalledWith(
+        'committee-1',
+        'prof-1',
+      );
+      expect(service.findAll).toHaveBeenCalledWith(undefined, ['group-1']);
+    });
+
     it('should throw BadRequestException if Student does not provide groupId', async () => {
       const req = { user: { role: 'Student' } };
       await expect(controller.findAll(req as any, undefined)).rejects.toThrow(
@@ -238,6 +255,23 @@ describe('SubmissionsController', () => {
       await expect(
         controller.findOne(req as any, mockSubmission._id),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should require professor to belong to the submission committee', async () => {
+      const req = { user: { role: 'Professor', userId: 'prof-1' } };
+      const mockSubmission = {
+        _id: '64f1a2b3c4d5e6f7a8b9c0d1',
+        groupId: 'group-123',
+      };
+      mockSubmissionsService.findOne.mockResolvedValue(mockSubmission);
+
+      const result = await controller.findOne(req as any, mockSubmission._id);
+
+      expect(result).toEqual(mockSubmission);
+      expect(service.assertProfessorCanAccessSubmission).toHaveBeenCalledWith(
+        mockSubmission,
+        'prof-1',
+      );
     });
   });
 

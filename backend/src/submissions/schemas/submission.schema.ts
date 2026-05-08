@@ -3,13 +3,25 @@ import { HydratedDocument } from 'mongoose';
 
 export type SubmissionDocument = HydratedDocument<Submission>;
 
+export enum SubmissionStatus {
+  Pending = 'Pending',
+  UnderReview = 'UnderReview',
+  NeedsRevision = 'NeedsRevision',
+  Approved = 'Approved',
+  Rejected = 'Rejected',
+}
+
 @Schema({ timestamps: true })
 export class Submission {
   @Prop({ required: true })
   title!: string;
 
-  @Prop({ default: 'Pending' })
-  status!: string;
+  @Prop({
+    type: String,
+    enum: Object.values(SubmissionStatus),
+    default: SubmissionStatus.Pending,
+  })
+  status!: SubmissionStatus;
 
   @Prop({ required: true })
   groupId!: string;

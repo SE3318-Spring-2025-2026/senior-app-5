@@ -51,8 +51,6 @@ describe('DeliverablesController', () => {
     jest.spyOn(service, 'createDeliverable').mockResolvedValue({
       deliverableId: '11111111-1111-4111-8111-111111111111',
       name: 'SoW',
-      categoryWeight: 0.5,
-      subWeight: 0.35,
       deliverablePercentage: 17.5,
       createdAt: new Date('2026-05-01T10:00:00.000Z'),
       updatedAt: new Date('2026-05-01T10:00:00.000Z'),
@@ -66,8 +64,6 @@ describe('DeliverablesController', () => {
     await controller.createDeliverable(
       {
         name: 'SoW',
-        categoryWeight: 0.5,
-        subWeight: 0.35,
         deliverablePercentage: 17.5,
       },
       req,
@@ -76,8 +72,6 @@ describe('DeliverablesController', () => {
     expect(service.createDeliverable).toHaveBeenCalledWith(
       {
         name: 'SoW',
-        categoryWeight: 0.5,
-        subWeight: 0.35,
         deliverablePercentage: 17.5,
       },
       'coord-1',

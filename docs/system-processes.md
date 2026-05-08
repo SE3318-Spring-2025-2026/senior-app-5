@@ -113,6 +113,14 @@ Current backend contract notes:
 | Grade submission | Frontend, Backend, Database | Submission ID, Committee User ID, Grade Value |
 | Grade SoW submissions | Frontend, Backend, Database | SoW Submission ID, Committee User ID, SoW Grade Value |
 
+Current backend contract notes:
+- `POST /api/v1/reviews` allows a professor in the assigned committee jury to create one draft review per submission and moves the submission to `UnderReview`.
+- `GET /api/v1/reviews/:reviewId` returns the full review to the owning professor, coordinators/admins, or students/team leaders for their own group submission.
+- `POST /api/v1/reviews/:reviewId/comments` and `DELETE /api/v1/reviews/:reviewId/comments/:commentId` manage professor-owned review comments.
+- `POST /api/v1/reviews/:reviewId/revision-requests` records a revision request and moves the submission to `NeedsRevision`.
+- `POST /api/v1/reviews/:reviewId/grade` accepts a 0-100 grade only during an active `GRADING` schedule window, marks the review `Submitted`, and moves the submission to `Approved` once every jury member has submitted a grade.
+- `GET /api/v1/submissions?committeeId=<uuid>` allows committee professors to list submissions for groups assigned to their committee.
+
 ---
 
 ## Process 8: Grade Calculation

@@ -203,10 +203,11 @@ function PhaseSchedulingPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Phase Select */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+            <label htmlFor="phase-select" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Phase
             </label>
             <select
+              id="phase-select"
               value={phaseId}
               onChange={handlePhaseChange}
               disabled={status.loadingPhases || status.loading}
@@ -264,10 +265,11 @@ function PhaseSchedulingPage() {
 
           {/* Submission Start */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+            <label htmlFor="submission-start" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Submission Start
             </label>
             <input
+              id="submission-start"
               type="datetime-local"
               value={submissionStart}
               disabled={!phaseId || status.loading}
@@ -285,10 +287,11 @@ function PhaseSchedulingPage() {
 
           {/* Submission End */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+            <label htmlFor="submission-end" className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               Submission End
             </label>
             <input
+              id="submission-end"
               type="datetime-local"
               value={submissionEnd}
               min={submissionStart}

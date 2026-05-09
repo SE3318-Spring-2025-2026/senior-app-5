@@ -80,7 +80,8 @@ export const Sidebar = () => {
           <>
             <SectionHeader label="Student" />
             <SideNavLink to="/groups" icon={Users} label="My Group" />
-            <SideNavLink to="/documents" icon={FileText} label="My Documents" />
+            <SideNavLink to="/my-submissions" icon={FileText} label="My Submissions" />
+            <SideNavLink to="/documents" icon={FileText} label="Upload Document" />
           </>
         )}
 

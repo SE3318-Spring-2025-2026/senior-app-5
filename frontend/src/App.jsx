@@ -24,6 +24,7 @@ import SanitizationPage from './pages/admin/SanitizationPage';
 
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
+import MarkdownEditorPage from './pages/MarkdownEditorPage';
 import GradeDisplayPage from './pages/GradeDisplayPage';
 import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
@@ -69,12 +70,13 @@ function App() {
                        <Route path="/groups" element={<StudentGroupManagementPage />} />
             <Route path="/all-groups" element={<StudentGroupManagementPage />} />
             <Route path="/documents/upload" element={<StudentSubmissionPage />} />
+            <Route path="/documents/:submissionId/markdown" element={<MarkdownEditorPage />} />
             <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
+            <Route path="/my-submissions" element={<DocumentsPage />} />
             <Route path="/grades" element={<GradeDisplayPage />} />
             <Route path="/professor/submissions" element={<DocumentsPage />} />
-            <Route path="/documents" element={<DocumentsPage />} />
             <Route
               path="/review"
               element={

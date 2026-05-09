@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, ChevronLeft, Download } from 'lucide-react';
+import { FileText, ChevronLeft, Download, FileEdit } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import { Badge, Button, PageHeader } from '../components/ui';
 
@@ -81,7 +81,20 @@ const SubmissionDetailsPage = () => {
         Back to List
       </button>
 
-      <PageHeader title="Submission Details" subtitle={submission.title} />
+      <PageHeader
+        title="Submission Details"
+        subtitle={submission.title}
+        actions={
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={() => navigate(`/documents/${submission._id}/markdown`)}
+          >
+            <FileEdit size={14} />
+            Open markdown editor
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* General Information */}

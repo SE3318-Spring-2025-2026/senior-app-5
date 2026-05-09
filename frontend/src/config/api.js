@@ -42,10 +42,12 @@ export const apiConfig = {
     sanitizationExecute: '/admin/sanitization/execute',
     adminAssignStudentGroup: (studentId) => `/admin/students/${studentId}/group`,
     submissions: {
+      byId: (submissionId) => `/submissions/${submissionId}`,
       list: '/submissions',
       byGroup: (groupId) => `/submissions?groupId=${groupId}`,
       byCommittee: (committeeId) => `/submissions?committeeId=${committeeId}`,
       mine: '/submissions/me',
+      grades: (submissionId) => `/submissions/${submissionId}/grades`,
       uploadDocument: (submissionId) => `/submissions/${submissionId}/documents`,
       downloadDocument: (submissionId, documentId) => `/submissions/${submissionId}/documents/${documentId}/download`,
     },

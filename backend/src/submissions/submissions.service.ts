@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -17,6 +19,7 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission, SubmissionDocument, SubmissionStatus } from './schemas/submission.schema';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
+import { GradeSubmissionDto } from './dto/grade-submission.dto';
 
 type SubmissionActor = { userId?: string; role?: string; groupId?: string };
 type UploadedSubmissionFile = {
@@ -186,6 +189,101 @@ export class SubmissionsService {
     const query = groupId ? { groupId } : {};
     return this.submissionModel.find(query).sort({ createdAt: -1 }).exec();
   }
+  
+  async gradeSubmission(
+    graderUserId: string,
+    submissionId: string,
+    dto: GradeSubmissionDto,
+  ): Promise<{
+    created: boolean;
+    gradeId: string;
+    graderUserId: string;
+    gradeValue: number;
+    gradedAt: Date;
+    allGrades: Array<{
+      gradeId: string;
+      graderUserId: string;
+      gradeValue: number;
+      gradedAt: Date;
+    }>;
+  }> {
+    const submission = await this.findById(submissionId);
+    await this.assertJuryMember(graderUserId, submission.groupId);
+
+    const gradeValue = Number(dto.gradeValue);
+    if (!Number.isFinite(gradeValue) || gradeValue < 0 || gradeValue > 100) {
+      throw new BadRequestException('gradeValue must be a number between 0 and 100.');
+    }
+
+    const grades = submission.grades ?? [];
+    submission.grades = grades;
+
+    const idx = grades.findIndex(
+      (g: { graderUserId?: string }) => String(g.graderUserId) === String(graderUserId),
+    );
+    const gradedAt = new Date();
+    let created = false;
+
+    let entry: {
+      gradeId: string;
+      graderUserId: string;
+      gradeValue: number;
+      gradedAt: Date;
+    };
+
+    if (idx >= 0) {
+      const existing = grades[idx] as {
+        gradeId?: string;
+        graderUserId?: string;
+        gradeValue?: number;
+        gradedAt?: Date;
+      };
+      existing.gradeValue = gradeValue;
+      existing.gradedAt = gradedAt;
+      entry = {
+        gradeId: String(existing.gradeId),
+        graderUserId: String(graderUserId),
+        gradeValue,
+        gradedAt,
+      };
+    } else {
+      created = true;
+      entry = {
+        gradeId: randomUUID(),
+        graderUserId: String(graderUserId),
+        gradeValue,
+        gradedAt,
+      };
+      grades.push(entry as (typeof grades)[number]);
+    }
+
+    await submission.save();
+
+    const allGrades = (submission.grades ?? []).map(
+      (g: {
+        gradeId?: string;
+        graderUserId?: string;
+        gradeValue?: number;
+        gradedAt?: Date;
+      }) => ({
+        gradeId: String(g.gradeId),
+        graderUserId: String(g.graderUserId),
+        gradeValue: Number(g.gradeValue),
+        gradedAt:
+          g.gradedAt instanceof Date ? g.gradedAt : new Date(g.gradedAt as unknown as string | number),
+      }),
+    );
+
+    return {
+      created,
+      gradeId: entry.gradeId,
+      graderUserId: entry.graderUserId,
+      gradeValue: entry.gradeValue,
+      gradedAt: entry.gradedAt,
+      allGrades,
+    };
+  }
+  
 
   async findAllForProfessor(professorUserId: string) {
     const committees = await this.committeeModel

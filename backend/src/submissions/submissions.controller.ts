@@ -34,6 +34,7 @@ import { GroupMemberGuard } from '../auth/guards/group-member.guard';
 import { JurySubmissionResponseDto } from './dto/jury-submission-response.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
+import { GradeSubmissionDto } from './dto/grade-submission.dto';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_EXTENSIONS_REGEX =
@@ -261,6 +262,41 @@ export class SubmissionsController {
     );
     return new StreamableFile(file.buffer);
   }
+  
+  @Post(':submissionId/grades')
+  @Roles(Role.Professor)
+  @ApiOperation({
+    summary: 'Submit or update a numeric grade (0–100) for a submission (committee jury only)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'First grade from this grader for this submission',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Existing grade updated for this grader',
+  })
+  @ApiResponse({ status: 400, description: 'gradeValue out of range' })
+  @ApiResponse({ status: 403, description: 'Not a jury member for this group' })
+  @ApiResponse({ status: 404, description: 'Submission or committee not found' })
+  async gradeSubmission(
+    @Req() req: Request & { user: any },
+    @Param('submissionId') submissionId: string,
+    @Body() dto: GradeSubmissionDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    this.validateObjectIdFormat(submissionId, 'submissionId');
+    const userId = req.user.userId || req.user.sub || req.user._id;
+    const result = await this.submissionsService.gradeSubmission(
+      String(userId),
+      submissionId,
+      dto,
+    );
+    const { created, ...body } = result;
+    res.status(created ? 201 : 200);
+    return body;
+  }
+
 
   @Get()
   @ApiOperation({

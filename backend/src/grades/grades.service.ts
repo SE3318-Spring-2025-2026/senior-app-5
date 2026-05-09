@@ -48,9 +48,9 @@ import {
   SprintEvaluationType,
 } from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 import {
-  SprintConfig,
-  SprintConfigDocument,
-} from '../story-points/schemas/sprint-config.schema';
+  SprintConfigEntry,
+  SprintConfigDocument as SprintConfigEntryDocument,
+} from '../sprint-configs/schemas/sprint-config.schema';
 import {
   StoryPointRecord,
   StoryPointRecordDocument,
@@ -84,8 +84,8 @@ export class GradesService {
     private readonly deliverableEvaluationModel: Model<DeliverableEvaluationDocument>,
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
-    @InjectModel(SprintConfig.name)
-    private readonly sprintConfigModel: Model<SprintConfigDocument>,
+    @InjectModel(SprintConfigEntry.name)
+    private readonly sprintConfigEntryModel: Model<SprintConfigEntryDocument>,
     @InjectModel(StoryPointRecord.name)
     private readonly storyPointRecordModel: Model<StoryPointRecordDocument>,
     @InjectModel(Committee.name)
@@ -418,8 +418,14 @@ export class GradesService {
     );
 
     // ── Step 8.3: Compute per-deliverable team scalar ───────────────
-    const sprintConfigs = await this.sprintConfigModel
+    const sprintEvaluations = await this.sprintEvaluationModel
       .find({ groupId })
+      .lean()
+      .exec();
+
+    const evalSprintIds = [...new Set(sprintEvaluations.map((e) => e.sprintId))];
+    const sprintConfigs = await this.sprintConfigEntryModel
+      .find({ sprintId: { $in: evalSprintIds } })
       .lean()
       .exec();
 
@@ -432,11 +438,6 @@ export class GradesService {
         deliverableSprintMap.set(mapping.deliverableId, sprintIds);
       }
     }
-
-    const sprintEvaluations = await this.sprintEvaluationModel
-      .find({ groupId })
-      .lean()
-      .exec();
 
     // teamScalar per deliverable:
     //   scrum_avg  = AVG(Point_A / SCRUM evaluations for contributing sprints)
@@ -531,8 +532,9 @@ export class GradesService {
       const deliverable = deliverableConfigMap.get(
         deliverableEval.deliverableId,
       )!;
+      // Deliverables with no sprint mapping are not penalised — full scalar.
       const teamScalar =
-        deliverableScalarMap.get(deliverableEval.deliverableId) ?? 0;
+        deliverableScalarMap.get(deliverableEval.deliverableId) ?? 1.0;
       const scaledGrade =
         deliverableEval.rawGrade *
         teamScalar *
@@ -621,24 +623,52 @@ export class GradesService {
       ? [...new Set(storyPointRecords.map((r) => r.studentId))]
       : fallbackStudentIds;
 
-    // Per-student per-deliverable individual ratio
-    // studentDeliverableRatioMap: studentId → deliverableId → ratio
+    // Per-student per-deliverable individual ratio.
+    // Only built when story-point records exist; otherwise we'd populate every
+    // entry with 0 (sprintRatioMap empty), and the if-branch in step 8.6 would
+    // then zero-out the final grade instead of falling back to full participation.
     const studentDeliverableRatioMap = new Map<string, Map<string, number>>();
-    for (const studentId of allStudentIds) {
-      const deliverableRatios = new Map<string, number>();
-      for (const [deliverableId] of deliverableSprintMap) {
-        const sprintIds = deliverableSprintMap.get(deliverableId) ?? [];
-        let weightedRatio = 0;
-        for (const sprintId of sprintIds) {
-          const weight =
-            sprintDeliverableWeights.get(sprintId)?.get(deliverableId) ?? 0;
-          const ratio = sprintRatioMap.get(sprintId)?.get(studentId) ?? 0;
-          weightedRatio += ratio * weight;
+    if (storyPointRecords.length > 0) {
+      for (const studentId of allStudentIds) {
+        const deliverableRatios = new Map<string, number>();
+        for (const [deliverableId] of deliverableSprintMap) {
+          const sprintIds = deliverableSprintMap.get(deliverableId) ?? [];
+          let weightedRatio = 0;
+          for (const sprintId of sprintIds) {
+            const weight =
+              sprintDeliverableWeights.get(sprintId)?.get(deliverableId) ?? 0;
+            const ratio = sprintRatioMap.get(sprintId)?.get(studentId) ?? 0;
+            weightedRatio += ratio * weight;
+          }
+          deliverableRatios.set(deliverableId, Math.min(1, weightedRatio));
         }
-        deliverableRatios.set(deliverableId, Math.min(1, weightedRatio));
+        studentDeliverableRatioMap.set(studentId, deliverableRatios);
       }
-      studentDeliverableRatioMap.set(studentId, deliverableRatios);
     }
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'step_8_5_ratio_map_built',
+        groupId,
+        storyPointRecordCount: storyPointRecords.length,
+        allStudentIds,
+        sprintRatioMap: Array.from(sprintRatioMap.entries()).map(([s, m]) => ({
+          sprintId: s,
+          perStudent: Array.from(m.entries()),
+        })),
+        studentDeliverableRatioMap: Array.from(
+          studentDeliverableRatioMap.entries(),
+        ).map(([sid, m]) => ({
+          studentId: sid,
+          ratios: Array.from(m.entries()),
+        })),
+        note:
+          storyPointRecords.length === 0
+            ? 'No story-point records → ratio map intentionally empty, step 8.6 will use fallback (full participation)'
+            : null,
+        correlationId: correlationId ?? null,
+      }),
+    );
 
     // Fallback aggregate ratio (used when no deliverable mapping exists for a sprint)
     const studentTotals = new Map<string, { completed: number; target: number }>();
@@ -677,6 +707,7 @@ export class GradesService {
         // each multiplied by the student's individual ratio for that deliverable.
         const deliverableRatios = studentDeliverableRatioMap.get(studentId);
         let individualAllowanceRatio: number;
+        let branchUsed: string;
 
         if (deliverableRatios && deliverableRatios.size > 0 && scaledDeliverableGrades.length > 0) {
           // student_final = SUM( scaled_deliverable_grade[d] × individual_ratio[d] ) / teamGrade
@@ -689,15 +720,32 @@ export class GradesService {
           individualAllowanceRatio = teamGrade > 0
             ? Math.min(1, weightedStudentGrade / teamGrade)
             : 0;
+          branchUsed = 'per_deliverable_weighted';
         } else {
           // Fallback: aggregate ratio across all sprints
           // target === 0 means no story point data → treat as full participation (1.0)
           individualAllowanceRatio =
             totals.target > 0 ? Math.min(1, totals.completed / totals.target) : 1.0;
+          branchUsed =
+            totals.target > 0 ? 'aggregate_story_points' : 'no_story_points_full_participation';
         }
 
         const finalGrade = Number(
           (teamGrade * individualAllowanceRatio).toFixed(2),
+        );
+
+        this.logger.log(
+          JSON.stringify({
+            event: 'step_8_6_student_grade',
+            groupId,
+            studentId,
+            branchUsed,
+            totals,
+            individualAllowanceRatio,
+            teamGrade,
+            finalGrade,
+            correlationId: correlationId ?? null,
+          }),
         );
 
         await this.studentFinalGradeModel

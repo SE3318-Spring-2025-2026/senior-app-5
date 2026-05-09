@@ -1,9 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMinSize,
   IsArray,
   IsEnum,
   IsNumber,
+  IsOptional,
   IsString,
   IsUUID,
   Max,
@@ -11,7 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { GradingType } from '../schemas/rubric.schema';
+import { GradingType, SprintRubricType } from '../schemas/rubric.schema';
 
 export class CreateRubricQuestionDto {
   @ApiProperty({
@@ -33,16 +34,25 @@ export class CreateRubricQuestionDto {
 }
 
 export class CreateRubricDto {
-  @ApiProperty({
-    description: 'The deliverable this rubric evaluates',
+  @ApiPropertyOptional({
+    description: 'The deliverable this rubric evaluates (mutually exclusive with sprintEvaluationType)',
     format: 'uuid',
   })
+  @IsOptional()
   @IsUUID()
-  deliverableId!: string;
+  deliverableId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Sprint evaluation type this rubric applies to (mutually exclusive with deliverableId)',
+    enum: SprintRubricType,
+  })
+  @IsOptional()
+  @IsEnum(SprintRubricType)
+  sprintEvaluationType?: SprintRubricType;
 
   @ApiProperty({
     description: 'Human-readable name for this rubric version',
-    example: 'Sprint 1 SCRUM Evaluation',
+    example: 'Sprint SCRUM Evaluation',
   })
   @IsString()
   name!: string;

@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -87,6 +89,39 @@ export class SprintEvaluationsController {
     return this.sprintEvaluationsService.recordSprintEvaluation(
       body,
       this.getCaller(req),
+      correlationId,
+    );
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    operationId: 'listSprintEvaluations',
+    summary: 'List sprint evaluations for a group',
+  })
+  @ApiOkResponse({
+    description: 'Sprint evaluations returned',
+    type: [SprintEvaluationResponseDto],
+  })
+  @ApiQuery({ name: 'groupId', required: true, type: String })
+  @ApiQuery({ name: 'sprintId', required: false, type: String })
+  @ApiQuery({ name: 'evaluationType', required: false, type: String })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Authenticated but insufficient permissions' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin, Role.Student)
+  async listSprintEvaluations(
+    @Query('groupId') groupId: string,
+    @Query('sprintId') sprintId?: string,
+    @Query('evaluationType') evaluationType?: string,
+    @Req() req?: RequestWithUser,
+  ): Promise<SprintEvaluationResponseDto[]> {
+    const correlationId = this.getCorrelationId(req!);
+    return this.sprintEvaluationsService.listSprintEvaluations(
+      groupId,
+      this.getCaller(req!),
+      { sprintId, evaluationType },
       correlationId,
     );
   }

@@ -185,6 +185,7 @@ describe('GradesController', () => {
       const result = await controller.getGradeHistory(
         '11111111-1111-1111-1111-111111111111',
         { page: 1, limit: 20 },
+        { user: { role: 'Coordinator' } } as any,
       );
 
       expect(result).toEqual(response);

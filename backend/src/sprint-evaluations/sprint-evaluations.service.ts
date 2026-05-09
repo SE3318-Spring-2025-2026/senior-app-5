@@ -30,7 +30,7 @@ import {
 import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
 import { RubricsService } from '../rubrics/rubrics.service';
-import { RubricDocument } from '../rubrics/schemas/rubric.schema';
+import { RubricDocument, SprintRubricType } from '../rubrics/schemas/rubric.schema';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 interface RequestContext {
@@ -69,7 +69,7 @@ export class SprintEvaluationsService {
       correlationId,
     );
     const rubric = await this.resolveActiveRubric(
-      dto.deliverableId,
+      dto.evaluationType as unknown as SprintRubricType,
       correlationId,
     );
     this.ensureQuestionMatch(dto, rubric);
@@ -79,7 +79,6 @@ export class SprintEvaluationsService {
     const evaluation = await this.sprintEvaluationModel.create({
       groupId: dto.groupId,
       sprintId: dto.sprintId,
-      deliverableId: dto.deliverableId,
       evaluationType: dto.evaluationType,
       rubricId: rubric.rubricId,
       responses: dto.responses,
@@ -92,7 +91,6 @@ export class SprintEvaluationsService {
       evaluationId: evaluation.evaluationId,
       groupId: dto.groupId,
       sprintId: dto.sprintId,
-      deliverableId: dto.deliverableId,
       evaluationType: dto.evaluationType,
       rubricId: rubric.rubricId,
       correlationId,
@@ -122,6 +120,31 @@ export class SprintEvaluationsService {
     });
 
     return this.toResponseDto(evaluation);
+  }
+
+  async listSprintEvaluations(
+    groupId: string,
+    caller: RequestContext,
+    filters?: { sprintId?: string; evaluationType?: string },
+    correlationId?: string,
+  ): Promise<SprintEvaluationResponseDto[]> {
+    if (caller.role === Role.Professor) {
+      await this.ensureAdvisorOwnsGroup(groupId, caller.userId ?? '', correlationId);
+    }
+
+    const query: Record<string, string> = { groupId };
+    if (filters?.sprintId) query.sprintId = filters.sprintId;
+    if (filters?.evaluationType) query.evaluationType = filters.evaluationType;
+
+    const evaluations = await this.sprintEvaluationModel
+      .find(query)
+      .sort({ createdAt: 1 })
+      .lean()
+      .exec();
+
+    return evaluations.map((e) =>
+      this.toResponseDto(e as unknown as SprintEvaluationDocument),
+    );
   }
 
   async getSprintEvaluation(
@@ -235,7 +258,6 @@ export class SprintEvaluationsService {
       .findOne({
         groupId: dto.groupId,
         sprintId: dto.sprintId,
-        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
       })
       .exec();
@@ -245,33 +267,32 @@ export class SprintEvaluationsService {
         event: 'sprint_evaluation_duplicate_detected',
         groupId: dto.groupId,
         sprintId: dto.sprintId,
-        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
         correlationId,
       });
       throw new ConflictException(
-        'A sprint evaluation already exists for this group, sprint, deliverable, and evaluation type.',
+        'A sprint evaluation already exists for this group, sprint, and evaluation type.',
       );
     }
   }
 
   private async resolveActiveRubric(
-    deliverableId: string,
+    sprintEvaluationType: SprintRubricType,
     correlationId?: string,
   ): Promise<RubricDocument> {
-    const rubric = await this.rubricsService.getActiveRubric(
-      deliverableId,
+    const rubric = await this.rubricsService.getActiveSprintRubric(
+      sprintEvaluationType,
       correlationId,
     );
 
     if (!rubric) {
       this.logger.warn({
         event: 'sprint_evaluation_rubric_missing',
-        deliverableId,
+        sprintEvaluationType,
         correlationId,
       });
       throw new BadRequestException(
-        'No active rubric is available for this deliverable.',
+        `No active rubric is configured for sprint evaluation type '${sprintEvaluationType}'. Ask the coordinator to create one.`,
       );
     }
 
@@ -308,7 +329,6 @@ export class SprintEvaluationsService {
       evaluationId: evaluation.evaluationId,
       groupId: evaluation.groupId,
       sprintId: evaluation.sprintId,
-      deliverableId: evaluation.deliverableId,
       evaluationType: evaluation.evaluationType,
       rubricId: evaluation.rubricId,
       responses: evaluation.responses.map((response) => ({

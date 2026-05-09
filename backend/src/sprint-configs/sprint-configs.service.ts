@@ -89,7 +89,8 @@ export class SprintConfigsService {
 
     await this.notifyTeamLeadersAboutSprint(created.sprintId);
 
-    return this.toResponseDto(created);
+    const createdMap = await this.loadSchedulesByIds([created.sprintId]);
+    return this.toResponseDto(created, createdMap.get(created.sprintId));
   }
 
   async update(
@@ -131,7 +132,8 @@ export class SprintConfigsService {
 
     await this.notifyTeamLeadersAboutSprint(updated.sprintId);
 
-    return this.toResponseDto(updated);
+    const updatedMap = await this.loadSchedulesByIds([updated.sprintId]);
+    return this.toResponseDto(updated, updatedMap.get(updated.sprintId));
   }
 
   /**
@@ -199,8 +201,12 @@ export class SprintConfigsService {
         .exec(),
       this.sprintConfigModel.countDocuments().exec(),
     ]);
+
+    const scheduleMap = await this.loadSchedulesByIds(docs.map((d) => d.sprintId));
     return {
-      data: docs.map((d) => this.toResponseDto(d as SprintConfigDocument)),
+      data: docs.map((d) =>
+        this.toResponseDto(d as SprintConfigDocument, scheduleMap.get(d.sprintId)),
+      ),
       total,
       page,
       limit,
@@ -217,7 +223,37 @@ export class SprintConfigsService {
         `Sprint config for sprintId '${sprintId}' not found.`,
       );
     }
-    return this.toResponseDto(doc as SprintConfigDocument);
+    const scheduleMap = await this.loadSchedulesByIds([sprintId]);
+    return this.toResponseDto(
+      doc as SprintConfigDocument,
+      scheduleMap.get(sprintId),
+    );
+  }
+
+  private async loadSchedulesByIds(
+    sprintIds: string[],
+  ): Promise<Map<string, { startDatetime: Date; endDatetime: Date }>> {
+    if (sprintIds.length === 0) return new Map();
+    const schedules = await this.scheduleModel
+      .find({ scheduleId: { $in: sprintIds } })
+      .select('scheduleId startDatetime endDatetime')
+      .lean()
+      .exec();
+    return new Map(
+      schedules.map((s: any) => [
+        s.scheduleId,
+        { startDatetime: s.startDatetime, endDatetime: s.endDatetime },
+      ]),
+    );
+  }
+
+  private buildSprintName(
+    schedule: { startDatetime: Date; endDatetime: Date } | undefined,
+  ): string | null {
+    if (!schedule) return null;
+    const fmt = (d: Date) =>
+      new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `Sprint ${fmt(schedule.startDatetime)} – ${fmt(schedule.endDatetime)}`;
   }
 
   async remove(sprintId: string): Promise<void> {
@@ -359,6 +395,7 @@ export class SprintConfigsService {
 
   private toResponseDto(
     doc: SprintConfigDocument & { createdAt?: Date; updatedAt?: Date },
+    schedule?: { startDatetime: Date; endDatetime: Date },
   ): SprintConfigResponseDto {
     return {
       sprintId: doc.sprintId,
@@ -367,6 +404,10 @@ export class SprintConfigsService {
         deliverableId: m.deliverableId,
         contributionPercentage: m.contributionPercentage,
       })),
+      isFinalized: (doc as any).isFinalized ?? false,
+      name: this.buildSprintName(schedule),
+      startDate: schedule?.startDatetime ?? null,
+      endDate: schedule?.endDatetime ?? null,
       createdAt: doc.createdAt ?? new Date(),
       updatedAt: doc.updatedAt ?? new Date(),
     };

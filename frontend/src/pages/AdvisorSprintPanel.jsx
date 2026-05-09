@@ -47,18 +47,37 @@ function StudentCard({ student }) {
       }}
     >
       {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <span style={{ color: '#f8fafc', fontWeight: 600 }}>Student: </span>
-          <span style={{ color: '#38bdf8' }}>{student.studentId}</span>
+          <div style={{ color: '#f8fafc', fontWeight: 600 }}>
+            {student.studentName || student.studentEmail || student.studentId}
+          </div>
+          {student.studentEmail && student.studentName && (
+            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{student.studentEmail}</div>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
             {student.completedPoints} / {student.targetPoints} pts
           </span>
           <span style={{ color: barColor, fontWeight: 700 }}>
             {pct}%
           </span>
+          {student.finalGrade != null && (
+            <span
+              style={{
+                color: '#34d399',
+                fontWeight: 700,
+                background: '#14532d33',
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontSize: '0.85rem',
+              }}
+              title="Final grade for this student in this group"
+            >
+              Final: {student.finalGrade.toFixed(2)}
+            </span>
+          )}
           <button
             onClick={() => setExpanded((v) => !v)}
             style={{
@@ -338,6 +357,19 @@ function AdvisorSprintPanel() {
               <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Students Tracked</div>
               <div style={{ color: '#38bdf8', fontWeight: 600 }}>{data.students.length}</div>
             </div>
+            {data.teamGrade != null && (
+              <div>
+                <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Team Grade</div>
+                <div style={{ color: '#34d399', fontWeight: 700, fontSize: '1.1rem' }}>
+                  {data.teamGrade.toFixed(2)}
+                </div>
+                {data.teamGradeCalculatedAt && (
+                  <div style={{ color: '#475569', fontSize: '0.7rem' }}>
+                    {new Date(data.teamGradeCalculatedAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Per-student cards */}

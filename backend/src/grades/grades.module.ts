@@ -19,9 +19,9 @@ import {
   SprintEvaluationSchema,
 } from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 import {
-  SprintConfig,
-  SprintConfigSchema,
-} from '../story-points/schemas/sprint-config.schema';
+  SprintConfigEntry,
+  SprintConfigEntrySchema,
+} from '../sprint-configs/schemas/sprint-config.schema';
 import {
   StoryPointRecord,
   StoryPointRecordSchema,
@@ -46,7 +46,7 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
       { name: DeliverableEvaluation.name, schema: DeliverableEvaluationSchema },
       { name: Group.name, schema: GroupSchema },
       { name: SprintEvaluation.name, schema: SprintEvaluationSchema },
-      { name: SprintConfig.name, schema: SprintConfigSchema },
+      { name: SprintConfigEntry.name, schema: SprintConfigEntrySchema },
       { name: StoryPointRecord.name, schema: StoryPointRecordSchema },
       { name: Committee.name, schema: CommitteeSchema },
       { name: User.name, schema: UserSchema },

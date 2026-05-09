@@ -102,8 +102,9 @@ describe('RubricsController', () => {
         {
           deliverableId: '44444444-4444-4444-8444-444444444444',
           name: 'Sprint 1 SCRUM Rubric',
+          gradingType: 'soft',
           questions: [],
-        } as CreateRubricDto,
+        } as unknown as CreateRubricDto,
         { user: {}, headers: {} } as never,
       ),
     ).rejects.toThrow('Deliverable ID mismatch');

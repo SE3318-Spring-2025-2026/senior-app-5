@@ -7,6 +7,11 @@ export enum GradingType {
   SOFT = 'soft',
 }
 
+export enum SprintRubricType {
+  SCRUM = 'SCRUM',
+  CODE_REVIEW = 'CODE_REVIEW',
+}
+
 export type RubricDocument = HydratedDocument<Rubric>;
 
 /**
@@ -37,8 +42,12 @@ export class Rubric {
   @Prop({ type: String, default: () => randomUUID(), unique: true })
   rubricId!: string;
 
-  @Prop({ type: String, required: true, index: true })
-  deliverableId!: string;
+  @Prop({ type: String, required: false, index: true })
+  deliverableId?: string;
+
+  /** Set for sprint-level rubrics (SCRUM / CODE_REVIEW) instead of a specific deliverable. */
+  @Prop({ type: String, required: false, enum: Object.values(SprintRubricType), index: true })
+  sprintEvaluationType?: SprintRubricType;
 
   @Prop({ type: String, required: true, trim: true })
   name!: string;
@@ -61,3 +70,4 @@ export const RubricSchema = SchemaFactory.createForClass(Rubric);
 
 // Index for efficient active rubric lookup
 RubricSchema.index({ deliverableId: 1, isActive: 1 }, { sparse: true });
+RubricSchema.index({ sprintEvaluationType: 1, isActive: 1 }, { sparse: true });

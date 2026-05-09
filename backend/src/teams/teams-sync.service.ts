@@ -15,19 +15,29 @@ import { Team, TeamDocument } from './schemas/team.schema';
 import { SprintStory, SprintStoryDocument, GithubStatus } from './schemas/sprint-story.schema';
 import { User, UserDocument } from '../users/data/user.schema';
 import {
-  SprintConfig,
-  SprintConfigDocument,
-} from '../story-points/schemas/sprint-config.schema';
+  SprintConfigEntry,
+  SprintConfigDocument as SprintConfigEntryDocument,
+} from '../sprint-configs/schemas/sprint-config.schema';
 import {
   StoryPointRecord,
   StoryPointRecordDocument,
   StoryPointSource,
 } from '../story-points/schemas/story-point-record.schema';
+import {
+  GroupFinalGrade,
+  GroupFinalGradeDocument,
+  StudentFinalGrade,
+  StudentFinalGradeDocument,
+} from '../grades/schemas/grade-records.schema';
 import { decryptSecret } from '../common/crypto/secret-cipher';
 import { GeminiService } from '../ai/gemini.service';
 
 export interface AdvisorPanelStudent {
   studentId: string;
+  studentName: string | null;
+  studentEmail: string | null;
+  finalGrade: number | null;
+  individualAllowanceRatio: number | null;
   completedIssues: {
     issueKey: string;
     summary: string;
@@ -53,6 +63,8 @@ export interface AdvisorPanelResult {
   students: AdvisorPanelStudent[];
   totalIssues: number;
   verifiedIssues: number;
+  teamGrade: number | null;
+  teamGradeCalculatedAt: Date | null;
 }
 
 @Injectable()
@@ -63,8 +75,10 @@ export class TeamsSyncService {
     @InjectModel(Team.name) private teamModel: Model<TeamDocument>,
     @InjectModel(SprintStory.name) private sprintStoryModel: Model<SprintStoryDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(SprintConfig.name) private sprintConfigModel: Model<SprintConfigDocument>,
+    @InjectModel(SprintConfigEntry.name) private sprintConfigModel: Model<SprintConfigEntryDocument>,
     @InjectModel(StoryPointRecord.name) private storyPointRecordModel: Model<StoryPointRecordDocument>,
+    @InjectModel(GroupFinalGrade.name) private groupFinalGradeModel: Model<GroupFinalGradeDocument>,
+    @InjectModel(StudentFinalGrade.name) private studentFinalGradeModel: Model<StudentFinalGradeDocument>,
     private readonly httpService: HttpService,
     private readonly geminiService: GeminiService,
   ) {}
@@ -468,16 +482,25 @@ export class TeamsSyncService {
   // PUBLIC: Sprint finalization
   // ─────────────────────────────────────────────────────────
 
-  async finalizeSprintSync(teamId: string, sprintId: string, groupId: string): Promise<{
+  async finalizeSprintSync(teamId: string, sprintId: string, _groupId?: string): Promise<{
     lockedCount: number;
     studentRecords: { studentId: string; completedPoints: number; targetPoints: number }[];
   }> {
     const team = await this.resolveTeam(teamId);
     if (!team) throw new NotFoundException(`Team ${teamId} not found.`);
 
-    const sprintConfig = await this.sprintConfigModel.findOne({ groupId, sprintId }).exec();
+    // SprintConfigEntry is global (keyed by sprintId only). The team supplies
+    // its own groupId so per-student StoryPointRecords stay scoped per team/group.
+    const groupId = (team as any).groupId as string | undefined;
+    if (!groupId) {
+      throw new BadRequestException(
+        `Team ${teamId} has no groupId; cannot persist per-student story points.`,
+      );
+    }
+
+    const sprintConfig = await this.sprintConfigModel.findOne({ sprintId }).exec();
     if (!sprintConfig) {
-      throw new BadRequestException(`SprintConfig not found for groupId=${groupId} sprintId=${sprintId}`);
+      throw new BadRequestException(`SprintConfig not found for sprintId=${sprintId}`);
     }
 
     // Final sync before locking. If the sprint is already marked finalized
@@ -595,15 +618,52 @@ export class TeamsSyncService {
       byStudent.set(sid, list);
     }
 
+    // SprintConfigEntry is global (no groupId); pick the most recently created one.
     let targetPoints = 0;
-    if (groupId) {
-      const latestConfig = await this.sprintConfigModel
-        .findOne({ groupId })
-        .sort({ startDate: -1 })
-        .lean()
-        .exec();
-      if (latestConfig) targetPoints = latestConfig.targetStoryPoints;
-    }
+    const latestConfig = await this.sprintConfigModel
+      .findOne()
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    if (latestConfig) targetPoints = latestConfig.targetStoryPoints;
+
+    // Resolve student names + final grades for everyone with assigned issues
+    const assignedStudentIds = [...byStudent.keys()].filter(
+      (sid) => sid !== '__unassigned__',
+    );
+    const teamGroupId = (team as any).groupId as string | undefined;
+
+    const [userDocs, studentGradeDocs, groupGradeDoc] = await Promise.all([
+      assignedStudentIds.length > 0
+        ? this.userModel
+            .find({ _id: { $in: assignedStudentIds } })
+            .select('_id firstName lastName name email')
+            .lean()
+            .exec()
+        : Promise.resolve([] as any[]),
+      teamGroupId
+        ? this.studentFinalGradeModel
+            .find({ groupId: teamGroupId, studentId: { $in: assignedStudentIds } })
+            .lean()
+            .exec()
+        : Promise.resolve([] as any[]),
+      teamGroupId
+        ? this.groupFinalGradeModel.findOne({ groupId: teamGroupId }).lean().exec()
+        : Promise.resolve(null as any),
+    ]);
+
+    const userMap = new Map<string, { name: string | null; email: string | null }>(
+      (userDocs as any[]).map((u) => {
+        const composite =
+          [u.firstName, u.lastName].filter(Boolean).join(' ').trim() ||
+          (u.name as string | undefined) ||
+          null;
+        return [String(u._id), { name: composite, email: u.email ?? null }];
+      }),
+    );
+    const studentGradeMap = new Map<string, any>(
+      (studentGradeDocs as any[]).map((g) => [g.studentId, g]),
+    );
 
     const students: AdvisorPanelStudent[] = [];
     for (const [studentId, studentStories] of byStudent) {
@@ -617,8 +677,15 @@ export class TeamsSyncService {
         ? Math.min(1, completedPoints / targetPoints)
         : 1.0;
 
+      const userInfo = userMap.get(studentId);
+      const grade = studentGradeMap.get(studentId);
+
       students.push({
         studentId,
+        studentName: userInfo?.name ?? null,
+        studentEmail: userInfo?.email ?? null,
+        finalGrade: grade?.finalGrade ?? null,
+        individualAllowanceRatio: grade?.individualAllowanceRatio ?? null,
         completedIssues: studentStories.map((s) => ({
           issueKey: s.issueKey,
           summary: s.summary,
@@ -654,6 +721,8 @@ export class TeamsSyncService {
       students,
       totalIssues: stories.length,
       verifiedIssues: stories.filter((s) => s.githubStatus === GithubStatus.VERIFIED).length,
+      teamGrade: (groupGradeDoc as any)?.teamGrade ?? null,
+      teamGradeCalculatedAt: (groupGradeDoc as any)?.calculatedAt ?? null,
     };
   }
 

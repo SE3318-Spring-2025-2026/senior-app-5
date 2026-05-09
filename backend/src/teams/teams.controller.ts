@@ -118,12 +118,12 @@ export class TeamsController {
     const callerId = req.user?.userId ?? req.user?.sub ?? req.user?._id;
 
     if (role === 'teamleader') {
-      const team = await this.teamsService.findById(teamId);
+      const team = await this.teamsService.findByIdOrGroupId(teamId);
       if (!team || team.leaderId !== callerId) {
         throw new ForbiddenException('You can only sync your own team.');
       }
     } else if (role === 'professor') {
-      const team = await this.teamsService.findById(teamId);
+      const team = await this.teamsService.findByIdOrGroupId(teamId);
       const advisedGroupIds = await this.teamsService.findGroupIdsAdvisedBy(callerId);
       if (!team || !team.groupId || !advisedGroupIds.includes(team.groupId)) {
         throw new ForbiddenException(
@@ -187,7 +187,7 @@ export class TeamsController {
     const isProfessor = (req.user?.role ?? '').toLowerCase() === 'professor';
     if (isProfessor) {
       const callerId = req.user?.userId ?? req.user?.sub ?? req.user?._id;
-      const team = await this.teamsService.findById(teamId);
+      const team = await this.teamsService.findByIdOrGroupId(teamId);
       const advisedGroupIds = await this.teamsService.findGroupIdsAdvisedBy(callerId);
       if (!team || !team.groupId || !advisedGroupIds.includes(team.groupId)) {
         throw new ForbiddenException(

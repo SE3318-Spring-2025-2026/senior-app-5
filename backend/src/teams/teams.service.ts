@@ -222,16 +222,19 @@ export class TeamsService {
       // own group at /groups/my-team). The leader cannot reassign their team
       // to a different group through this endpoint — only fill in if the
       // existing team has no group yet (legacy/seeded teams).
-      if (groupId) {
-        const existing = await this.teamModel.findById(teamId).select('groupId').lean().exec();
-        if (existing && !existing.groupId) {
-          updateFields.groupId = groupId;
-        }
+      // Resolve the target team — `teamId` may be a Mongo _id or a groupId UUID.
+      const target = await this.findByIdOrGroupId(teamId);
+      if (!target) {
+        throw new HttpException('Team not found.', HttpStatus.NOT_FOUND);
+      }
+
+      if (groupId && !target.groupId) {
+        updateFields.groupId = groupId;
       }
 
       updatedTeam = await this.teamModel
         .findByIdAndUpdate(
-          teamId,
+          (target._id as any),
           updateFields,
           { returnDocument: 'after' },
         )
@@ -264,6 +267,21 @@ export class TeamsService {
 
   findById(id: string) {
     return this.teamModel.findById(id).exec();
+  }
+
+  /**
+   * Resolves a team by either its Mongo ObjectId or its groupId UUID. Routes
+   * pass `:teamId` interchangeably (the integrations / sync chain standardised
+   * on groupId UUIDs in URLs); this helper accepts both so older callers and
+   * direct ObjectId access keep working.
+   */
+  async findByIdOrGroupId(idOrGroupId: string) {
+    if (!idOrGroupId) return null;
+    if (/^[0-9a-fA-F]{24}$/.test(idOrGroupId)) {
+      const byId = await this.teamModel.findById(idOrGroupId).exec();
+      if (byId) return byId;
+    }
+    return this.teamModel.findOne({ groupId: idOrGroupId }).exec();
   }
 
   /**

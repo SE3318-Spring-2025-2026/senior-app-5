@@ -118,7 +118,7 @@ export const Sidebar = () => {
           <>
             <SectionHeader label="Coordinator" />
             <SideNavLink to="/coordinator-management" icon={Settings2} label="Coordinator Suite" />
-            <SideNavLink to="/phases/schedule" icon={CalendarDays} label="Phase Scheduling" />
+            <SideNavLink to="/phases/schedule" icon={CalendarDays} label="Submission Windows" />
             <SideNavLink to="/coordinator/deliverables" icon={Package} label="Deliverables" />
             <SideNavLink to="/coordinator/rubrics" icon={BookOpen} label="Rubric Management" />
             <SideNavLink to="/coordinator/sprint-builder" icon={GitBranch} label="Sprint Builder" />

@@ -288,14 +288,14 @@ function PhaseSchedulingPage() {
     <div>
       <PageHeader
         eyebrow="Coordinator"
-        title="Phase Scheduling"
-        subtitle={`Date fields use ${timezoneName}; saved as UTC.`}
+        title="Submission Windows"
+        subtitle={`Define per-phase submission periods. Date fields use ${timezoneName}; saved as UTC.`}
       />
 
       <div className="grid gap-4 max-w-[760px]">
         {/* Create phase */}
         <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
-          <SectionLabel icon={Plus}>Create phase</SectionLabel>
+          <SectionLabel icon={Plus}>Create submission phase</SectionLabel>
 
           <form onSubmit={handleCreatePhase} className="flex flex-col gap-4">
             <div>
@@ -332,7 +332,7 @@ function PhaseSchedulingPage() {
 
         {/* Schedule */}
         <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
-          <SectionLabel icon={CalendarDays}>Phase schedule</SectionLabel>
+          <SectionLabel icon={CalendarDays}>Submission window</SectionLabel>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>

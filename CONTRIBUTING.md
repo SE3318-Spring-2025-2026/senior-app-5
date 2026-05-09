@@ -276,7 +276,7 @@ To maintain code quality, ensure fast delivery, and respect the time of all cont
 - **Low-Impact PRs (1 Approval Required):** `Chore` (dependency updates, deleting unused files), `Documentation` PRs, and minor UI styling adjustments.
 ### 3. Reviewer Assignment Process
  
-1. **Primary Reviewer:** The Team Leader is assigned as the first reviewer for every PR.
+1. **Primary Reviewer:** The Team Leader is assigned as the first reviewer for every PR. However, if the Team Leader is unavailable, another team member may conduct the review.
 2. **Secondary Reviewer:** For PRs requiring two approvals, the second reviewer is assigned via **Round Robin** rotation among the remaining developers.
 ### 4. Service Level Agreement (SLA)
  

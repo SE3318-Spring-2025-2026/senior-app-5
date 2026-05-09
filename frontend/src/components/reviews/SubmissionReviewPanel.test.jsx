@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SubmissionReviewPanel from './SubmissionReviewPanel'
-import { createReview } from '../../utils/reviewService'
+import { createReview, getReview } from '../../utils/reviewService'
 import { getGradingWindow } from '../../utils/scheduleService'
 
 vi.mock('../../utils/reviewService', () => ({
@@ -38,6 +38,12 @@ describe('SubmissionReviewPanel', () => {
       revisionRequests: [],
       status: 'UnderReview',
     })
+    getReview.mockResolvedValue({
+      _id: 'review-1',
+      comments: [],
+      revisionRequests: [],
+      status: 'UnderReview',
+    })
   })
 
   it('disables the grade input when the grading window is closed', async () => {
@@ -69,5 +75,56 @@ describe('SubmissionReviewPanel', () => {
     expect(await screen.findByText('My comment')).toBeTruthy()
     expect(screen.getByText('Other comment')).toBeTruthy()
     expect(screen.getAllByRole('button', { name: /delete/i })).toHaveLength(1)
+  })
+
+  it('reuses cached review id when submission is selected again', async () => {
+    createReview
+      .mockResolvedValueOnce({
+        _id: 'review-1',
+        comments: [],
+        revisionRequests: [],
+        status: 'UnderReview',
+      })
+      .mockResolvedValueOnce({
+        _id: 'review-2',
+        comments: [],
+        revisionRequests: [],
+        status: 'UnderReview',
+      })
+
+    const { rerender } = render(
+      <SubmissionReviewPanel
+        committeeId="committee-1"
+        currentUser={{ userId: 'prof-1' }}
+        submission={submission}
+      />,
+    )
+
+    await screen.findByText('No comments yet.')
+    expect(createReview).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <SubmissionReviewPanel
+        committeeId="committee-1"
+        currentUser={{ userId: 'prof-1' }}
+        submission={{ ...submission, _id: 'submission-2' }}
+      />,
+    )
+    await waitFor(() => {
+      expect(createReview).toHaveBeenCalledTimes(2)
+    })
+
+    rerender(
+      <SubmissionReviewPanel
+        committeeId="committee-1"
+        currentUser={{ userId: 'prof-1' }}
+        submission={submission}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(getReview).toHaveBeenCalledWith('review-1')
+      expect(createReview).toHaveBeenCalledTimes(2)
+    })
   })
 })

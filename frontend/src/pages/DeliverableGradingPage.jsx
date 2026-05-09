@@ -4,12 +4,10 @@ import { ChevronDown, ChevronRight, BookOpen, Package } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { PageHeader } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
 
 const SOFT_GRADES = ['A', 'B', 'C', 'D', 'F'];
 const BINARY_GRADES = ['S', 'F'];
-
-// Binary S (Satisfactory) → A, F → F  (backend only accepts A/B/C/D/F)
-const binaryToSoft = (g) => (g === 'S' ? 'A' : 'F');
 
 const inputCls =
   'w-full rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40]';
@@ -116,8 +114,13 @@ function DeliverableCard({ deliverable, groupId }) {
       // Auto-trigger grade calculation so student final grades are updated immediately
       try {
         await apiClient.post(`/groups/${groupId}/calculate`, { force: true });
-      } catch {
-        // Calculation errors are non-fatal; grade was still recorded
+      } catch (calcError) {
+        const calcMessage = calcError?.response?.data?.message;
+        const details = Array.isArray(calcMessage) ? calcMessage.join(', ') : calcMessage;
+        toast(
+          `Grade saved, but final grade recalculation failed.${details ? ` ${details}` : ''}`,
+          { icon: '⚠️' },
+        );
       }
       toast.success(
         `Grade "${calculatedGrade}" submitted for ${deliverable.name ?? 'deliverable'}.`,
@@ -311,12 +314,17 @@ function DeliverableCard({ deliverable, groupId }) {
 }
 
 const DeliverableGradingPage = () => {
+  const { user } = useAuth();
   const [groups, setGroups] = useState([]);
   const [deliverables, setDeliverables] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
+      setError('');
       // Lists every group the caller can grade deliverables for — both
       // groups they advise directly and groups they jury via committee
       // membership. Sprint evaluations remain advisor-only and are gated
@@ -333,6 +341,15 @@ const DeliverableGradingPage = () => {
         const data = delRes.value.data?.data ?? delRes.value.data ?? [];
         setDeliverables(Array.isArray(data) ? data : []);
       }
+      const errors = [];
+      if (groupsRes.status === 'rejected') errors.push('groups');
+      if (delRes.status === 'rejected') errors.push('deliverables');
+      if (errors.length > 0) {
+        const nextError = `Failed to load ${errors.join(' and ')}. Please refresh and try again.`;
+        setError(nextError);
+        toast.error(nextError);
+      }
+      setLoading(false);
     };
     load();
   }, []);
@@ -342,8 +359,22 @@ const DeliverableGradingPage = () => {
       <PageHeader
         eyebrow="Professor"
         title="Deliverable Grading"
-        subtitle="Select a group, then grade each deliverable using its rubric criteria."
+        subtitle={`Select a group, then grade each deliverable using its rubric criteria.${
+          user?.name ? ` Signed in as ${user.name}.` : ''
+        }`}
       />
+
+      {loading && (
+        <div className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
+          <p className="text-[13px] text-zinc-500">Loading groups and deliverables…</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
       {/* Group selector */}
       <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">
@@ -376,7 +407,7 @@ const DeliverableGradingPage = () => {
       </section>
 
       {/* Deliverables list */}
-      {selectedGroup ? (
+      {!loading && selectedGroup ? (
         <section className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
             Deliverables — click to expand and grade
@@ -393,11 +424,11 @@ const DeliverableGradingPage = () => {
             ))
           )}
         </section>
-      ) : (
+      ) : !loading ? (
         <p className="text-center text-[13px] text-zinc-600">
           ← Select a group to start grading
         </p>
-      )}
+      ) : null}
     </div>
   );
 };

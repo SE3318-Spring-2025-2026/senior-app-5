@@ -8,6 +8,8 @@ import {
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
 import { PageHeader, Badge } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../utils/roleUtils'
 
 const normalizeList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -50,17 +52,8 @@ const findProfessorCommittee = (committees, user) => {
   )
 }
 
-const getStoredUser = () => {
-  try {
-    const raw = localStorage.getItem('user')
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
 const ReviewPage = () => {
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
   const [committee, setCommittee] = useState(null)
   const [committeeFromGroup, setCommitteeFromGroup] = useState(null)
   const [submissions, setSubmissions] = useState([])
@@ -78,10 +71,7 @@ const ReviewPage = () => {
   )
 
   const loadReviewQueue = useCallback(async () => {
-    const localUser = getStoredUser()
-    setUser(localUser)
-
-    if (!localUser) {
+    if (!user) {
       setStatus({ loading: false, error: 'User session not found. Please sign in again.' })
       return
     }
@@ -90,15 +80,14 @@ const ReviewPage = () => {
       setStatus({ loading: true, error: '' })
 
       const directCommitteeId =
-        localUser.committeeId ||
-        localUser.assignedCommitteeId ||
-        localUser.committee?.id ||
-        localUser.committee?._id
+        user.committeeId || user.assignedCommitteeId || user.committee?.id || user.committee?._id
 
       let professorCommittee = null
       if (directCommitteeId) {
         professorCommittee = await getCommittee(directCommitteeId)
-      } else if (String(localUser.role || '').toLowerCase() === 'professor') {
+      }
+
+      if (!professorCommittee && hasRole(user.role, 'Professor')) {
         const queue = normalizeList(await listProfessorReviewSubmissions())
         setCommittee(null)
         setCommitteeFromGroup(null)
@@ -108,9 +97,11 @@ const ReviewPage = () => {
         )
         setStatus({ loading: false, error: '' })
         return
-      } else {
+      }
+
+      if (!professorCommittee) {
         const committees = normalizeList(await listCommittees({ page: 1, limit: 100 }))
-        professorCommittee = findProfessorCommittee(committees, localUser) || null
+        professorCommittee = findProfessorCommittee(committees, user) || null
       }
 
       const committeeId = getCommitteeId(professorCommittee)
@@ -134,7 +125,7 @@ const ReviewPage = () => {
         error: error.message || 'Unable to load review queue.',
       })
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     const task = window.setTimeout(loadReviewQueue, 0)

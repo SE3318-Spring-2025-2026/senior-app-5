@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import PropTypes from 'prop-types';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
@@ -77,7 +76,7 @@ function App() {
             <Route path="/documents" element={<StudentSubmissionPage />} />
             <Route path="/my-submissions" element={<DocumentsPage />} />
             <Route path="/grades" element={<GradeDisplayPage />} />
-            <Route path="/professor/submissions" element={<DocumentsPage />} />
+            <Route path="/professor/submissions" element={<Navigate to="/review" replace />} />
             <Route
               path="/review"
               element={
@@ -90,7 +89,14 @@ function App() {
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/scrum" element={<ScrumManagementPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
-            <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
+            <Route
+              path="/advisor/sprint-evaluation"
+              element={
+                <ProtectedRoute requiredRole="Professor">
+                  <SprintEvaluationPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/professor/deliverable-grading"
               element={
@@ -99,7 +105,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/advisor/sprint-panel" element={<AdvisorSprintPanel />} />
+            <Route
+              path="/advisor/sprint-panel"
+              element={
+                <ProtectedRoute requiredRoles={['Professor', 'Coordinator']}>
+                  <AdvisorSprintPanel />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/coordinator/sprint-finalize"
               element={
@@ -139,8 +152,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/phases" element={<Navigate to="/phases/schedule" replace />} />
-            <Route path="/committees" element={<Navigate to="/admin/committees" replace />} />
             <Route path="/advisors" element={<Navigate to="/admin/advisors" replace />} />
             <Route
               path="/committees"

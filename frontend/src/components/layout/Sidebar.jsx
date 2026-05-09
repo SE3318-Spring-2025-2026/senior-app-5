@@ -100,7 +100,6 @@ export const Sidebar = () => {
           <>
             <SectionHeader label="Professor" />
             <SideNavLink to="/review" icon={ClipboardCheck} label="Review" />
-            <SideNavLink to="/professor/submissions" icon={FileText} label="Submissions" />
             <SideNavLink to="/professor/deliverable-grading" icon={GraduationCap} label="Deliverable Grading" />
             <SideNavLink to="/advisor/sprint-evaluation" icon={Star} label="Sprint Evaluation" />
             <SideNavLink to="/advisor/sprint-panel" icon={Activity} label="Sprint Panel" />

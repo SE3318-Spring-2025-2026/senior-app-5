@@ -1,11 +1,10 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { useAuth } from '../context/AuthContext';
+import { hasAnyRole, hasRole } from '../utils/roleUtils';
 
-const normalizeRole = (role) => String(role || '').trim().toLowerCase();
-
-export const ProtectedRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+export const ProtectedRoute = ({ children, requiredRole, requiredRoles }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -16,15 +15,11 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  let user = null;
-  try {
-    const userStr = localStorage.getItem('user');
-    user = userStr ? JSON.parse(userStr) : null;
-  } catch {
-    user = null;
-  }
+  const roleMismatch =
+    (requiredRole && !hasRole(user?.role, requiredRole)) ||
+    (requiredRoles && !hasAnyRole(user?.role, requiredRoles));
 
-  if (requiredRole && normalizeRole(user?.role) !== normalizeRole(requiredRole)) {
+  if (roleMismatch) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -34,4 +29,5 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
 ProtectedRoute.propTypes = {
   children: PropTypes.node.isRequired,
   requiredRole: PropTypes.string,
+  requiredRoles: PropTypes.arrayOf(PropTypes.string),
 };

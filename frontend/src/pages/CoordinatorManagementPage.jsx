@@ -5,17 +5,13 @@ import {
   addAdvisor,
   addJuryMember,
   assignCommitteeGroup,
-  createCommittee,
-  deleteCommittee,
   getCommittee,
   listAdvisors,
   listCommitteeGroups,
-  listCommittees,
   listJuryMembers,
   removeAdvisor,
   removeCommitteeGroup,
   removeJuryMember,
-  updateCommittee,
 } from '../utils/committeeService'
 
 import { useAuth } from '../context/AuthContext'
@@ -23,6 +19,7 @@ import { CreateCoordinatorForm } from '../components/CreateCoordinatorForm'
 import EntitySearchSelect from '../components/EntitySearchSelect'
 import apiConfig from '../config/api'
 import apiClient from '../utils/apiClient'
+import { openNativeDatePicker } from '../utils/openPicker'
 
 const emptyStatus = () => ({ message: '', error: '' })
 const TAB_KEYS = ['jury', 'advisors', 'groups']
@@ -34,14 +31,37 @@ const toList = (payload) => {
   return []
 }
 
-const toPagination = (payload) => ({
-  total: payload?.total ?? payload?.meta?.total ?? null,
-  page: payload?.page ?? payload?.meta?.page ?? null,
-  limit: payload?.limit ?? payload?.meta?.limit ?? null,
-})
-
 const getListItems = (payload) => toList(payload)
 const buildCommitteeSearchParams = (query) => ({ page: 1, limit: 10, name: query })
+
+const PHASE_LABELS = {
+  ADVISOR_SELECTION: 'Advisor Selection',
+  COMMITTEE_ASSIGNMENT: 'Committee Assignment',
+  SPRINT: 'Sprint',
+}
+
+function formatPhaseLabel(phase) {
+  if (!phase) return '—'
+  return PHASE_LABELS[phase] || String(phase).replace(/_/g, ' ')
+}
+
+function formatDateTime(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? '—'
+    : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function committeeDisplayName(c) {
+  if (!c) return '—'
+  return c.name ?? c.committeeName ?? c.title ?? '—'
+}
+
+function committeeRefId(c) {
+  if (!c) return null
+  return c.id ?? c._id ?? c.committeeId ?? null
+}
 
 function StatusMessage({ status }) {
   if (!status.message && !status.error) return null
@@ -96,14 +116,6 @@ function CoordinatorManagementPage() {
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [activeSchedule, setActiveSchedule] = useState(null)
 
-  const [filters, setFilters] = useState({ name: '', page: 1, limit: 10 })
-  const [committeeStatus, setCommitteeStatus] = useState(emptyStatus())
-  const [committeeLoading, setCommitteeLoading] = useState(false)
-  const [committees, setCommittees] = useState([])
-  const [pagination, setPagination] = useState({ total: null, page: 1, limit: 10 })
-
-  const [committeeForm, setCommitteeForm] = useState({ name: '' })
-  const [editingCommitteeId, setEditingCommitteeId] = useState(null)
   const [selectedCommitteeId, setSelectedCommitteeId] = useState('')
 
   const [detailStatus, setDetailStatus] = useState(emptyStatus())
@@ -151,21 +163,6 @@ function CoordinatorManagementPage() {
     }
   }, [])
 
-  const loadCommittees = useCallback(async () => {
-    setCommitteeLoading(true)
-    setCommitteeStatus(emptyStatus())
-    try {
-      const payload = await listCommittees(filters)
-      setCommittees(toList(payload))
-      setPagination(toPagination(payload))
-    } catch (error) {
-      setCommitteeStatus({ message: '', error: `(${error.status ?? 'N/A'}) ${error.message}` })
-      setCommittees([])
-    } finally {
-      setCommitteeLoading(false)
-    }
-  }, [filters])
-
   const loadCommitteeDetails = useCallback(async (committeeId) => {
     if (!committeeId) return
     setDetailLoading(true)
@@ -208,10 +205,6 @@ function CoordinatorManagementPage() {
   useEffect(() => {
     loadActiveSchedule()
   }, [loadActiveSchedule])
-
-  useEffect(() => {
-    loadCommittees()
-  }, [loadCommittees])
 
   useEffect(() => {
     if (!selectedCommitteeId) return
@@ -258,55 +251,6 @@ function CoordinatorManagementPage() {
       setScheduleStatus({ message: '', error: `(${error.status ?? 'N/A'}) ${error.message}` })
     } finally {
       setScheduleLoading(false)
-    }
-  }
-
-  const onSubmitCommittee = async (event) => {
-    event.preventDefault()
-    if (!committeeForm.name.trim()) {
-      setCommitteeStatus({ message: '', error: 'Committee name is required.' })
-      return
-    }
-
-    setCommitteeStatus(emptyStatus())
-    setCommitteeLoading(true)
-    try {
-      if (editingCommitteeId) {
-        await updateCommittee(editingCommitteeId, { name: committeeForm.name.trim() })
-        setCommitteeStatus({ message: 'Committee updated successfully.', error: '' })
-      } else {
-        await createCommittee({ name: committeeForm.name.trim() })
-        setCommitteeStatus({ message: 'Committee created successfully.', error: '' })
-      }
-      setCommitteeForm({ name: '' })
-      setEditingCommitteeId(null)
-      await loadCommittees()
-    } catch (error) {
-      setCommitteeStatus({ message: '', error: `(${error.status ?? 'N/A'}) ${error.message}` })
-    } finally {
-      setCommitteeLoading(false)
-    }
-  }
-
-  const onDeleteCommittee = async (committeeId) => {
-    if (!committeeId) return
-    const approved = window.confirm('Delete this committee?')
-    if (!approved) return
-
-    setCommitteeStatus(emptyStatus())
-    setCommitteeLoading(true)
-    try {
-      await deleteCommittee(committeeId)
-      setCommitteeStatus({ message: 'Committee deleted successfully.', error: '' })
-      if (selectedCommitteeId === committeeId) {
-        setSelectedCommitteeId('')
-        setSelectedCommittee(null)
-      }
-      await loadCommittees()
-    } catch (error) {
-      setCommitteeStatus({ message: '', error: `(${error.status ?? 'N/A'}) ${error.message}` })
-    } finally {
-      setCommitteeLoading(false)
     }
   }
 
@@ -432,12 +376,6 @@ function CoordinatorManagementPage() {
     return item?.userId || item?.advisorUserId || item?.groupId || item?.id || item?.committeeId || 'unknown'
   }, [])
 
-  const committeeMeta = useMemo(() => {
-    if (pagination.total === null) return null
-    const shownPage = pagination.page || filters.page
-    return `Page ${shownPage} / Limit ${pagination.limit || filters.limit} / Total ${pagination.total}`
-  }, [pagination, filters.page, filters.limit])
-
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -455,7 +393,7 @@ function CoordinatorManagementPage() {
         )}
 
         <SectionCard title="Schedule Management" subtitle="Create schedule and inspect active window.">
-          <form className={styles.form} onSubmit={onCreateSchedule}>
+          <form className={styles.form} noValidate onSubmit={onCreateSchedule}>
             <label htmlFor="phaseInput">
               Phase
               <select
@@ -476,6 +414,7 @@ function CoordinatorManagementPage() {
                 id="startAtInput"
                 type="datetime-local"
                 value={scheduleForm.startAt}
+                onClick={openNativeDatePicker}
                 onChange={(event) => setScheduleForm((prev) => ({ ...prev, startAt: event.target.value }))}
                 required
               />
@@ -486,6 +425,7 @@ function CoordinatorManagementPage() {
                 id="endAtInput"
                 type="datetime-local"
                 value={scheduleForm.endAt}
+                onClick={openNativeDatePicker}
                 onChange={(event) => setScheduleForm((prev) => ({ ...prev, endAt: event.target.value }))}
                 required
               />
@@ -508,125 +448,31 @@ function CoordinatorManagementPage() {
           <StatusMessage status={scheduleStatus} />
           <div className={styles.infoPanel}>
             {activeSchedule ? (
-              <pre>{JSON.stringify(activeSchedule, null, 2)}</pre>
+              <div className={styles.summaryPanel}>
+                <div className={styles.summaryRow}>
+                  <span className={styles.summaryLabel}>Phase</span>
+                  <span className={styles.summaryValue}>{formatPhaseLabel(activeSchedule.phase)}</span>
+                </div>
+                <div className={styles.summaryRow}>
+                  <span className={styles.summaryLabel}>Window</span>
+                  <span className={styles.summaryValue}>
+                    {formatDateTime(activeSchedule.startDatetime)} → {formatDateTime(activeSchedule.endDatetime)}
+                  </span>
+                </div>
+                {typeof activeSchedule.isOpen === 'boolean' ? (
+                  <div className={styles.summaryRow}>
+                    <span className={styles.summaryLabel}>Status</span>
+                    <span
+                      className={`${styles.windowPill} ${activeSchedule.isOpen ? styles.windowOpen : styles.windowClosed}`}
+                    >
+                      {activeSchedule.isOpen ? 'Open' : 'Closed'}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <p className={styles.empty}>No active schedule window found.</p>
             )}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Committee List & CRUD" subtitle="Filter by name, paginate and manage committee records.">
-          <div className={styles.filterRow}>
-            <label htmlFor="filterName">
-              Name Filter
-              <input
-                id="filterName"
-                value={filters.name}
-                onChange={(event) => setFilters((prev) => ({ ...prev, name: event.target.value, page: 1 }))}
-                placeholder="Search committee by name"
-              />
-            </label>
-            <label htmlFor="filterLimit">
-              Page Size
-              <input
-                id="filterLimit"
-                type="number"
-                min="1"
-                max="50"
-                value={filters.limit}
-                onChange={(event) => setFilters((prev) => ({ ...prev, limit: Number(event.target.value) || 10, page: 1 }))}
-              />
-            </label>
-            <button type="button" onClick={loadCommittees} disabled={committeeLoading}>
-              {committeeLoading ? 'Loading...' : 'Apply'}
-            </button>
-          </div>
-
-          <form className={styles.form} onSubmit={onSubmitCommittee}>
-            <label htmlFor="committeeName">
-              Committee Name
-              <input
-                id="committeeName"
-                value={committeeForm.name}
-                onChange={(event) => setCommitteeForm({ name: event.target.value })}
-                placeholder="e.g. AI Research Committee"
-                required
-              />
-            </label>
-            <div className={styles.inlineActions}>
-              <button type="submit" disabled={committeeLoading}>
-                {committeeLoading ? 'Saving...' : editingCommitteeId ? 'Update Committee' : 'Create Committee'}
-              </button>
-              {editingCommitteeId ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingCommitteeId(null)
-                    setCommitteeForm({ name: '' })
-                  }}
-                >
-                  Cancel Edit
-                </button>
-              ) : null}
-            </div>
-          </form>
-
-          <StatusMessage status={committeeStatus} />
-
-          {committeeMeta ? <p className={styles.meta}>{committeeMeta}</p> : null}
-          <div className={styles.list}>
-            {committeeLoading ? (
-              <p className={styles.empty}>Loading committees...</p>
-            ) : committees.length === 0 ? (
-              <p className={styles.empty}>No committees found for current filter.</p>
-            ) : (
-              committees.map((committee) => {
-                const id = committee.id || committee.committeeId
-                const name = committee.name || committee.committeeName || 'Unnamed committee'
-                return (
-                  <article key={id} className={styles.listItem}>
-                    <button
-                      type="button"
-                      className={styles.linkButton}
-                      onClick={() => setSelectedCommitteeId(id)}
-                    >
-                      {name}
-                    </button>
-                    <div className={styles.itemActions}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCommitteeId(id)
-                          setCommitteeForm({ name })
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button type="button" onClick={() => onDeleteCommittee(id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </article>
-                )
-              })
-            )}
-          </div>
-
-          <div className={styles.inlineActions}>
-            <button
-              type="button"
-              disabled={committeeLoading || filters.page <= 1}
-              onClick={() => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={committeeLoading || (pagination.total !== null && committees.length < filters.limit)}
-              onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
-            >
-              Next
-            </button>
           </div>
         </SectionCard>
       </div>
@@ -716,7 +562,17 @@ function CoordinatorManagementPage() {
         <StatusMessage status={detailStatus} />
         <div className={styles.infoPanel}>
           {selectedCommittee ? (
-            <pre>{JSON.stringify(selectedCommittee, null, 2)}</pre>
+            <div className={styles.summaryPanel}>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Committee</span>
+                <span className={styles.summaryValue}>{committeeDisplayName(selectedCommittee)}</span>
+              </div>
+              {committeeRefId(selectedCommittee) ? (
+                <p className={styles.meta} style={{ margin: 0 }}>
+                  Reference: {committeeRefId(selectedCommittee)}
+                </p>
+              ) : null}
+            </div>
           ) : (
             <p className={styles.empty}>No committee selected yet.</p>
           )}

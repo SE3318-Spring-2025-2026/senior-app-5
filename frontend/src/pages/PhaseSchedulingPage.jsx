@@ -3,6 +3,7 @@ import { CalendarDays, Plus } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { PageHeader } from '../components/ui';
+import { openNativeDatePicker } from '../utils/openPicker';
 
 const toLocalInputValue = (date) => {
   const tzOffset = date.getTimezoneOffset() * 60000;
@@ -399,6 +400,7 @@ function PhaseSchedulingPage() {
                 type="datetime-local"
                 value={submissionStart}
                 disabled={!phaseId || status.loading}
+                onClick={openNativeDatePicker}
                 onChange={(event) => {
                   setSubmissionStart(event.target.value);
                   setFieldErrors((current) => ({ ...current, submissionStart: '' }));
@@ -419,6 +421,7 @@ function PhaseSchedulingPage() {
                 value={submissionEnd}
                 min={submissionStart}
                 disabled={!phaseId || status.loading}
+                onClick={openNativeDatePicker}
                 onChange={(event) => {
                   setSubmissionEnd(event.target.value);
                   setFieldErrors((current) => ({ ...current, submissionEnd: '' }));

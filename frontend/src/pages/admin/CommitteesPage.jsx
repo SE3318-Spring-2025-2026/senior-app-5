@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
+import { openNativeDatePicker } from '../../utils/openPicker'
 
 const PHASE = 'COMMITTEE_ASSIGNMENT'
 
@@ -148,6 +149,7 @@ export default function CommitteesPage() {
             <input
               type="datetime-local"
               value={newStart}
+              onClick={openNativeDatePicker}
               onChange={(e) => setNewStart(e.target.value)}
               required
               className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"
@@ -158,6 +160,7 @@ export default function CommitteesPage() {
             <input
               type="datetime-local"
               value={newEnd}
+              onClick={openNativeDatePicker}
               onChange={(e) => setNewEnd(e.target.value)}
               required
               className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60 disabled:opacity-50"

@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast'
 import { Plus, Trash2, Pencil, Save, X, SplitSquareHorizontal } from 'lucide-react'
 import apiClient from '../utils/apiClient'
 import { PageHeader, Badge, Card } from '../components/ui'
+import { openNativeDatePicker } from '../utils/openPicker'
 
 const PHASE = 'SPRINT'
 
@@ -351,6 +352,7 @@ function SprintBuilderPage() {
                   <input
                     type="date"
                     value={newForm.startDate}
+                    onClick={openNativeDatePicker}
                     onChange={(e) => setNewForm((p) => ({ ...p, startDate: e.target.value }))}
                     required
                     className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
@@ -372,6 +374,7 @@ function SprintBuilderPage() {
                   <input
                     type="time"
                     value={newForm.startTime}
+                    onClick={openNativeDatePicker}
                     onChange={(e) => setNewForm((p) => ({ ...p, startTime: e.target.value }))}
                     required
                     className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
@@ -382,6 +385,7 @@ function SprintBuilderPage() {
                   <input
                     type="time"
                     value={newForm.endTime}
+                    onClick={openNativeDatePicker}
                     onChange={(e) => setNewForm((p) => ({ ...p, endTime: e.target.value }))}
                     required
                     className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
@@ -452,6 +456,7 @@ function SprintBuilderPage() {
                               <input
                                 type="datetime-local"
                                 value={editWindowForm.startDatetime}
+                                onClick={openNativeDatePicker}
                                 onChange={(e) =>
                                   setEditWindowForm((p) => ({ ...p, startDatetime: e.target.value }))
                                 }
@@ -463,6 +468,7 @@ function SprintBuilderPage() {
                               <input
                                 type="datetime-local"
                                 value={editWindowForm.endDatetime}
+                                onClick={openNativeDatePicker}
                                 onChange={(e) =>
                                   setEditWindowForm((p) => ({ ...p, endDatetime: e.target.value }))
                                 }

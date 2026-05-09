@@ -22,3 +22,30 @@ body {
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover { background: #2a2a30; background-clip: padding-box; }
+
+/* Login: neutral dark veil over Spline (no color grade — reads like a mask) */
+@keyframes login-veil-shift {
+  0%,
+  100% {
+    background-position: 50% 50%, 0% 40%;
+    opacity: 1;
+  }
+  50% {
+    background-position: 50% 50%, 100% 60%;
+    opacity: 0.94;
+  }
+}
+
+.login-spline-veil {
+  background:
+    radial-gradient(ellipse 100% 85% at 40% 45%, rgba(0, 0, 0, 0.33), transparent 58%),
+    linear-gradient(
+      118deg,
+      rgba(0, 0, 0, 0.74) 0%,
+      rgba(28, 28, 30, 0.5) 42%,
+      rgba(28, 28, 30, 0.58) 52%,
+      rgba(0, 0, 0, 0.78) 100%
+    );
+  background-size: 100% 100%, 220% 220%;
+  animation: login-veil-shift 16s ease-in-out infinite;
+}

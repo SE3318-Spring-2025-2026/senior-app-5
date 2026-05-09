@@ -8,8 +8,10 @@ import { PageHeader } from '../components/ui';
 
 const emptyQuestion = () => ({ criteriaName: '', criteriaWeight: '' });
 
-const inputCls =
-  'w-full rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40] disabled:opacity-50 disabled:cursor-not-allowed';
+const inputBaseCls =
+  'rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40] disabled:opacity-50 disabled:cursor-not-allowed';
+
+const inputCls = `${inputBaseCls} w-full`;
 
 const SPRINT_TYPES = [
   { key: 'SCRUM',       label: 'Scrum' },

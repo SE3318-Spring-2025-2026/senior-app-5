@@ -499,6 +499,7 @@ function GradingScopeTab({ committeeId, advisorList }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [advisorDisplayMap, setAdvisorDisplayMap] = useState({})
+  const [juryList, setJuryList] = useState([])
 
   useEffect(() => {
     apiClient.get(apiConfig.endpoints.advisors, { params: { page: 1, limit: 100 } })
@@ -513,6 +514,18 @@ function GradingScopeTab({ committeeId, advisorList }) {
       })
       .catch(() => {})
   }, [])
+
+  // Load jury members for this committee — they share the scope dropdown
+  // with advisors so the coordinator can inspect either side's grading reach.
+  useEffect(() => {
+    apiClient
+      .get(`${apiConfig.endpoints.committeeJuryMembers(committeeId)}?page=1&limit=100`)
+      .then((r) => {
+        const list = r.data?.data ?? []
+        setJuryList(Array.isArray(list) ? list : [])
+      })
+      .catch(() => setJuryList([]))
+  }, [committeeId])
 
   const loadScope = useCallback(async (advisorId, p = 1) => {
     if (!advisorId) return
@@ -543,21 +556,39 @@ function GradingScopeTab({ committeeId, advisorList }) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Advisor</label>
+        <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+          Committee Member
+        </label>
         <select
           value={selectedAdvisor}
           onChange={handleSelect}
           className="w-full sm:w-auto rounded-xl border border-[#1e293b] bg-[#111827] px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/60"
         >
-          <option value="">— Select an advisor —</option>
-          {advisorList.map((a) => {
-            const uid = a.advisorUserId || a._id
-            return (
-              <option key={uid} value={uid}>
-                {advisorDisplayMap[uid] || uid}
-              </option>
-            )
-          })}
+          <option value="">— Select a member —</option>
+          {advisorList.length > 0 && (
+            <optgroup label="Advisors">
+              {advisorList.map((a) => {
+                const uid = a.advisorUserId || a._id
+                return (
+                  <option key={`adv-${uid}`} value={uid}>
+                    {advisorDisplayMap[uid] || a.email || uid}
+                  </option>
+                )
+              })}
+            </optgroup>
+          )}
+          {juryList.length > 0 && (
+            <optgroup label="Jury Members">
+              {juryList.map((j) => {
+                const uid = j.userId || j._id
+                return (
+                  <option key={`jury-${uid}`} value={uid}>
+                    {advisorDisplayMap[uid] || j.email || uid}
+                  </option>
+                )
+              })}
+            </optgroup>
+          )}
         </select>
       </div>
 
@@ -576,19 +607,31 @@ function GradingScopeTab({ committeeId, advisorList }) {
           <div className="divide-y divide-[#1e293b]">
             {items.map((item) => {
               const gid = item.groupId || item._id
+              const gname = item.groupName
               return (
                 <div key={gid} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="text-sm font-mono text-slate-200">{gid}</p>
+                    {gname ? (
+                      <>
+                        <p className="text-sm font-semibold text-slate-100">{gname}</p>
+                        <p className="text-xs font-mono text-slate-500">{gid}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm font-mono text-slate-200">{gid}</p>
+                    )}
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Original advisor: {item.originalAdvisorId || item.advisorUserId || '—'}
+                      {item.isOwnGroup
+                        ? 'Primary advisor'
+                        : item.originalAdvisorUserId
+                        ? `Primary advisor: ${item.originalAdvisorUserId}`
+                        : 'Jury role'}
                       {item.assignedAt
                         ? ` · ${new Date(item.assignedAt).toLocaleString()}`
                         : ''}
                     </p>
                   </div>
                   <Badge
-                    label={item.isOwnGroup ? 'Own' : 'Other'}
+                    label={item.isOwnGroup ? 'Own' : 'Jury/Other'}
                     variant={item.isOwnGroup ? 'green' : 'default'}
                   />
                 </div>

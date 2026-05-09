@@ -67,6 +67,7 @@ export const apiConfig = {
     committeeGroups: (committeeId) => `/committees/${committeeId}/groups`,
     committeeGroupById: (committeeId, groupId) => `/committees/${committeeId}/groups/${groupId}`,
     committeeAdvisorGradingScope: (committeeId, advisorUserId) => `/committees/${committeeId}/advisors/${advisorUserId}/groups`,
+    myGradableGroups: '/committees/me/gradable-groups',
     activityLogs: '/admin/activity',
     adminProfessors: '/auth/admin/professors',
     groupFinalGrade: (groupId) => `/groups/${groupId}/final-grade`,

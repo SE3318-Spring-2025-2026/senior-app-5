@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { ChevronDown, ChevronRight, BookOpen, Package } from 'lucide-react';
 import apiClient from '../utils/apiClient';
+import apiConfig from '../config/api';
 import { PageHeader } from '../components/ui';
 
 const SOFT_GRADES = ['A', 'B', 'C', 'D', 'F'];
@@ -316,12 +317,16 @@ const DeliverableGradingPage = () => {
 
   useEffect(() => {
     const load = async () => {
-      const [reqRes, delRes] = await Promise.allSettled([
-        apiClient.get('/requests', { params: { status: 'APPROVED', limit: 100 } }),
-        apiClient.get('/deliverables', { params: { limit: 100 } }),
+      // Lists every group the caller can grade deliverables for — both
+      // groups they advise directly and groups they jury via committee
+      // membership. Sprint evaluations remain advisor-only and are gated
+      // server-side, not here.
+      const [groupsRes, delRes] = await Promise.allSettled([
+        apiClient.get(apiConfig.endpoints.myGradableGroups),
+        apiClient.get(apiConfig.endpoints.deliverables, { params: { limit: 100 } }),
       ]);
-      if (reqRes.status === 'fulfilled') {
-        const data = reqRes.value.data?.data ?? reqRes.value.data ?? [];
+      if (groupsRes.status === 'fulfilled') {
+        const data = groupsRes.value.data?.data ?? [];
         setGroups(Array.isArray(data) ? data : []);
       }
       if (delRes.status === 'fulfilled') {
@@ -352,11 +357,21 @@ const DeliverableGradingPage = () => {
           onChange={(e) => setSelectedGroup(e.target.value)}
         >
           <option value="">Select a group…</option>
-          {groups.map((g) => (
-            <option key={g.groupId ?? g.requestId} value={g.groupId}>
-              {g.groupName ?? g.name ?? g.groupId}
-            </option>
-          ))}
+          {groups.map((g) => {
+            const label = g.groupName ?? g.name ?? g.groupId;
+            const tag = g.role === 'jury'
+              ? ' [jury]'
+              : g.isOwnGroup
+              ? ' [own group]'
+              : g.role === 'advisor'
+              ? ' [committee advisor]'
+              : '';
+            return (
+              <option key={`${g.groupId}-${g.committeeId ?? ''}`} value={g.groupId}>
+                {label}{tag}
+              </option>
+            );
+          })}
         </select>
       </section>
 

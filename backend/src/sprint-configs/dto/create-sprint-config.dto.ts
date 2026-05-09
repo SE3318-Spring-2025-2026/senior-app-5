@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsInt,
   IsOptional,
@@ -47,8 +48,14 @@ export class CreateSprintConfigDto {
   @Min(0)
   targetStoryPoints!: number;
 
-  @ApiProperty({ type: [DeliverableMappingDto], minItems: 0 })
+  @ApiProperty({
+    type: [DeliverableMappingDto],
+    minItems: 1,
+    description:
+      'At least one deliverable mapping is required so grade calculation can attribute this sprint to a deliverable.',
+  })
   @IsArray()
+  @ArrayMinSize(1, { message: 'At least one deliverableMapping is required.' })
   @ValidateNested({ each: true })
   @Type(() => DeliverableMappingDto)
   deliverableMappings!: DeliverableMappingDto[];

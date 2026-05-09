@@ -36,8 +36,7 @@ const formatErrorMessages = (message, defaultMessage = 'Failed to update phase s
   return [defaultMessage];
 };
 
-const getPhaseOptionLabel = (phase) =>
-  phase.name ? `${phase.name} (${phase.phaseId})` : phase.phaseId;
+const getPhaseOptionLabel = (phase) => phase.name || phase.phaseId;
 
 /* ─── design helpers ────────────────────────────────────────────── */
 function SectionLabel({ icon: Icon, children, action }) {

@@ -79,6 +79,7 @@ describe('SubmissionsService', () => {
       documents: [],
       comments: [],
       revisionRequests: [],
+      grades: [],
       save: mockSave,
       ...overrides,
     };
@@ -673,6 +674,75 @@ describe('SubmissionsService', () => {
 
         await expect(
           service.createRevisionRequest(reviewerUserId, validId, { revisionDueDatetime: pastDate }),
+        ).rejects.toThrow(BadRequestException);
+      });
+    });
+
+    describe('gradeSubmission', () => {
+      it('should persist first grade from jury professor', async () => {
+        const submission = makeSubmission({ grades: [] });
+        mockFindById.mockReturnValue(execResult(submission));
+        mockCommitteeModel.findOne.mockReturnValue(execResult(mockCommittee));
+        mockSave.mockResolvedValue(submission);
+
+        const result = await service.gradeSubmission(reviewerUserId, validId, {
+          gradeValue: 75,
+        });
+
+        expect(mockSave).toHaveBeenCalledTimes(1);
+        expect(result.created).toBe(true);
+        expect(result.gradeValue).toBe(75);
+        expect(result.graderUserId).toBe(reviewerUserId);
+        expect(result.allGrades).toHaveLength(1);
+        expect(result.allGrades[0].gradeValue).toBe(75);
+      });
+
+      it('should update existing grade for same professor, not duplicate', async () => {
+        const existing = {
+          gradeId: 'grade-entry-1',
+          graderUserId: reviewerUserId,
+          gradeValue: 75,
+          gradedAt: new Date('2020-01-01T00:00:00.000Z'),
+        };
+        const submission = makeSubmission({ grades: [existing] });
+        mockFindById.mockReturnValue(execResult(submission));
+        mockCommitteeModel.findOne.mockReturnValue(execResult(mockCommittee));
+        mockSave.mockResolvedValue(submission);
+
+        const result = await service.gradeSubmission(reviewerUserId, validId, {
+          gradeValue: 80,
+        });
+
+        expect(submission.grades).toHaveLength(1);
+        expect(submission.grades[0].gradeId).toBe('grade-entry-1');
+        expect(result.created).toBe(false);
+        expect(result.gradeValue).toBe(80);
+        expect(result.allGrades).toHaveLength(1);
+        expect(result.allGrades[0].gradeValue).toBe(80);
+      });
+
+      it('should throw ForbiddenException if professor is not a jury member', async () => {
+        const submission = makeSubmission({ grades: [] });
+        mockFindById.mockReturnValue(execResult(submission));
+        mockCommitteeModel.findOne.mockReturnValue(
+          execResult({
+            groups: [{ groupId: 'group-1' }],
+            jury: [{ userId: 'other-prof' }],
+          }),
+        );
+
+        await expect(
+          service.gradeSubmission('bad-prof', validId, { gradeValue: 70 }),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('should throw BadRequestException when gradeValue is outside 0–100', async () => {
+        const submission = makeSubmission({ grades: [] });
+        mockFindById.mockReturnValue(execResult(submission));
+        mockCommitteeModel.findOne.mockReturnValue(execResult(mockCommittee));
+
+        await expect(
+          service.gradeSubmission(reviewerUserId, validId, { gradeValue: 101 }),
         ).rejects.toThrow(BadRequestException);
       });
     });

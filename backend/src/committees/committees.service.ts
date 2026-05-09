@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -1019,11 +1020,15 @@ export class CommitteesService {
       }
 
       type AdvisorEntry = { advisorId?: string; userId?: string; advisorUserId?: string };
+      type JuryEntry = { userId?: string };
       const advisorLinked = ((committee.advisors as AdvisorEntry[]) ?? []).some(
         (a) => a.advisorId === advisorUserId || a.userId === advisorUserId || a.advisorUserId === advisorUserId,
       );
-      if (!advisorLinked) {
-        throw new NotFoundException(`Advisor '${advisorUserId}' is not a member of committee '${committeeId}'.`);
+      const juryLinked = ((committee.jury as JuryEntry[]) ?? []).some(
+        (j) => j.userId === advisorUserId,
+      );
+      if (!advisorLinked && !juryLinked) {
+        throw new NotFoundException(`User '${advisorUserId}' is not a member of committee '${committeeId}' (neither advisor nor jury).`);
       }
 
       const committeeGroups = (committee.groups as any[]) ?? [];
@@ -1035,6 +1040,9 @@ export class CommitteesService {
 
       const advisorMap = new Map<string, string | null>(
         groupDocs.map((g) => [g.groupId, g.assignedAdvisorId ?? null]),
+      );
+      const groupNameMap = new Map<string, string | null>(
+        groupDocs.map((g) => [g.groupId, (g as any).groupName ?? null]),
       );
 
       const page = query.page ?? 1;
@@ -1049,6 +1057,7 @@ export class CommitteesService {
           const isOwnGroup = primaryAdvisor === advisorUserId;
           return {
             groupId: g.groupId as string,
+            groupName: groupNameMap.get(g.groupId as string) ?? null,
             assignedAt: g.assignedAt as Date,
             isOwnGroup,
             originalAdvisorUserId: isOwnGroup ? null : primaryAdvisor,
@@ -1061,6 +1070,129 @@ export class CommitteesService {
       if (error instanceof NotFoundException) throw error;
       this.logger.error({ event: 'advisor_grading_scope_failed', committeeId, advisorUserId, correlationId, error: (error as Error).message });
       throw new InternalServerErrorException('Failed to retrieve advisor grading scope due to an unexpected error.');
+    }
+  }
+
+  /**
+   * Returns every group the caller may grade deliverables for, derived from
+   * committee membership (advisor or jury). Sprint evaluations remain
+   * advisor-only and are checked elsewhere.
+   */
+  async getMyGradableGroups(userId: string): Promise<{
+    data: Array<{
+      groupId: string;
+      groupName: string | null;
+      committeeId: string;
+      role: 'advisor' | 'jury';
+      isOwnGroup: boolean;
+    }>;
+  }> {
+    type AdvisorEntry = { advisorId?: string; userId?: string; advisorUserId?: string };
+    type JuryEntry = { userId?: string };
+
+    // Find committees the caller belongs to as advisor or jury.
+    const committees = await this.committeeModel
+      .find({
+        $or: [
+          { 'advisors.advisorId': userId },
+          { 'advisors.userId': userId },
+          { 'advisors.advisorUserId': userId },
+          { 'jury.userId': userId },
+        ],
+      })
+      .lean()
+      .exec();
+
+    if (committees.length === 0) return { data: [] };
+
+    const allGroupIds = [
+      ...new Set(
+        committees.flatMap((c) =>
+          ((c.groups as { groupId: string }[]) ?? []).map((g) => g.groupId),
+        ),
+      ),
+    ];
+
+    const groupDocs = allGroupIds.length > 0
+      ? await this.groupModel
+          .find({ groupId: { $in: allGroupIds } })
+          .select('groupId groupName assignedAdvisorId')
+          .lean()
+          .exec()
+      : [];
+    const groupMap = new Map(
+      (groupDocs as any[]).map((g) => [
+        g.groupId,
+        { groupName: g.groupName ?? null, assignedAdvisorId: g.assignedAdvisorId ?? null },
+      ]),
+    );
+
+    const data: Array<{
+      groupId: string;
+      groupName: string | null;
+      committeeId: string;
+      role: 'advisor' | 'jury';
+      isOwnGroup: boolean;
+    }> = [];
+
+    // Deduplicate by (groupId, committeeId) — caller may belong to multiple
+    // committees, but each (group, committee) edge is unique.
+    const seen = new Set<string>();
+    for (const c of committees) {
+      const callerIsAdvisorInThisCommittee = ((c.advisors as AdvisorEntry[]) ?? []).some(
+        (a) => a.advisorId === userId || a.userId === userId || a.advisorUserId === userId,
+      );
+      const callerIsJuryInThisCommittee = ((c.jury as JuryEntry[]) ?? []).some(
+        (j) => j.userId === userId,
+      );
+
+      // Caller's role in this committee — advisor takes precedence over jury
+      const role: 'advisor' | 'jury' = callerIsAdvisorInThisCommittee
+        ? 'advisor'
+        : callerIsJuryInThisCommittee
+        ? 'jury'
+        : 'advisor';
+
+      for (const g of (c.groups as { groupId: string }[]) ?? []) {
+        const key = `${g.groupId}::${c.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const meta = groupMap.get(g.groupId);
+        data.push({
+          groupId: g.groupId,
+          groupName: meta?.groupName ?? null,
+          committeeId: c.id as string,
+          role,
+          isOwnGroup: meta?.assignedAdvisorId === userId,
+        });
+      }
+    }
+
+    return { data };
+  }
+
+  /**
+   * Throws ForbiddenException if the caller is not allowed to record a
+   * deliverable evaluation for this group. Allowed when the caller belongs
+   * (advisor or jury) to ANY committee that includes this group.
+   */
+  async assertCanGradeDeliverable(groupId: string, userId: string): Promise<void> {
+    const committee = await this.committeeModel
+      .findOne({
+        'groups.groupId': groupId,
+        $or: [
+          { 'advisors.advisorId': userId },
+          { 'advisors.userId': userId },
+          { 'advisors.advisorUserId': userId },
+          { 'jury.userId': userId },
+        ],
+      })
+      .lean()
+      .exec();
+    if (!committee) {
+      throw new ForbiddenException(
+        `You are not on a committee for group '${groupId}', so you cannot record a deliverable evaluation.`,
+      );
     }
   }
 }

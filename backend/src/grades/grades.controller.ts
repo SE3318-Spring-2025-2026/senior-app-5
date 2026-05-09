@@ -126,7 +126,11 @@ export class GradesController {
     @Req() req: RequestWithUser,
   ): Promise<DeliverableEvaluationResponseDto> {
     const gradedBy = this.getRequiredJwtUserId(req);
-    return this.gradesService.recordDeliverableEvaluation(dto, gradedBy);
+    return this.gradesService.recordDeliverableEvaluation(
+      dto,
+      gradedBy,
+      req.user.role,
+    );
   }
 
   @ApiOperation({

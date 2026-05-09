@@ -33,9 +33,22 @@ function SprintFinalizePage() {
     };
   }, []);
 
+  // Sort by start date so option order matches sprint sequence (#1, #2, …).
+  // Backend returns createdAt-desc, which doesn't always match chronological
+  // sprint order and previously caused operators to pick the wrong sprint.
+  const orderedSprints = useMemo(() => {
+    const arr = [...sprints];
+    arr.sort((a, b) => {
+      const ad = a.startDate ? new Date(a.startDate).getTime() : Infinity;
+      const bd = b.startDate ? new Date(b.startDate).getTime() : Infinity;
+      return ad - bd;
+    });
+    return arr.map((s, i) => ({ ...s, sprintNumber: i + 1 }));
+  }, [sprints]);
+
   const selectedSprint = useMemo(
-    () => sprints.find((s) => s.sprintId === sprintId) || null,
-    [sprints, sprintId],
+    () => orderedSprints.find((s) => s.sprintId === sprintId) || null,
+    [orderedSprints, sprintId],
   );
 
   const handleSubmit = async (e) => {
@@ -61,11 +74,19 @@ function SprintFinalizePage() {
   };
 
   const sprintLabel = (s) => {
+    const num = `#${s.sprintNumber}`;
     const head = s.name || `Sprint`;
     const target =
       typeof s.targetStoryPoints === 'number' ? ` · ${s.targetStoryPoints} pts` : '';
+    const mappingCount = Array.isArray(s.deliverableMappings)
+      ? s.deliverableMappings.length
+      : 0;
+    const mappings =
+      mappingCount === 0
+        ? '  ⚠ NO deliverable mappings'
+        : ` · ${mappingCount} mapping${mappingCount === 1 ? '' : 's'}`;
     const finalized = s.isFinalized ? '  (already finalized)' : '';
-    return `${head}${target}${finalized}`;
+    return `${num} · ${head}${target}${mappings}${finalized}`;
   };
 
   return (
@@ -100,15 +121,20 @@ function SprintFinalizePage() {
             style={inputStyle}
           >
             <option value="">— Select a sprint —</option>
-            {sprints.map((s) => (
-              <option
-                key={s.sprintId}
-                value={s.sprintId}
-                disabled={s.isFinalized}
-              >
-                {sprintLabel(s)}
-              </option>
-            ))}
+            {orderedSprints.map((s) => {
+              const noMappings =
+                !Array.isArray(s.deliverableMappings) ||
+                s.deliverableMappings.length === 0;
+              return (
+                <option
+                  key={s.sprintId}
+                  value={s.sprintId}
+                  disabled={s.isFinalized || noMappings}
+                >
+                  {sprintLabel(s)}
+                </option>
+              );
+            })}
           </select>
           {selectedSprint?.isFinalized && (
             <div style={{ ...hintStyle, color: '#f59e0b' }}>

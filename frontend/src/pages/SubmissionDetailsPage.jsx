@@ -1,8 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, ChevronLeft, Download, FileEdit } from 'lucide-react';
+import { FileText, ChevronLeft, Download, FileEdit, ClipboardList } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../utils/apiClient';
+import apiConfig from '../config/api';
 import { Badge, Button, PageHeader } from '../components/ui';
+
+const getStoredUser = () => {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const currentUserId = (user) =>
+  String(user?.userId ?? user?.id ?? user?._id ?? '');
 
 const statusColor = (status) => {
   if (!status) return 'slate';
@@ -19,21 +33,41 @@ const SubmissionDetailsPage = () => {
 
   const [submission, setSubmission] = useState(null);
   const [status, setStatus] = useState({ loading: true, error: '' });
+  const [gradeInput, setGradeInput] = useState('');
+  const [gradeSaving, setGradeSaving] = useState(false);
+
+  const user = getStoredUser();
+  const isProfessor = user?.role === 'Professor';
+  const myUserId = currentUserId(user);
+
+  const loadSubmission = useCallback(async () => {
+    const response = await apiClient.get(apiConfig.endpoints.submissions.byId(id));
+    const data = response.data;
+    setSubmission(data);
+    const uid = currentUserId(getStoredUser());
+    const grades = data?.grades;
+    const mine = Array.isArray(grades)
+      ? grades.find((g) => String(g.graderUserId) === uid)
+      : null;
+    if (mine && mine.gradeValue != null) {
+      setGradeInput(String(mine.gradeValue));
+    } else {
+      setGradeInput('');
+    }
+  }, [id]);
 
   useEffect(() => {
-    const localUser = localStorage.getItem('user');
-    if (!localUser) {
+    if (!getStoredUser()) {
       setStatus({ loading: false, error: 'You must be logged in to view this page.' });
       return;
     }
 
     const fetchSubmissionDetails = async () => {
       try {
-        const response = await apiClient.get(`/submissions/${id}`);
-        setSubmission(response.data);
+        await loadSubmission();
         setStatus({ loading: false, error: '' });
       } catch (error) {
-        console.error("Fetch error:", error);
+        console.error('Fetch error:', error);
         if (error.response?.status === 403) {
           setStatus({ loading: false, error: 'You do not have permission to view this submission.' });
         } else {
@@ -43,7 +77,37 @@ const SubmissionDetailsPage = () => {
     };
 
     fetchSubmissionDetails();
-  }, [id]);
+  }, [id, loadSubmission]);
+
+  const handleSubmitGrade = async (e) => {
+    e.preventDefault();
+    if (!submission?._id) return;
+    const n = Number(gradeInput);
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      toast.error('Enter a grade between 0 and 100.');
+      return;
+    }
+    setGradeSaving(true);
+    try {
+      const res = await apiClient.post(
+        apiConfig.endpoints.submissions.grades(submission._id),
+        { gradeValue: n },
+      );
+      const data = res.data;
+      setSubmission((prev) =>
+        prev ? { ...prev, grades: data.allGrades ?? prev.grades } : prev,
+      );
+      toast.success(res.status === 201 ? 'Grade submitted.' : 'Grade updated.');
+    } catch (err) {
+      const raw = err.response?.data?.message;
+      const msg = Array.isArray(raw) ? raw.join(', ') : raw || err.message || 'Could not save grade.';
+      toast.error(typeof msg === 'string' ? msg : 'Could not save grade.');
+    } finally {
+      setGradeSaving(false);
+    }
+  };
+
+  const gradesList = Array.isArray(submission?.grades) ? submission.grades : [];
 
   if (status.loading) {
     return (
@@ -97,7 +161,6 @@ const SubmissionDetailsPage = () => {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* General Information */}
         <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
           <h3 className="text-sm font-bold text-slate-200 mb-4">General Information</h3>
           <dl className="space-y-2 text-sm">
@@ -126,7 +189,6 @@ const SubmissionDetailsPage = () => {
           </dl>
         </div>
 
-        {/* Attached Documents */}
         <div className="bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
           <h3 className="text-sm font-bold text-slate-200 mb-4">Attached Documents</h3>
 
@@ -172,6 +234,80 @@ const SubmissionDetailsPage = () => {
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="mt-4 bg-[#111827] rounded-2xl border border-[#1e293b] p-5">
+        <h3 className="text-sm font-bold text-slate-200 mb-1 flex items-center gap-2">
+          <ClipboardList size={16} className="text-slate-400" />
+          Jury grades
+        </h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Each committee jury member may submit a numeric grade (0–100). Your grade updates the existing
+          entry if you submit again.
+        </p>
+
+        {gradesList.length === 0 ? (
+          <p className="text-sm text-slate-500">No jury grades recorded yet.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-[#1e293b]">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="border-b border-[#1e293b] text-slate-500 text-xs uppercase tracking-wide">
+                  <th className="px-3 py-2 font-semibold">Grader</th>
+                  <th className="px-3 py-2 font-semibold">Grade</th>
+                  <th className="px-3 py-2 font-semibold">Graded at</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gradesList.map((g) => (
+                  <tr
+                    key={g.gradeId || `${g.graderUserId}-${g.gradedAt}`}
+                    className={
+                      String(g.graderUserId) === myUserId
+                        ? 'bg-emerald-500/10 border-t border-[#1e293b]'
+                        : 'border-t border-[#1e293b]'
+                    }
+                  >
+                    <td className="px-3 py-2 text-slate-300 font-mono text-xs">
+                      {g.graderUserId}
+                      {String(g.graderUserId) === myUserId ? (
+                        <span className="ml-2 text-emerald-400 font-sans text-[11px]">(you)</span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2 text-slate-200 font-semibold">{g.gradeValue}</td>
+                    <td className="px-3 py-2 text-slate-400">
+                      {g.gradedAt ? new Date(g.gradedAt).toLocaleString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {isProfessor ? (
+          <form onSubmit={handleSubmitGrade} className="mt-4 flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="jury-grade-value" className="text-xs font-semibold text-slate-400">
+                Your grade (0–100)
+              </label>
+              <input
+                id="jury-grade-value"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={gradeInput}
+                onChange={(ev) => setGradeInput(ev.target.value)}
+                className="w-28 rounded-lg border border-[#1e293b] bg-[#0d1526] px-3 py-2 text-sm text-slate-200 focus:border-slate-500 focus:outline-none"
+                disabled={gradeSaving}
+              />
+            </div>
+            <Button type="submit" disabled={gradeSaving}>
+              {gradeSaving ? 'Saving…' : 'Save grade'}
+            </Button>
+          </form>
+        ) : null}
       </div>
     </div>
   );

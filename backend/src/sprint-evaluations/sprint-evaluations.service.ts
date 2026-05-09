@@ -111,7 +111,6 @@ export class SprintEvaluationsService {
       metadata: {
         evaluationId: evaluation.evaluationId,
         sprintId: dto.sprintId,
-        deliverableId: dto.deliverableId,
         evaluationType: dto.evaluationType,
         rubricId: rubric.rubricId,
         averageScore,

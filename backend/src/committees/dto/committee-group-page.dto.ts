@@ -5,6 +5,13 @@ export class CommitteeGroupListItemDto {
   groupId!: string;
 
   @ApiProperty({
+    description: 'Display name of the group (joined from Group collection).',
+    nullable: true,
+    required: false,
+  })
+  groupName?: string | null;
+
+  @ApiProperty({
     description: 'Timestamp when this group was assigned',
     type: String,
     format: 'date-time',

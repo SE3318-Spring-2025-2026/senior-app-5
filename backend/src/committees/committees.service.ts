@@ -333,13 +333,27 @@ export class CommitteesService {
 
       const allGroups = (committee.groups as any[]) ?? [];
       const total = allGroups.length;
-      const data: CommitteeGroupListItemDto[] = allGroups
-        .slice(skip, skip + limit)
-        .map((g) => ({
-          groupId: g.groupId as string,
-          assignedAt: g.assignedAt as Date,
-          assignedByUserId: g.assignedByUserId as string,
-        }));
+      const pageGroups = allGroups.slice(skip, skip + limit);
+
+      // Join Group collection for display names.
+      const groupIds = pageGroups.map((g) => g.groupId as string).filter(Boolean);
+      const groupDocs = groupIds.length > 0
+        ? await this.groupModel
+            .find({ groupId: { $in: groupIds } })
+            .select('groupId groupName')
+            .lean()
+            .exec()
+        : [];
+      const nameMap = new Map<string, string>(
+        (groupDocs as any[]).map((g) => [g.groupId, g.groupName as string]),
+      );
+
+      const data: CommitteeGroupListItemDto[] = pageGroups.map((g) => ({
+        groupId: g.groupId as string,
+        groupName: nameMap.get(g.groupId as string) ?? null,
+        assignedAt: g.assignedAt as Date,
+        assignedByUserId: g.assignedByUserId as string,
+      }));
 
       this.logger.log({
         event: 'committee_groups_listed',
@@ -390,8 +404,16 @@ export class CommitteesService {
       const advisorUserIds = pageAdvisors
         .map((a) => a.advisorId ?? a.userId ?? a.advisorUserId)
         .filter(Boolean);
-      const advisorUsers = advisorUserIds.length
-        ? await this.userModel.find({ _id: { $in: advisorUserIds } }, { _id: 1, email: 1 }).lean().exec()
+      // Some seeded entries store UUIDs that aren't valid ObjectIds — skip
+      // those for the email lookup so the whole request doesn't 500.
+      const objectIdAdvisorIds = advisorUserIds.filter((id) =>
+        Types.ObjectId.isValid(id),
+      );
+      const advisorUsers = objectIdAdvisorIds.length
+        ? await this.userModel
+            .find({ _id: { $in: objectIdAdvisorIds } }, { _id: 1, email: 1 })
+            .lean()
+            .exec()
         : [];
       const advisorEmailMap = new Map(advisorUsers.map((u) => [String(u._id), u.email as string]));
       const data: CommitteeAdvisorListItemDto[] = pageAdvisors.map((a) => {
@@ -880,10 +902,17 @@ export class CommitteesService {
       const total = allJury.length;
       const pageJury = allJury.slice(skip, skip + limit);
 
-      // Fetch user emails for display
+      // Fetch user emails for display. Skip non-ObjectId IDs (UUIDs from seed
+      // data) so a Mongoose cast error doesn't 500 the whole list.
       const userIds = pageJury.map((j) => j.userId).filter(Boolean);
-      const users = userIds.length
-        ? await this.userModel.find({ _id: { $in: userIds } }, { _id: 1, email: 1 }).lean().exec()
+      const objectIdUserIds = userIds.filter((id: string) =>
+        Types.ObjectId.isValid(id),
+      );
+      const users = objectIdUserIds.length
+        ? await this.userModel
+            .find({ _id: { $in: objectIdUserIds } }, { _id: 1, email: 1 })
+            .lean()
+            .exec()
         : [];
       const emailMap = new Map(users.map((u) => [String(u._id), u.email as string]));
 

@@ -556,7 +556,9 @@ export class CommitteesController {
   @HttpCode(HttpStatus.OK)
   async listAdvisorGradingScope(
     @Param('committeeId', new ParseUUIDPipe()) committeeId: string,
-    @Param('advisorUserId', new ParseUUIDPipe()) advisorUserId: string,
+    // Accepts UUID or Mongo ObjectId — seeded advisors use UUIDs while
+    // real users use ObjectIds, so we don't constrain to UUID here.
+    @Param('advisorUserId') advisorUserId: string,
     @Query() query: ListCommitteeAdvisorsQueryDto,
     @Request() req: RequestWithUser,
   ): Promise<AdvisorGradingScopePageDto> {

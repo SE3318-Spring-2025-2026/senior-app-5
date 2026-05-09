@@ -31,6 +31,7 @@ export const apiConfig = {
     requestDecision: (requestId) => `/requests/${requestId}/decision`,
     groupAdvisor: (groupId) => `/groups/${groupId}/advisor`,
     groupDisband: (groupId) => `/groups/${groupId}`,
+    releaseAdvisor: (advisorId, groupId) => `/advisors/${advisorId}/groups/${groupId}`,
     userSearch: '/users/search',
     invites: '/invites/deliver',
     groupMyTeam: '/groups/my-team',

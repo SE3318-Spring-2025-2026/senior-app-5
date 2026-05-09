@@ -40,6 +40,9 @@ function GroupsPage() {
   const [disbandModal, setDisbandModal] = useState(null)
   const [disbandState, setDisbandState] = useState({ loading: false, message: '', error: '' })
 
+  const [releaseModal, setReleaseModal] = useState(null)
+  const [releaseState, setReleaseState] = useState({ loading: false, error: '' })
+
   const fetchGroups = useCallback(async (p = 1) => {
     setListState({ loading: true, error: '' })
     try {
@@ -91,7 +94,7 @@ function GroupsPage() {
   const handleTransfer = async () => {
     if (!transferModal || !newAdvisorId) return
     const groupId = transferModal.groupId || transferModal.id
-    const currentAdvisorId = transferModal.advisorUserId || transferModal.advisorId
+    const currentAdvisorId = transferModal.assignedAdvisorId || transferModal.advisorUserId || transferModal.advisorId
 
     setTransferState({ loading: true, message: '', error: '' })
     try {
@@ -123,6 +126,29 @@ function GroupsPage() {
       await fetchGroups(page)
     } catch (error) {
       setDisbandState({ loading: false, message: '', error: getApiError(error) })
+    }
+  }
+
+  const openReleaseModal = (group) => {
+    setReleaseState({ loading: false, error: '' })
+    setReleaseModal(group)
+  }
+
+  const handleRelease = async () => {
+    if (!releaseModal) return
+    const groupId = releaseModal.groupId || releaseModal.id
+    const advisorId = releaseModal.assignedAdvisorId
+    if (!advisorId) {
+      setReleaseState({ loading: false, error: 'No advisor assigned to this group.' })
+      return
+    }
+    setReleaseState({ loading: true, error: '' })
+    try {
+      await apiClient.delete(apiConfig.endpoints.releaseAdvisor(advisorId, groupId))
+      setReleaseModal(null)
+      await fetchGroups(page)
+    } catch (error) {
+      setReleaseState({ loading: false, error: getApiError(error) })
     }
   }
 
@@ -194,9 +220,11 @@ function GroupsPage() {
                   {groups.map((group) => {
                     const groupId = group.groupId || group.id
                     const name = group.groupName || group.name || `Group ${groupId}`
-                    const status = String(group.status || '').toUpperCase()
-                    const isAssigned = status === 'ASSIGNED'
-                    const isUnassigned = status === 'UNASSIGNED'
+                    const isDisbanded = String(group.status || '').toUpperCase() === 'DISBANDED'
+                    const assignmentStatus = String(group.assignmentStatus || '').toUpperCase()
+                    const isAssigned = !isDisbanded && assignmentStatus === 'ASSIGNED'
+                    const isUnassigned = !isDisbanded && assignmentStatus === 'UNASSIGNED'
+                    const badgeStatus = isDisbanded ? 'DISBANDED' : group.assignmentStatus
 
                     return (
                       <tr key={groupId} className="border-t border-[#1f1f23] hover:bg-[#18181c]">
@@ -209,7 +237,7 @@ function GroupsPage() {
                           </button>
                         </td>
                         <td className="px-4 py-3 text-zinc-300">
-                          <StatusBadge status={group.status} />
+                          <StatusBadge status={badgeStatus} />
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -221,6 +249,15 @@ function GroupsPage() {
                               onClick={() => openTransferModal(group)}
                             >
                               Transfer
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={!isAssigned}
+                              title={isAssigned ? 'Release advisor from this group' : 'Group must be ASSIGNED to release'}
+                              onClick={() => openReleaseModal(group)}
+                            >
+                              Release
                             </Button>
                             <Button
                               type="button"
@@ -291,6 +328,8 @@ function GroupsPage() {
                 value={newAdvisorId}
                 onChange={setNewAdvisorId}
                 placeholder="Search advisor by email"
+                buildParams={(q) => ({ email: q })}
+                getItems={(res) => res.data || []}
               />
             </div>
 
@@ -365,6 +404,54 @@ function GroupsPage() {
                 disabled={disbandState.loading}
               >
                 {disbandState.loading ? 'Disbanding…' : 'Confirm Disband'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {releaseModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="release-modal-title"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-[#1f1f23] bg-[#131316] p-6 shadow-2xl">
+            <h3 id="release-modal-title" className="mb-2 text-base font-semibold text-amber-400">
+              Release Advisor
+            </h3>
+            <p className="mb-4 text-[13px] text-zinc-400">
+              Remove the advisor from{' '}
+              <strong className="text-zinc-200">
+                {releaseModal.groupName || releaseModal.name || releaseModal.groupId || releaseModal.id}
+              </strong>
+              ? The group will become unassigned and can then be disbanded.
+            </p>
+
+            {releaseState.error && (
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[13px] text-rose-300" role="status">
+                {releaseState.error}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-5">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setReleaseModal(null)}
+                disabled={releaseState.loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={handleRelease}
+                loading={releaseState.loading}
+                disabled={releaseState.loading}
+              >
+                {releaseState.loading ? 'Releasing…' : 'Confirm Release'}
               </Button>
             </div>
           </div>

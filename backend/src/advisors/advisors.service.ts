@@ -177,7 +177,10 @@ export class AdvisorsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const advisorRoleFilters = getAdvisorRoleFilters();
-    const roleFilter = { role: { $in: advisorRoleFilters } };
+    const roleFilter: Record<string, unknown> = { role: { $in: advisorRoleFilters } };
+    if (query.email) {
+      roleFilter['email'] = { $regex: query.email, $options: 'i' };
+    }
     const skip = (page - 1) * limit;
 
     try {

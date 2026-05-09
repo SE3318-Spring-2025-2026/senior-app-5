@@ -169,12 +169,12 @@ const CoordinatorView = ({ user }) => {
           <ActionCard to="/advisors"
             icon={BookOpen}     label="Manage Advisors"    description="Review advisor assignments" />
           <ActionCard to="/phases/schedule"
-            icon={ClipboardList} label="Manage Phases"     description="Configure project phases" />
+            icon={ClipboardList} label="Submission Windows" description="Set per-phase submission open/close periods" />
           <ActionCard to="/grades"
             icon={TrendingUp}   label="View All Grades"    description="Monitor academic performance" />
           <ActionCard to="/advisor/requests"
             icon={FileText}     label="Advisor Requests"   description="Review team advisor request submissions" />
-          <ActionCard to="/coordinator/advisor-schedule"
+          <ActionCard to="/coordinator-management"
             icon={CalendarClock} label="Advisor Selection Schedule" description="Set the window for team leaders to submit requests" />
         </div>
       </div>

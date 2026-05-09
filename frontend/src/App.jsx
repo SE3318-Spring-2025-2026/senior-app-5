@@ -33,7 +33,6 @@ import CommitteeDetailPage from './pages/admin/CommitteeDetailPage';
 import GroupDetailPage from './pages/admin/GroupDetailPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import AdvisorRequestsPage from './pages/AdvisorRequestsPage';
-import AdvisorSchedulePage from './pages/AdvisorSchedulePage';
 import SprintEvaluationPage from './pages/SprintEvaluationPage';
 import RubricManagementPage from './pages/RubricManagementPage';
 import SprintBuilderPage from './pages/SprintBuilderPage';
@@ -108,11 +107,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/coordinator/advisor-schedule" element={
-              <ProtectedRoute requiredRole="Coordinator">
-                <AdvisorSchedulePage />
-              </ProtectedRoute>
-            } />
+            <Route path="/coordinator/advisor-schedule" element={<Navigate to="/coordinator-management" replace />} />
             <Route path="/coordinator/sprint-builder" element={
               <ProtectedRoute requiredRole="Coordinator">
                 <SprintBuilderPage />

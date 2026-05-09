@@ -128,7 +128,11 @@ export class SprintEvaluationsService {
     correlationId?: string,
   ): Promise<SprintEvaluationResponseDto[]> {
     if (caller.role === Role.Professor) {
-      await this.ensureAdvisorOwnsGroup(groupId, caller.userId ?? '', correlationId);
+      await this.ensureAdvisorOwnsGroup(
+        groupId,
+        caller.userId ?? '',
+        correlationId,
+      );
     }
 
     const query: Record<string, string> = { groupId };

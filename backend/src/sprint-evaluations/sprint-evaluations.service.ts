@@ -49,6 +49,7 @@ export class SprintEvaluationsService {
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
     private readonly rubricsService: RubricsService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   async recordSprintEvaluation(
@@ -93,6 +94,29 @@ export class SprintEvaluationsService {
       evaluationType: dto.evaluationType,
       rubricId: rubric.rubricId,
       correlationId,
+    });
+
+    const rubricGrades = dto.responses.map((r) => ({
+      questionId: r.questionId,
+      softGrade: r.softGrade,
+    }));
+
+    await this.activityLogsService.safeCreate({
+      eventType: 'SPRINT_EVALUATION_SUBMITTED',
+      summary: `Sprint evaluation (rubric) submitted — average score ${Number(averageScore).toFixed(2)}`,
+      actorUserId: advisorUserId,
+      actorRole: caller.role,
+      targetType: 'group',
+      targetId: dto.groupId,
+      metadata: {
+        evaluationId: evaluation.evaluationId,
+        sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
+        evaluationType: dto.evaluationType,
+        rubricId: rubric.rubricId,
+        averageScore,
+        grades: rubricGrades,
+      },
     });
 
     return this.toResponseDto(evaluation);

@@ -1,3 +1,4 @@
+// frontend/src/pages/admin/ActivityPage.jsx
 import { useState, useEffect } from 'react'
 import apiClient from '../../utils/apiClient'
 import apiConfig from '../../config/api'
@@ -15,20 +16,58 @@ function ActivityPage() {
   }, [])
 
   useEffect(() => {
-    const filtered = logs.filter(
-      (log) =>
-        log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.action.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const normalizedSearch = searchTerm.toLowerCase()
+    const filtered = logs.filter((log) => {
+      const userText = String(log.user ?? '').toLowerCase()
+      const subText = String(log.userSubtext ?? '').toLowerCase()
+      const actionText = String(log.action ?? '').toLowerCase()
+      const typeText = String(log.eventType ?? '').toLowerCase()
+      return (
+        userText.includes(normalizedSearch) ||
+        subText.includes(normalizedSearch) ||
+        actionText.includes(normalizedSearch) ||
+        typeText.includes(normalizedSearch)
+      )
+    })
     setFilteredLogs(filtered)
   }, [logs, searchTerm])
+
+  const actorDisplay = (log) => {
+    const name = log.actorName?.trim?.()
+    const email = log.actorEmail?.trim?.()
+    if (name) return name
+    if (email) return email
+    if (log.user && log.user !== log.actorUserId) return log.user
+    return log.actorUserId ?? 'System'
+  }
+
+  const mapLog = (log) => ({
+    id: log.id ?? log._id ?? `${log.timestamp ?? ''}-${log.eventType ?? ''}`,
+    timestamp: log.timestamp,
+    user: actorDisplay(log),
+    userSubtext:
+      log.actorName && log.actorEmail
+        ? log.actorEmail
+        : log.actorUserId && (log.actorName || log.actorEmail)
+          ? log.actorUserId
+          : null,
+    action: log.action ?? log.summary ?? log.eventType ?? 'Unknown action',
+    eventType: log.eventType ?? null,
+  })
 
   const fetchActivityLogs = async () => {
     try {
       setLoading(true)
       const response = await apiClient.get(apiConfig.endpoints.activityLogs)
-      setLogs(response.data)
-      setFilteredLogs(response.data)
+      const payload = response?.data
+      const rawLogs = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : []
+      const normalizedLogs = rawLogs.map(mapLog)
+      setLogs(normalizedLogs)
+      setFilteredLogs(normalizedLogs)
     } catch (err) {
       setError('Failed to fetch activity logs')
       console.error(err)
@@ -85,15 +124,24 @@ function ActivityPage() {
               <tr>
                 <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Timestamp</th>
                 <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">User</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Action Type</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Event</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500">Summary</th>
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map((log, index) => (
-                <tr key={index} className="border-t border-[#1e293b] hover:bg-white/[0.02]">
-                  <td className="px-4 py-3 text-slate-300 text-sm">{formatTimestamp(log.timestamp)}</td>
-                  <td className="px-4 py-3 text-slate-300 text-sm">{log.user}</td>
-                  <td className="px-4 py-3 text-slate-300 text-sm">{log.action}</td>
+              {filteredLogs.map((log) => (
+                <tr key={log.id} className="border-t border-[#1e293b] hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 text-slate-300 text-sm align-top">{formatTimestamp(log.timestamp)}</td>
+                  <td className="px-4 py-3 text-slate-300 text-sm align-top">
+                    <div className="font-medium text-slate-200">{log.user}</div>
+                    {log.userSubtext ? (
+                      <div className="text-[11px] text-slate-500 mt-0.5 font-mono truncate max-w-[220px]" title={log.userSubtext}>
+                        {log.userSubtext}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400 text-xs font-mono align-top">{log.eventType ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-300 text-sm align-top">{log.action}</td>
                 </tr>
               ))}
             </tbody>

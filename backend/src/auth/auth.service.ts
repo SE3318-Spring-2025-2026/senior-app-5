@@ -12,6 +12,7 @@ import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { Role } from './enums/role.enum';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +22,36 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwt: JwtService,
     private readonly mailService: MailService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
+
+  private async recordActivity(
+    eventType: string,
+    summary: string,
+    options?: {
+      actorUserId?: string;
+      actorRole?: string;
+      targetType?: string;
+      targetId?: string;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    try {
+      await this.activityLogsService.create({
+        eventType,
+        summary,
+        actorUserId: options?.actorUserId,
+        actorRole: options?.actorRole,
+        targetType: options?.targetType,
+        targetId: options?.targetId,
+        metadata: options?.metadata,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Activity log skipped for ${eventType}: ${(error as Error).message}`,
+      );
+    }
+  }
 
   async register(email: string, password: string, role: Role = Role.Student) {
     if (!email || !password) {
@@ -46,6 +76,20 @@ export class AuthService {
       });
 
       this.logger.log(`User registered successfully: ${email} as ${role}`);
+      await this.recordActivity(
+        'AUTH_USER_REGISTERED',
+        'User account created',
+        {
+          actorUserId: user._id.toString(),
+          actorRole: user.role,
+          targetType: 'user',
+          targetId: user._id.toString(),
+          metadata: {
+            email: user.email,
+            role: user.role,
+          },
+        },
+      );
 
       return {
         id: user._id.toString(),
@@ -82,10 +126,28 @@ export class AuthService {
     const refreshHash = await bcrypt.hash(refreshToken, 12);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30); // 30 days
 
-    await this.usersService.setRefreshToken(user._id.toString(), refreshHash, expiresAt);
+    await this.usersService.setRefreshToken(
+      user._id.toString(),
+      refreshHash,
+      expiresAt,
+    );
 
     this.logger.log(`User logged in successfully: ${email}`);
-    return { accessToken, refreshToken, refreshExpiresAt: expiresAt.toISOString(), userId: user._id.toString() };
+    await this.recordActivity('AUTH_LOGIN', 'User logged in', {
+      actorUserId: user._id.toString(),
+      actorRole: user.role,
+      targetType: 'user',
+      targetId: user._id.toString(),
+      metadata: {
+        email: user.email,
+      },
+    });
+    return {
+      accessToken,
+      refreshToken,
+      refreshExpiresAt: expiresAt.toISOString(),
+      userId: user._id.toString(),
+    };
   }
 
   async refreshAccessToken(refreshUserId: string, refreshToken: string) {
@@ -115,13 +177,41 @@ export class AuthService {
     const newRefreshHash = await bcrypt.hash(newRefreshToken, 12);
     const newExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
 
-    await this.usersService.setRefreshToken(user._id.toString(), newRefreshHash, newExpiresAt);
+    await this.usersService.setRefreshToken(
+      user._id.toString(),
+      newRefreshHash,
+      newExpiresAt,
+    );
+    await this.recordActivity('AUTH_TOKEN_REFRESH', 'Access token refreshed', {
+      actorUserId: user._id.toString(),
+      actorRole: user.role,
+      targetType: 'user',
+      targetId: user._id.toString(),
+      metadata: {
+        email: user.email,
+      },
+    });
 
-    return { accessToken, refreshToken: newRefreshToken, refreshExpiresAt: newExpiresAt.toISOString(), userId: user._id.toString() };
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      refreshExpiresAt: newExpiresAt.toISOString(),
+      userId: user._id.toString(),
+    };
   }
 
   async logout(userId: string) {
+    const user = await this.usersService.findById(userId);
     await this.usersService.clearRefreshToken(userId);
+    await this.recordActivity('AUTH_LOGOUT', 'User logged out', {
+      actorUserId: userId,
+      actorRole: user?.role,
+      targetType: 'user',
+      targetId: userId,
+      metadata: {
+        email: user?.email ?? null,
+      },
+    });
     return { success: true };
   }
 
@@ -130,14 +220,32 @@ export class AuthService {
       throw new BadRequestException('Email is required');
     }
 
+    const user = await this.usersService.findByEmail(email);
     const token = await this.usersService.createPasswordResetToken(email);
     if (token) {
       this.logger.log(`Password reset token generated for email: ${email}`);
+      if (user) {
+        await this.recordActivity(
+          'AUTH_PASSWORD_RESET_REQUESTED',
+          'Password reset requested',
+          {
+            actorUserId: user._id.toString(),
+            actorRole: user.role,
+            targetType: 'user',
+            targetId: user._id.toString(),
+            metadata: {
+              email: user.email,
+            },
+          },
+        );
+      }
       try {
         await this.mailService.sendPasswordReset(email, token);
         this.logger.log(`Password reset email successfully sent to ${email}`);
       } catch (err) {
-        this.logger.error(`Failed to send password reset email to ${email}: ${(err as Error).message}`);
+        this.logger.error(
+          `Failed to send password reset email to ${email}: ${(err as Error).message}`,
+        );
       }
     } else {
       this.logger.warn(`Password reset requested for unknown email: ${email}`);
@@ -166,6 +274,19 @@ export class AuthService {
     );
 
     this.logger.log(`Password reset completed for email: ${user.email}`);
+    await this.recordActivity(
+      'AUTH_PASSWORD_RESET_CONFIRMED',
+      'Password reset completed',
+      {
+        actorUserId: (user._id || user.id).toString(),
+        actorRole: user.role,
+        targetType: 'user',
+        targetId: (user._id || user.id).toString(),
+        metadata: {
+          email: user.email,
+        },
+      },
+    );
     return { message: 'Password has been reset successfully.' };
   }
 
@@ -229,6 +350,18 @@ export class AuthService {
         tokenData.scope,
       );
       this.logger.log(`Successfully linked GitHub account for user: ${userId}`);
+      const user = await this.usersService.findById(userId);
+      await this.recordActivity('AUTH_GITHUB_LINKED', 'GitHub account linked', {
+        actorUserId: userId,
+        actorRole: user?.role,
+        targetType: 'user',
+        targetId: userId,
+        metadata: {
+          githubLogin: githubUser.login,
+          githubAccountId: githubUser.id?.toString?.() ?? null,
+          scopes: tokenData.scope ?? '',
+        },
+      });
 
       return {
         message: 'GitHub account linked successfully',
@@ -259,6 +392,19 @@ export class AuthService {
 
     await this.usersService.unlinkGithubAccount(userId);
     this.logger.log(`Unlinked GitHub account for user: ${userId}`);
+    await this.recordActivity(
+      'AUTH_GITHUB_UNLINKED',
+      'GitHub account unlinked',
+      {
+        actorUserId: userId,
+        actorRole: user.role,
+        targetType: 'user',
+        targetId: userId,
+        metadata: {
+          email: user.email,
+        },
+      },
+    );
     return {
       message: 'GitHub account unlinked successfully',
       isGithubConnected: false,

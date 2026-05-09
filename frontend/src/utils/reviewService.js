@@ -62,3 +62,10 @@ export async function getSubmissionsForCommittee(committeeId) {
     'Unable to fetch committee submissions.',
   )
 }
+
+export async function listProfessorReviewSubmissions() {
+  return request(
+    () => apiClient.get(apiConfig.endpoints.submissions.list),
+    'Unable to fetch submissions.',
+  )
+}

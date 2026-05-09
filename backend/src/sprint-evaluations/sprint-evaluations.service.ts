@@ -31,6 +31,7 @@ import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
 import { RubricsService } from '../rubrics/rubrics.service';
 import { RubricDocument, SprintRubricType } from '../rubrics/schemas/rubric.schema';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 interface RequestContext {
   userId?: string;

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InvitesController } from './invites.controller';
 import { InvitesService } from './invites.service';
 import { Role } from '../auth/enums/role.enum';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 describe('InvitesController - RBAC Matrix Validation', () => {
   let controller: InvitesController;
@@ -11,6 +12,7 @@ describe('InvitesController - RBAC Matrix Validation', () => {
       controllers: [InvitesController],
       providers: [
         { provide: InvitesService, useValue: {} },
+        { provide: ActivityLogsService, useValue: { create: jest.fn() } },
       ],
     }).compile();
 

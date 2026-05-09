@@ -41,6 +41,7 @@ import {
   ReviewStatus,
   RevisionRequest,
 } from './schemas/review.schema';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 export type ReviewActor = {
   userId?: string;
@@ -57,6 +58,7 @@ export class ReviewsService {
     @InjectModel(Committee.name)
     private committeeModel: Model<CommitteeDocument>,
     @InjectModel(Schedule.name) private scheduleModel: Model<ScheduleDocument>,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   private getJuryUserIds(committee: Pick<Committee, 'jury'>): string[] {
@@ -394,6 +396,22 @@ export class ReviewsService {
         )
         .exec();
     }
+
+    await this.activityLogsService.safeCreate({
+      eventType: 'REVIEW_GRADE_SUBMITTED',
+      summary: 'Committee review grade submitted',
+      actorUserId: reviewerUserId,
+      actorRole: actor.role,
+      targetType: 'review',
+      targetId: saved.reviewId,
+      metadata: {
+        submissionId: String(review.submissionId),
+        committeeId: review.committeeId,
+        grade: saved.grade,
+        allJuryGradesComplete:
+          juryUserIds.length > 0 && submittedCount === juryUserIds.length,
+      },
+    });
 
     return {
       reviewId: saved.reviewId,

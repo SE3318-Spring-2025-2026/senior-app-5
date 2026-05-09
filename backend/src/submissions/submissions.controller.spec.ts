@@ -7,6 +7,7 @@ import {
 } from './submissions.controller';
 import { SubmissionsService } from './submissions.service';
 import { Role } from '../auth/enums/role.enum'; 
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 describe('SubmissionsController', () => {
   let controller: SubmissionsController;
@@ -35,6 +36,10 @@ describe('SubmissionsController', () => {
         {
           provide: SubmissionsService,
           useValue: mockSubmissionsService,
+        },
+        {
+          provide: ActivityLogsService,
+          useValue: { create: jest.fn() },
         },
       ],
     }).compile();
@@ -89,7 +94,7 @@ describe('SubmissionsController', () => {
         req.user,
         dto.groupId,
       );
-      expect(service.createSubmission).toHaveBeenCalledWith(dto);
+      expect(service.createSubmission).toHaveBeenCalledWith(dto, req.user.role);
       expect(result).toEqual(created);
     });
 

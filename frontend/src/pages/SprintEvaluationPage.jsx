@@ -63,6 +63,38 @@ const SprintEvaluationPage = () => {
     load();
   }, [evalType]);
 
+  // Pull the professor's existing evaluation for this (group, sprint, type)
+  // so they can see what they previously submitted before re-grading.
+  useEffect(() => {
+    setExistingEval(null);
+    setResponses({});
+    if (!selectedGroup || !selectedSprint) return;
+    const load = async () => {
+      try {
+        const res = await apiClient.get('/sprint-evaluations', {
+          params: {
+            groupId: selectedGroup,
+            sprintId: selectedSprint,
+            evaluationType: evalType,
+          },
+        });
+        const list = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+        const match = list.find((e) => e.evaluationType === evalType) ?? null;
+        setExistingEval(match);
+        if (match) {
+          const prefilled = {};
+          (match.responses ?? []).forEach((r) => {
+            prefilled[r.questionId] = r.softGrade;
+          });
+          setResponses(prefilled);
+        }
+      } catch {
+        setExistingEval(null);
+      }
+    };
+    load();
+  }, [selectedGroup, selectedSprint, evalType]);
+
   const handleGradeChange = (questionId, grade) => {
     setResponses((prev) => ({ ...prev, [questionId]: grade }));
   };
@@ -91,9 +123,11 @@ const SprintEvaluationPage = () => {
 
     setSubmitting(true);
     try {
-      await apiClient.post('/sprint-evaluations', payload);
+      const res = await apiClient.post('/sprint-evaluations', payload);
       toast.success('Sprint evaluation submitted successfully.');
-      setResponses({});
+      // Keep responses prefilled from the just-submitted evaluation so the
+      // user can see what was recorded without re-clicking.
+      setExistingEval(res.data ?? null);
     } catch (err) {
       toast.error(err?.response?.data?.message ?? 'Failed to submit evaluation.');
     } finally {
@@ -155,6 +189,16 @@ const SprintEvaluationPage = () => {
               ))}
             </select>
           </div>
+
+          {existingEval && (
+            <div className="rounded-lg border border-emerald-700/40 bg-emerald-900/10 p-3 text-xs text-emerald-300">
+              You already submitted this evaluation
+              {existingEval.averageScore != null
+                ? ` (average score ${existingEval.averageScore})`
+                : ''}
+              . Your previous grades are pre-filled below — submitting again will overwrite them.
+            </div>
+          )}
 
           <div className="space-y-3">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Rubric Questions</p>

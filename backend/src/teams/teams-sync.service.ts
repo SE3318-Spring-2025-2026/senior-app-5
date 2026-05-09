@@ -24,6 +24,7 @@ import {
   StoryPointSource,
 } from '../story-points/schemas/story-point-record.schema';
 import { decryptSecret } from '../common/crypto/secret-cipher';
+import { GeminiService } from '../ai/gemini.service';
 
 export interface AdvisorPanelStudent {
   studentId: string;
@@ -35,6 +36,11 @@ export interface AdvisorPanelStudent {
     githubStatus: GithubStatus;
     verifiedAt: Date | null;
     isComplete: boolean;
+    reviewQuality: {
+      hasMeaningfulReview: boolean;
+      score: number;
+      reasoning: string;
+    } | null;
   }[];
   completedPoints: number;
   targetPoints: number;
@@ -60,6 +66,7 @@ export class TeamsSyncService {
     @InjectModel(SprintConfig.name) private sprintConfigModel: Model<SprintConfigDocument>,
     @InjectModel(StoryPointRecord.name) private storyPointRecordModel: Model<StoryPointRecordDocument>,
     private readonly httpService: HttpService,
+    private readonly geminiService: GeminiService,
   ) {}
 
   /**
@@ -341,6 +348,8 @@ export class TeamsSyncService {
               branchFound: false,
               prFound: false,
               prAuthorLogin: null,
+              prNumber: null as number | null,
+              prUpdatedAt: null as string | null,
             };
 
         const resolution: string | null = issue.fields?.resolution?.name ?? null;
@@ -354,6 +363,16 @@ export class TeamsSyncService {
           resolution === 'Done' && githubResult.githubStatus === GithubStatus.VERIFIED;
 
         if (githubResult.branchFound || githubResult.prFound) linkedCount++;
+
+        // AI review-quality evaluation. Only meaningful when a real PR exists
+        // (merged or otherwise). Cached on (issue, prUpdatedAt) — repeat syncs
+        // for an unchanged PR don't re-spend AI quota.
+        const reviewQuality = await this.evaluateReviewQuality(
+          team,
+          teamId,
+          issue.key,
+          githubResult,
+        );
 
         const assigneeLabel = assigneeAccountId
           ? assigneeStudentId
@@ -400,6 +419,8 @@ export class TeamsSyncService {
               githubBranchFound: githubResult.branchFound,
               githubPrFound: githubResult.prFound,
               prAuthorLogin: githubResult.prAuthorLogin,
+              prNumber: githubResult.prNumber,
+              ...(reviewQuality !== undefined ? { reviewQuality } : {}),
               isComplete,
               syncRunId,
               syncedAt,
@@ -524,7 +545,7 @@ export class TeamsSyncService {
 
     return this.sprintStoryModel
       .find({ teamId })
-      .select('issueKey summary status resolution work assignee assigneeStudentId githubStatus verifiedAt isComplete isLocked syncedAt -_id')
+      .select('issueKey summary status resolution work assignee assigneeStudentId githubStatus verifiedAt isComplete isLocked syncedAt prAuthorLogin prNumber reviewQuality -_id')
       .sort({ issueKey: 1 })
       .lean()
       .exec();
@@ -594,7 +615,7 @@ export class TeamsSyncService {
 
       const individualRatio = targetPoints > 0
         ? Math.min(1, completedPoints / targetPoints)
-        : 0;
+        : 1.0;
 
       students.push({
         studentId,
@@ -606,6 +627,13 @@ export class TeamsSyncService {
           githubStatus: s.githubStatus as GithubStatus,
           verifiedAt: s.verifiedAt ?? null,
           isComplete: s.isComplete ?? false,
+          reviewQuality: s.reviewQuality
+            ? {
+                hasMeaningfulReview: s.reviewQuality.hasMeaningfulReview,
+                score: s.reviewQuality.score,
+                reasoning: s.reviewQuality.reasoning,
+              }
+            : null,
         })),
         completedPoints,
         targetPoints,
@@ -789,6 +817,8 @@ export class TeamsSyncService {
     branchFound: boolean;
     prFound: boolean;
     prAuthorLogin: string | null;
+    prNumber: number | null;
+    prUpdatedAt: string | null;
   }> {
     const headers: Record<string, string> = {
       'User-Agent': 'senior-app',
@@ -804,7 +834,7 @@ export class TeamsSyncService {
     );
 
     if (!branchName) {
-      return { githubStatus: GithubStatus.NO_BRANCH, verifiedAt: null, branchFound: false, prFound: false, prAuthorLogin: null };
+      return { githubStatus: GithubStatus.NO_BRANCH, verifiedAt: null, branchFound: false, prFound: false, prAuthorLogin: null, prNumber: null, prUpdatedAt: null };
     }
 
     // Step 2: find PR for that branch
@@ -816,14 +846,16 @@ export class TeamsSyncService {
     );
 
     if (!pr) {
-      return { githubStatus: GithubStatus.NO_PR, verifiedAt: null, branchFound: true, prFound: false, prAuthorLogin: null };
+      return { githubStatus: GithubStatus.NO_PR, verifiedAt: null, branchFound: true, prFound: false, prAuthorLogin: null, prNumber: null, prUpdatedAt: null };
     }
 
     const prAuthorLogin: string | null = pr.user?.login ?? null;
+    const prNumber: number | null = typeof pr.number === 'number' ? pr.number : null;
+    const prUpdatedAt: string | null = pr.updated_at ?? null;
 
     // Step 3: check merge status
     if (!pr.merged_at) {
-      return { githubStatus: GithubStatus.PR_NOT_MERGED, verifiedAt: null, branchFound: true, prFound: true, prAuthorLogin };
+      return { githubStatus: GithubStatus.PR_NOT_MERGED, verifiedAt: null, branchFound: true, prFound: true, prAuthorLogin, prNumber, prUpdatedAt };
     }
 
     // Step 4: author check — only verifies when we know the assignee's GitHub
@@ -842,6 +874,8 @@ export class TeamsSyncService {
         branchFound: true,
         prFound: true,
         prAuthorLogin,
+        prNumber,
+        prUpdatedAt,
       };
     }
 
@@ -851,7 +885,183 @@ export class TeamsSyncService {
       branchFound: true,
       prFound: true,
       prAuthorLogin,
+      prNumber,
+      prUpdatedAt,
     };
+  }
+
+  /**
+   * Decide whether to call the AI to evaluate the PR's review quality.
+   * Returns:
+   *   - undefined → skip the field entirely on this update (no PR / no AI / cache hit)
+   *   - object    → write/refresh reviewQuality
+   *   - null      → AI was attempted but failed; clear stale cache to avoid lying
+   */
+  private async evaluateReviewQuality(
+    team: TeamDocument,
+    teamId: string,
+    issueKey: string,
+    githubResult: {
+      prFound: boolean;
+      prNumber: number | null;
+      prUpdatedAt: string | null;
+    },
+  ): Promise<
+    | undefined
+    | null
+    | {
+        hasMeaningfulReview: boolean;
+        score: number;
+        reasoning: string;
+        evaluatedAt: Date;
+        prUpdatedAt: string | null;
+      }
+  > {
+    if (!githubResult.prFound || !githubResult.prNumber || !team.githubRepositoryId) {
+      return undefined;
+    }
+    if (!this.geminiService.isAvailable()) {
+      return undefined;
+    }
+
+    // Cache check — same prUpdatedAt → reuse last verdict.
+    // Bypass with AI_SKIP_CACHE=1 (dev/testing).
+    const existing = await this.sprintStoryModel
+      .findOne({ teamId, issueKey })
+      .select('reviewQuality')
+      .lean()
+      .exec();
+    if (
+      process.env.AI_SKIP_CACHE !== '1' &&
+      existing?.reviewQuality &&
+      githubResult.prUpdatedAt &&
+      existing.reviewQuality.prUpdatedAt === githubResult.prUpdatedAt
+    ) {
+      this.logger.log(
+        `  ↳ ${issueKey} AI cache hit (prUpdatedAt=${githubResult.prUpdatedAt}); set AI_SKIP_CACHE=1 to force re-evaluate.`,
+      );
+      return undefined;
+    }
+    this.logger.log(
+      `  ↳ ${issueKey} AI evaluating (cached=${existing?.reviewQuality?.prUpdatedAt ?? 'none'}, fresh=${githubResult.prUpdatedAt ?? 'none'})`,
+    );
+
+    const headers: Record<string, string> = {
+      'User-Agent': 'senior-app',
+      Accept: 'application/vnd.github+json',
+    };
+    if (team.githubToken) {
+      headers['Authorization'] = `Bearer ${decryptSecret(team.githubToken)}`;
+    }
+
+    const [reviews, comments, prMeta] = await Promise.all([
+      this.fetchPrReviews(team.githubRepositoryId, githubResult.prNumber, headers),
+      this.fetchPrReviewComments(team.githubRepositoryId, githubResult.prNumber, headers),
+      this.fetchPrMeta(team.githubRepositoryId, githubResult.prNumber, headers),
+    ]);
+
+    const verdict = await this.geminiService.evaluatePrReview({
+      prTitle: prMeta?.title ?? issueKey,
+      prBody: prMeta?.body ?? null,
+      reviews,
+      comments,
+    });
+
+    if (!verdict) {
+      this.logger.warn(
+        `[sync ${teamId}] ${issueKey}: AI review evaluation unavailable, leaving previous reviewQuality untouched.`,
+      );
+      return undefined;
+    }
+
+    this.logger.log(
+      `  ↳ ${issueKey} review: meaningful=${verdict.hasMeaningfulReview} score=${verdict.score} "${verdict.reasoning.slice(0, 80)}"`,
+    );
+
+    return {
+      hasMeaningfulReview: verdict.hasMeaningfulReview,
+      score: verdict.score,
+      reasoning: verdict.reasoning,
+      evaluatedAt: new Date(),
+      prUpdatedAt: githubResult.prUpdatedAt,
+    };
+  }
+
+  private async fetchPrMeta(
+    repoId: string,
+    prNumber: number,
+    headers: Record<string, string>,
+  ): Promise<{ title: string; body: string | null } | null> {
+    try {
+      const res: any = await lastValueFrom(
+        this.httpService.get(
+          `https://api.github.com/repos/${repoId}/pulls/${prNumber}`,
+          { headers },
+        ),
+      );
+      return {
+        title: res.data?.title ?? '',
+        body: res.data?.body ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Fetch PR-level reviews (Approve / Request Changes / Comment events).
+   * Returns [] on error so sync flow is not interrupted.
+   */
+  private async fetchPrReviews(
+    repoId: string,
+    prNumber: number,
+    headers: Record<string, string>,
+  ): Promise<Array<{ author: string | null; state: string; body: string | null; submittedAt: string | null }>> {
+    try {
+      const res: any = await lastValueFrom(
+        this.httpService.get(
+          `https://api.github.com/repos/${repoId}/pulls/${prNumber}/reviews`,
+          { headers, params: { per_page: 100 } },
+        ),
+      );
+      const reviews: any[] = res.data ?? [];
+      return reviews.map((r) => ({
+        author: r.user?.login ?? null,
+        state: r.state ?? 'COMMENTED',
+        body: r.body ?? null,
+        submittedAt: r.submitted_at ?? null,
+      }));
+    } catch (err: any) {
+      this.logger.warn(`fetchPrReviews(${repoId}#${prNumber}) failed: ${err?.message ?? err}`);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch inline review comments (file/line-level threaded comments).
+   */
+  private async fetchPrReviewComments(
+    repoId: string,
+    prNumber: number,
+    headers: Record<string, string>,
+  ): Promise<Array<{ author: string | null; body: string | null; path: string | null }>> {
+    try {
+      const res: any = await lastValueFrom(
+        this.httpService.get(
+          `https://api.github.com/repos/${repoId}/pulls/${prNumber}/comments`,
+          { headers, params: { per_page: 100 } },
+        ),
+      );
+      const comments: any[] = res.data ?? [];
+      return comments.map((c) => ({
+        author: c.user?.login ?? null,
+        body: c.body ?? null,
+        path: c.path ?? null,
+      }));
+    } catch (err: any) {
+      this.logger.warn(`fetchPrReviewComments(${repoId}#${prNumber}) failed: ${err?.message ?? err}`);
+      return [];
+    }
   }
 
   private async findBranchContaining(

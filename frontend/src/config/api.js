@@ -82,6 +82,7 @@ export const apiConfig = {
     sprints: '/sprints',
     sprintById: (sprintId) => `/sprints/${sprintId}`,
     deliverableEvaluations: '/deliverable-evaluations',
+    groupCalculate: (groupId) => `/groups/${groupId}/calculate`,
     committeeGrades: (committeeId) => `/committees/${committeeId}/grades`,
     sprintEvaluations: '/sprint-evaluations',
     githubIntegration: (userId) => `/auth/users/${userId}/integrations/github`,
@@ -94,6 +95,11 @@ export const apiConfig = {
     teamMine: '/teams/mine',
     teamJiraDiscover: '/teams/jira/discover',
     teamStoryPoints: (teamId) => `/teams/${teamId}/story-points`,
+    markdownDocuments: {
+      create: '/documents/markdown',
+      get: (documentId) => `/documents/markdown/${documentId}`,
+      update: (documentId) => `/documents/markdown/${documentId}`,
+    },
   },
 };
 

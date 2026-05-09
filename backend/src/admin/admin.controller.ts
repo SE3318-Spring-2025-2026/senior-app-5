@@ -1,4 +1,13 @@
-import { Controller, Get, Patch, Post, Param, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -7,7 +16,14 @@ import { Role } from '../auth/enums/role.enum';
 import { MoveStudentDto } from './dto/move-student.dto';
 import { SanitizeGroupsDto } from './dto/sanitize-groups.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ListActivityLogsQueryDto } from '../activity-logs/dto/list-activity-logs-query.dto';
+import { PaginatedActivityLogsDto } from '../activity-logs/dto/paginated-activity-logs.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -33,7 +49,6 @@ export class AdminController {
     return this.adminService.getAdvisorValidation();
   }
 
-  
   @Post('sanitization/execute')
   @Roles(Role.Coordinator, Role.Admin)
   @ApiOperation({ summary: 'Clean up groups without advisors (Destructive)' })
@@ -43,8 +58,15 @@ export class AdminController {
 
   @Get('activity')
   @Roles(Role.Coordinator, Role.Admin)
-  async getActivityLogs() {
-    return this.adminService.getActivityLogs();
+  @ApiOperation({
+    operationId: 'getAdminActivityLogs',
+    summary: 'List admin activity logs (paginated, filterable)',
+  })
+  @ApiOkResponse({ type: PaginatedActivityLogsDto })
+  async getActivityLogs(
+    @Query() query: ListActivityLogsQueryDto,
+  ): Promise<PaginatedActivityLogsDto> {
+    return this.adminService.getActivityLogs(query);
   }
 
   @Post('users/:userId/send-password-reset')

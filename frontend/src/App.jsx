@@ -24,6 +24,7 @@ import SanitizationPage from './pages/admin/SanitizationPage';
 
 import DocumentsPage from './pages/DocumentsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
+import MarkdownEditorPage from './pages/MarkdownEditorPage';
 import GradeDisplayPage from './pages/GradeDisplayPage';
 import ReviewPage from './pages/ReviewPage';
 import ActivityPage from './pages/admin/ActivityPage';
@@ -38,6 +39,7 @@ import RubricManagementPage from './pages/RubricManagementPage';
 import SprintBuilderPage from './pages/SprintBuilderPage';
 import ScrumManagementPage from './pages/ScrumManagementPage';
 import DeliverableManagementPage from './pages/DeliverableManagementPage';
+import DeliverableGradingPage from './pages/DeliverableGradingPage';
 import AdvisorSprintPanel from './pages/AdvisorSprintPanel';
 import SprintFinalizePage from './pages/SprintFinalizePage';
 
@@ -69,12 +71,13 @@ function App() {
                        <Route path="/groups" element={<StudentGroupManagementPage />} />
             <Route path="/all-groups" element={<StudentGroupManagementPage />} />
             <Route path="/documents/upload" element={<StudentSubmissionPage />} />
+            <Route path="/documents/:submissionId/markdown" element={<MarkdownEditorPage />} />
             <Route path="/documents/:phaseId/:submissionId" element={<StudentSubmissionPage />} />
             <Route path="/documents/:id" element={<SubmissionDetailsPage />} />
             <Route path="/documents" element={<StudentSubmissionPage />} />
+            <Route path="/my-submissions" element={<DocumentsPage />} />
             <Route path="/grades" element={<GradeDisplayPage />} />
             <Route path="/professor/submissions" element={<DocumentsPage />} />
-            <Route path="/documents" element={<DocumentsPage />} />
             <Route
               path="/review"
               element={
@@ -88,6 +91,14 @@ function App() {
             <Route path="/scrum" element={<ScrumManagementPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
             <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
+            <Route
+              path="/professor/deliverable-grading"
+              element={
+                <ProtectedRoute requiredRole="Professor">
+                  <DeliverableGradingPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/advisor/sprint-panel" element={<AdvisorSprintPanel />} />
             <Route
               path="/coordinator/sprint-finalize"

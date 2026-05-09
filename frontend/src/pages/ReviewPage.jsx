@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import SubmissionReviewPanel from '../components/reviews/SubmissionReviewPanel'
 import { getCommittee, listCommittees } from '../utils/committeeService'
-import { getSubmissionsForCommittee } from '../utils/reviewService'
+import {
+  getSubmissionsForCommittee,
+  listProfessorReviewSubmissions,
+} from '../utils/reviewService'
+import apiClient from '../utils/apiClient'
+import apiConfig from '../config/api'
 import { PageHeader, Badge } from '../components/ui'
 
 const normalizeList = (payload) => {
@@ -57,6 +62,7 @@ const getStoredUser = () => {
 const ReviewPage = () => {
   const [user, setUser] = useState(null)
   const [committee, setCommittee] = useState(null)
+  const [committeeFromGroup, setCommitteeFromGroup] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [selectedSubmissionId, setSelectedSubmissionId] = useState('')
   const [status, setStatus] = useState({ loading: true, error: '' })
@@ -92,9 +98,19 @@ const ReviewPage = () => {
       let professorCommittee = null
       if (directCommitteeId) {
         professorCommittee = await getCommittee(directCommitteeId)
+      } else if (String(localUser.role || '').toLowerCase() === 'professor') {
+        const queue = normalizeList(await listProfessorReviewSubmissions())
+        setCommittee(null)
+        setCommitteeFromGroup(null)
+        setSubmissions(queue)
+        setSelectedSubmissionId(
+          String(queue[0]?._id || queue[0]?.id || queue[0]?.submissionId || ''),
+        )
+        setStatus({ loading: false, error: '' })
+        return
       } else {
         const committees = normalizeList(await listCommittees({ page: 1, limit: 100 }))
-        professorCommittee = findProfessorCommittee(committees, localUser) || committees[0] || null
+        professorCommittee = findProfessorCommittee(committees, localUser) || null
       }
 
       const committeeId = getCommitteeId(professorCommittee)
@@ -125,13 +141,37 @@ const ReviewPage = () => {
     return () => window.clearTimeout(task)
   }, [loadReviewQueue])
 
-  const committeeId = getCommitteeId(committee)
+  useEffect(() => {
+    const groupId = selectedSubmission?.groupId
+    if (!groupId) {
+      setCommitteeFromGroup(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await apiClient.get(apiConfig.endpoints.groupCommittee(groupId))
+        if (cancelled) return
+        const id = data?.id || data?.committeeId || data?._id
+        setCommitteeFromGroup(id ? { id, name: data?.name } : null)
+      } catch {
+        if (!cancelled) setCommitteeFromGroup(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedSubmission])
+
+  const committeeId = getCommitteeId(committee) || committeeFromGroup?.id || ''
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Review"
-        subtitle={`${committee?.name || committeeId || 'Committee'} assigned submissions`}
+        subtitle={`${
+          committee?.name || committeeFromGroup?.name || committeeId || 'Committee'
+        } assigned submissions`}
       />
 
       {status.loading && (

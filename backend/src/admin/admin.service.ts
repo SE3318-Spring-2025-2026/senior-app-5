@@ -6,6 +6,8 @@ import { MailService } from '../mail/mail.service';
 import { Group, GroupDocument } from '../groups/group.entity';
 import { User, UserDocument } from '../users/data/user.schema';
 import { Role } from '../auth/enums/role.enum';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { ListActivityLogsQueryDto } from '../activity-logs/dto/list-activity-logs-query.dto';
 
 @Injectable()
 export class AdminService {
@@ -16,7 +18,8 @@ export class AdminService {
     private readonly mailService: MailService,
     @InjectModel(Group.name) private groupModel: Model<GroupDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectConnection() private readonly connection: Connection, 
+    @InjectConnection() private readonly connection: Connection,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   async updateUserRole(userId: string, role: Role) {
@@ -103,10 +106,8 @@ export class AdminService {
     }
   }
 
-  async getActivityLogs() {
-    return [
-      { timestamp: new Date(), user: 'System', action: 'Admin service active' }
-    ];
+  async getActivityLogs(query: ListActivityLogsQueryDto) {
+    return this.activityLogsService.findPaginated(query);
   }
 
   async sendPasswordResetForUser(userId: string): Promise<{ message: string }> {

@@ -32,6 +32,7 @@ import {
   Committee,
   CommitteeSchema,
 } from '../committees/schemas/committee.schema';
+import { User, UserSchema } from '../users/data/user.schema';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import {
       { name: SprintConfig.name, schema: SprintConfigSchema },
       { name: StoryPointRecord.name, schema: StoryPointRecordSchema },
       { name: Committee.name, schema: CommitteeSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   controllers: [GradesController],

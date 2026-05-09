@@ -4,12 +4,10 @@ import { ChevronDown, ChevronRight, BookOpen, Package } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
 import { PageHeader } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
 
 const SOFT_GRADES = ['A', 'B', 'C', 'D', 'F'];
 const BINARY_GRADES = ['S', 'F'];
-
-// Binary S (Satisfactory) → A, F → F  (backend only accepts A/B/C/D/F)
-const binaryToSoft = (g) => (g === 'S' ? 'A' : 'F');
 
 const inputCls =
   'w-full rounded-md border border-[#26262b] bg-[#0a0a0b] px-3.5 py-2.5 text-[13px] text-zinc-200 transition-colors focus:border-[#3a3a40] focus:outline-none focus:ring-1 focus:ring-[#3a3a40]';
@@ -134,8 +132,13 @@ function DeliverableCard({ deliverable, groupId, currentUserId }) {
       // Auto-trigger grade calculation so student final grades are updated immediately
       try {
         await apiClient.post(`/groups/${groupId}/calculate`, { force: true });
-      } catch {
-        // Calculation errors are non-fatal; grade was still recorded
+      } catch (calcError) {
+        const calcMsg = calcError?.response?.data?.message;
+        toast.error(
+          Array.isArray(calcMsg)
+            ? calcMsg.join(', ')
+            : (calcMsg ?? 'Grade submitted, but group recalculation failed.'),
+        );
       }
       toast.success(
         `Grade "${calculatedGrade}" submitted for ${deliverable.name ?? 'deliverable'}.`,
@@ -369,25 +372,35 @@ function DeliverableCard({ deliverable, groupId, currentUserId }) {
 }
 
 const DeliverableGradingPage = () => {
-  const [groups, setGroups] = useState([]);
-  const [deliverables, setDeliverables] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState('');
-  const currentUserId = (() => {
+  const { user } = useAuth();
+  const fallbackUser = (() => {
     try {
-      const u = JSON.parse(localStorage.getItem('user') ?? 'null');
-      return u?.id ?? u?._id ?? u?.userId ?? null;
+      const raw = localStorage.getItem('user');
+      return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
     }
   })();
+  const effectiveUser = user ?? fallbackUser;
+  const [groups, setGroups] = useState([]);
+  const [deliverables, setDeliverables] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const currentUserId =
+    effectiveUser?.id ?? effectiveUser?._id ?? effectiveUser?.userId ?? null;
 
   useEffect(() => {
     const load = async () => {
+      setIsLoading(true);
+      setLoadError('');
       // Lists every group the caller can grade deliverables for — both
       // groups they advise directly and groups they jury via committee
       // membership. Sprint evaluations remain advisor-only and are gated
       // server-side, not here.
       const [groupsRes, delRes] = await Promise.allSettled([
+        // `myGradableGroups` intentionally models grading scope rather than
+        // raw group ownership, so professors only see grade-eligible groups.
         apiClient.get(apiConfig.endpoints.myGradableGroups),
         apiClient.get(apiConfig.endpoints.deliverables, { params: { limit: 100 } }),
       ]);
@@ -399,6 +412,19 @@ const DeliverableGradingPage = () => {
         const data = delRes.value.data?.data ?? delRes.value.data ?? [];
         setDeliverables(Array.isArray(data) ? data : []);
       }
+      const errors = [];
+      if (groupsRes.status === 'rejected') {
+        errors.push('Unable to load gradable groups.');
+      }
+      if (delRes.status === 'rejected') {
+        errors.push('Unable to load deliverables.');
+      }
+      if (errors.length > 0) {
+        const nextError = errors.join(' ');
+        setLoadError(nextError);
+        toast.error(nextError);
+      }
+      setIsLoading(false);
     };
     load();
   }, []);
@@ -410,6 +436,18 @@ const DeliverableGradingPage = () => {
         title="Deliverable Grading"
         subtitle="Select a group, then grade each deliverable using its rubric criteria."
       />
+
+      {isLoading && (
+        <div className="rounded-xl border border-[#1f1f23] bg-[#131316] px-4 py-3 text-sm text-zinc-400">
+          Loading groups and deliverables...
+        </div>
+      )}
+
+      {!isLoading && loadError && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          {loadError}
+        </div>
+      )}
 
       {/* Group selector */}
       <section className="rounded-2xl border border-[#1f1f23] bg-[#131316] p-5">

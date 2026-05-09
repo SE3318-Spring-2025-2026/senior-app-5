@@ -66,9 +66,6 @@ export class ReviewsController {
   @ApiBadRequestResponse({ description: 'Request validation failed' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
   @ApiForbiddenResponse({ description: 'Caller is not in the committee jury' })
-  @ApiConflictResponse({
-    description: 'Review already exists for this reviewer and submission',
-  })
   @ApiNotFoundResponse({ description: 'Submission or committee not found' })
   @Post()
   @Roles(Role.Professor)

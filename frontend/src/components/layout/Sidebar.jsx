@@ -10,7 +10,6 @@ import {
   Calendar,
   CalendarDays,
   ShieldCheck,
-  Star,
   BookOpen,
   GitBranch,
   Kanban,
@@ -21,6 +20,8 @@ import {
   BarChart2,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../utils/roleUtils';
 
 const navLinkBase =
   'group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors duration-150';
@@ -67,9 +68,17 @@ function SectionHeader({ label }) {
 }
 
 export const Sidebar = () => {
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { role: 'Student' };
-  const role = user.role;
+  const { user } = useAuth();
+  const fallbackUser = (() => {
+    try {
+      const raw = localStorage.getItem('user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const effectiveUser = user ?? fallbackUser;
+  const role = normalizeRole(effectiveUser?.role || 'Student');
 
   return (
     <aside className="flex w-60 flex-none flex-col overflow-y-auto border-r border-[#1c1c20] bg-[#0e0e10] px-2.5 py-4">
@@ -78,7 +87,7 @@ export const Sidebar = () => {
         <SideNavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
         <SideNavLink to="/integrations" icon={Link2} label="Integrations" />
 
-        {(role === 'Student' || role === 'TeamLeader') && (
+        {(role === 'student' || role === 'teamleader') && (
           <>
             <SectionHeader label="Student" />
             <SideNavLink to="/groups" icon={Users} label="My Group" />
@@ -89,32 +98,29 @@ export const Sidebar = () => {
           </>
         )}
 
-        {role === 'TeamLeader' && (
+        {role === 'teamleader' && (
           <>
             <SectionHeader label="Team Leader" />
             <SideNavLink to="/scrum" icon={GitBranch} label="Scrum" />
           </>
         )}
 
-        {role === 'Professor' && (
+        {role === 'professor' && (
           <>
             <SectionHeader label="Professor" />
             <SideNavLink to="/review" icon={ClipboardCheck} label="Review" />
-            <SideNavLink to="/professor/submissions" icon={FileText} label="Submissions" />
             <SideNavLink to="/professor/deliverable-grading" icon={GraduationCap} label="Deliverable Grading" />
-            <SideNavLink to="/advisor/sprint-evaluation" icon={Star} label="Sprint Evaluation" />
-            <SideNavLink to="/advisor/sprint-panel" icon={Activity} label="Sprint Panel" />
           </>
         )}
 
-        {(role === 'Professor' || role === 'Advisor') && (
+        {(role === 'professor' || role === 'advisor') && (
           <>
             <SectionHeader label="Advisor" />
             <SideNavLink to="/advisor/requests" icon={UserCheck} label="Advisee Requests" />
           </>
         )}
 
-        {role === 'Coordinator' && (
+        {role === 'coordinator' && (
           <>
             <SectionHeader label="Coordinator" />
             <SideNavLink to="/coordinator-management" icon={Settings2} label="Coordinator Suite" />

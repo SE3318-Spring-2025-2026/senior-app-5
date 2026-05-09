@@ -30,7 +30,11 @@ import {
 import { CreateSprintEvaluationDto } from './dto/create-sprint-evaluation.dto';
 import { SprintEvaluationResponseDto } from './dto/sprint-evaluation-response.dto';
 import { RubricsService } from '../rubrics/rubrics.service';
-import { RubricDocument, SprintRubricType } from '../rubrics/schemas/rubric.schema';
+import {
+  RubricDocument,
+  SprintRubricType,
+} from '../rubrics/schemas/rubric.schema';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 interface RequestContext {
   userId?: string;
@@ -48,6 +52,7 @@ export class SprintEvaluationsService {
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
     private readonly rubricsService: RubricsService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   async recordSprintEvaluation(
@@ -94,6 +99,29 @@ export class SprintEvaluationsService {
       correlationId,
     });
 
+    const rubricGrades = dto.responses.map((r) => ({
+      questionId: r.questionId,
+      softGrade: r.softGrade,
+    }));
+
+    await this.activityLogsService.safeCreate({
+      eventType: 'SPRINT_EVALUATION_SUBMITTED',
+      summary: `Sprint evaluation (rubric) submitted — average score ${Number(averageScore).toFixed(2)}`,
+      actorUserId: advisorUserId,
+      actorRole: caller.role,
+      targetType: 'group',
+      targetId: dto.groupId,
+      metadata: {
+        evaluationId: evaluation.evaluationId,
+        sprintId: dto.sprintId,
+        deliverableId: dto.deliverableId,
+        evaluationType: dto.evaluationType,
+        rubricId: rubric.rubricId,
+        averageScore,
+        grades: rubricGrades,
+      },
+    });
+
     return this.toResponseDto(evaluation);
   }
 
@@ -104,7 +132,11 @@ export class SprintEvaluationsService {
     correlationId?: string,
   ): Promise<SprintEvaluationResponseDto[]> {
     if (caller.role === Role.Professor) {
-      await this.ensureAdvisorOwnsGroup(groupId, caller.userId ?? '', correlationId);
+      await this.ensureAdvisorOwnsGroup(
+        groupId,
+        caller.userId ?? '',
+        correlationId,
+      );
     }
 
     const query: Record<string, string> = { groupId };

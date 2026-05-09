@@ -8,6 +8,7 @@ import { User, UserSchema } from '../users/data/user.schema';
 import { GroupMemberGuard } from '../auth/guards/group-member.guard';
 import { Group, GroupSchema } from '../groups/group.entity';
 import { Committee, CommitteeSchema } from '../committees/schemas/committee.schema';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 
 @Module({
@@ -19,6 +20,7 @@ import { Committee, CommitteeSchema } from '../committees/schemas/committee.sche
       { name: Committee.name, schema: CommitteeSchema },
     ]),
     PhasesModule,
+    ActivityLogsModule,
   ],
   controllers: [SubmissionsController],
   providers: [SubmissionsService, GroupMemberGuard],

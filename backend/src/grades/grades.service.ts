@@ -63,6 +63,7 @@ import {
 } from '../committees/schemas/committee.schema';
 import { User, UserDocument } from '../users/data/user.schema';
 import { Role } from '../auth/enums/role.enum';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class GradesService {
@@ -91,6 +92,7 @@ export class GradesService {
     private readonly committeeModel: Model<CommitteeDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   // ────────────────────────────────────────────────────────────────
@@ -290,6 +292,19 @@ export class GradesService {
       )
       .lean()
       .exec();
+
+    await this.activityLogsService.safeCreate({
+      eventType: 'DELIVERABLE_EVALUATION_RECORDED',
+      summary: 'Deliverable evaluation grade recorded',
+      actorUserId: gradedBy,
+      targetType: 'group',
+      targetId: dto.groupId,
+      metadata: {
+        deliverableId: dto.deliverableId,
+        deliverableGrade: dto.deliverableGrade,
+        evaluationId: (upserted as DeliverableEvaluation).evaluationId,
+      },
+    });
 
     return this.toDeliverableEvaluationResponseDto(
       upserted as unknown as DeliverableEvaluation & {
@@ -774,6 +789,20 @@ export class GradesService {
             ).toFixed(4),
           )
         : 0;
+
+    await this.activityLogsService.safeCreate({
+      eventType: 'FINAL_GRADES_CALCULATED',
+      summary: 'Final grades calculated for group',
+      actorUserId: triggeredBy,
+      targetType: 'group',
+      targetId: groupId,
+      metadata: {
+        teamGrade,
+        force: dto.force ?? false,
+        studentCount: individualGrades.length,
+        teamScalar: overallTeamScalar,
+      },
+    });
 
     return {
       groupId,

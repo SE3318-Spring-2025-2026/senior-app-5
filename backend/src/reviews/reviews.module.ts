@@ -12,9 +12,11 @@ import {
 import { Review, ReviewSchema } from './schemas/review.schema';
 import { ReviewsController } from './reviews.controller';
 import { ReviewsService } from './reviews.service';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
   imports: [
+    ActivityLogsModule,
     MongooseModule.forFeature([
       { name: Review.name, schema: ReviewSchema },
       { name: Submission.name, schema: SubmissionSchema },

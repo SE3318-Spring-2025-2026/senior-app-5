@@ -33,9 +33,11 @@ import {
   CommitteeSchema,
 } from '../committees/schemas/committee.schema';
 import { User, UserSchema } from '../users/data/user.schema';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
   imports: [
+    ActivityLogsModule,
     DeliverablesModule,
     MongooseModule.forFeature([
       { name: StudentFinalGrade.name, schema: StudentFinalGradeSchema },

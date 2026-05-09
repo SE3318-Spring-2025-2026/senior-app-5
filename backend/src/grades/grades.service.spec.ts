@@ -1,10 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GradesService } from './grades.service';
 import {
   StudentFinalGrade,
@@ -22,6 +18,8 @@ import { GroupFinalGradeDto } from './dto/group-final-grade.dto';
 import { ListGradeHistoryQueryDto } from './dto/list-grade-history-query.dto';
 import { Group, GroupAssignmentStatus } from '../groups/group.entity';
 import { DeliverableGrade } from './schemas/deliverable-evaluation.schema';
+import { User } from '../users/data/user.schema';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 describe('GradesService', () => {
   let service: GradesService;
@@ -54,6 +52,11 @@ describe('GradesService', () => {
     mockDeliverableEvaluationModel = {
       create: jest.fn(),
       findOne: jest.fn(),
+      findOneAndUpdate: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn(),
+        }),
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -98,6 +101,14 @@ describe('GradesService', () => {
         {
           provide: getModelToken(Committee.name),
           useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: getModelToken(User.name),
+          useValue: { find: jest.fn() },
+        },
+        {
+          provide: ActivityLogsService,
+          useValue: { safeCreate: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();
@@ -624,15 +635,18 @@ describe('GradesService', () => {
         }),
       });
       const now = new Date('2026-05-06T10:00:00.000Z');
-      mockDeliverableEvaluationModel.create.mockResolvedValue({
-        toObject: () => ({
-          evaluationId: '33333333-3333-3333-3333-333333333333',
-          groupId: dto.groupId,
-          deliverableId: dto.deliverableId,
-          deliverableGrade: dto.deliverableGrade,
-          gradedBy: '44444444-4444-4444-4444-444444444444',
-          createdAt: now,
-          updatedAt: now,
+      const upsertDoc = {
+        evaluationId: '33333333-3333-3333-3333-333333333333',
+        groupId: dto.groupId,
+        deliverableId: dto.deliverableId,
+        deliverableGrade: dto.deliverableGrade,
+        gradedBy: '44444444-4444-4444-4444-444444444444',
+        createdAt: now,
+        updatedAt: now,
+      };
+      mockDeliverableEvaluationModel.findOneAndUpdate.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(upsertDoc),
         }),
       });
 
@@ -641,14 +655,16 @@ describe('GradesService', () => {
         '44444444-4444-4444-4444-444444444444',
       );
 
-      expect(mockDeliverableEvaluationModel.create).toHaveBeenCalledWith(
+      expect(mockDeliverableEvaluationModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { groupId: dto.groupId, deliverableId: dto.deliverableId },
         expect.objectContaining({
-          groupId: dto.groupId,
-          deliverableId: dto.deliverableId,
-          deliverableGrade: DeliverableGrade.B,
-          rawGrade: 80,
-          gradedBy: '44444444-4444-4444-4444-444444444444',
+          $set: expect.objectContaining({
+            deliverableGrade: DeliverableGrade.B,
+            rawGrade: 80,
+            gradedBy: '44444444-4444-4444-4444-444444444444',
+          }),
         }),
+        { upsert: true, new: true },
       );
       expect(result.gradedBy).toBe('44444444-4444-4444-4444-444444444444');
     });
@@ -687,7 +703,7 @@ describe('GradesService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('throws ConflictException on duplicate groupId + deliverableId', async () => {
+    it('propagates duplicate key error from upsert (Mongo 11000)', async () => {
       mockDeliverableModel.findOne.mockReturnValue({
         lean: jest.fn().mockReturnValue({
           exec: jest
@@ -703,11 +719,15 @@ describe('GradesService', () => {
           }),
         }),
       });
-      mockDeliverableEvaluationModel.create.mockRejectedValue({ code: 11000 });
+      mockDeliverableEvaluationModel.findOneAndUpdate.mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockRejectedValue({ code: 11000 }),
+        }),
+      });
 
       await expect(
         service.recordDeliverableEvaluation(dto as any, 'user-id'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toMatchObject({ code: 11000 });
     });
   });
 

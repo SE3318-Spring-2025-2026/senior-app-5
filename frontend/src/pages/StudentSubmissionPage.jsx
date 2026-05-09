@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
-import { Upload, FileText, CheckCircle, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, ChevronRight, X, Loader2, FileEdit } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import apiConfig from '../config/api';
+import MarkdownEditor from '../components/markdown/MarkdownEditor';
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const getId = (s) => s?._id || s?.id || s?.submissionId || '';
@@ -43,6 +44,9 @@ export default function StudentSubmissionPage() {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
+  const [mode, setMode] = useState('file'); // 'file' | 'markdown'
+  const [mdFilename, setMdFilename] = useState('');
+  const [mdContent, setMdContent] = useState('');
 
   useEffect(() => {
     apiClient.get(apiConfig.endpoints.deliverables, { params: { limit: 100 } })
@@ -111,20 +115,39 @@ export default function StudentSubmissionPage() {
   };
 
   const handleUpload = async () => {
-    if (!file || !selectedSub) return;
+    if (!selectedSub) return;
+    let payloadFile = file;
+    let payloadName = file?.name;
+    if (mode === 'markdown') {
+      if (!mdContent.trim()) {
+        setUploadResult({ ok: false, message: 'Write some markdown before submitting.' });
+        return;
+      }
+      const cleanName = mdFilename.trim() || 'document';
+      const finalName = /\.md$/i.test(cleanName) ? cleanName : `${cleanName}.md`;
+      payloadFile = new File([mdContent], finalName, { type: 'text/markdown' });
+      payloadName = finalName;
+    } else if (!file) {
+      return;
+    }
     setUploading(true); setUploadResult(null);
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', payloadFile);
     try {
       const res = await apiClient.post(
         apiConfig.endpoints.submissionDocuments(getId(selectedSub)),
         form,
         { headers: { 'Content-Type': 'multipart/form-data' } },
       );
-      const name = res.data?.document?.originalName || file.name;
+      const name = res.data?.document?.originalName || payloadName;
       setUploadResult({ ok: true, message: `"${name}" uploaded successfully!` });
-      setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (mode === 'markdown') {
+        setMdContent('');
+        setMdFilename('');
+      } else {
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
     } catch (e) {
       const msg = e.response?.data?.message || e.message || 'Upload failed.';
       setUploadResult({ ok: false, message: Array.isArray(msg) ? msg.join(', ') : msg });
@@ -256,7 +279,50 @@ export default function StudentSubmissionPage() {
 
       {/* STEP 3 */}
       <div className={`rounded-xl border border-[#1e293b] bg-[#111827] p-5 space-y-4 transition-opacity ${step2Done ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Step 3 · Upload File</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Step 3 · {mode === 'markdown' ? 'Write Markdown' : 'Upload File'}
+          </p>
+          <div className="flex rounded-lg border border-[#1e293b] bg-[#0d1526] p-0.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => { setMode('file'); setUploadResult(null); }}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
+                mode === 'file' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Upload size={12} /> Upload file
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('markdown'); setUploadResult(null); }}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
+                mode === 'markdown' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileEdit size={12} /> Write markdown
+            </button>
+          </div>
+        </div>
+        {mode === 'markdown' ? (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={mdFilename}
+              onChange={(e) => setMdFilename(e.target.value)}
+              placeholder="Filename (without .md)"
+              className="w-full rounded-lg border border-[#1e293b] bg-[#0d1526] px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+            <MarkdownEditor
+              initialMarkdown={mdContent}
+              onChange={setMdContent}
+            />
+            <p className="text-xs text-slate-500">
+              Saved to this submission as a <code className="text-slate-300">.md</code> file alongside any uploaded documents.
+            </p>
+          </div>
+        ) : (
+        <>
         <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }}
           onClick={() => fileInputRef.current?.click()}
@@ -276,12 +342,14 @@ export default function StudentSubmissionPage() {
             <div className="flex flex-col items-center gap-2 text-center">
               <Upload size={28} className="text-slate-500" />
               <p className="text-sm font-medium text-slate-300">Drag &amp; drop or <span className="text-indigo-400">click to browse</span></p>
-              <p className="text-xs text-slate-500">PDF, DOC, DOCX, PNG, JPG — max 5 MB</p>
+              <p className="text-xs text-slate-500">PDF, DOC, DOCX, PNG, JPG, MD — max 5 MB</p>
             </div>
           )}
         </div>
-        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" className="hidden"
+        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.md" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); setUploadResult(null); } }} />
+        </>
+        )}
         {uploadResult && (
           <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm
             ${uploadResult.ok ? 'border-emerald-800/50 bg-emerald-900/20 text-emerald-400' : 'border-red-800/50 bg-red-900/20 text-red-400'}`}>
@@ -289,9 +357,18 @@ export default function StudentSubmissionPage() {
             {uploadResult.message}
           </div>
         )}
-        <button onClick={handleUpload} disabled={!file || uploading || !step2Done}
-          className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 transition-colors">
-          {uploading ? (<span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Uploading…</span>) : 'Upload Document'}
+        <button
+          onClick={handleUpload}
+          disabled={
+            uploading ||
+            !step2Done ||
+            (mode === 'file' ? !file : !mdContent.trim())
+          }
+          className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+        >
+          {uploading ? (
+            <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Uploading…</span>
+          ) : mode === 'markdown' ? 'Submit Markdown' : 'Upload Document'}
         </button>
       </div>
     </div>

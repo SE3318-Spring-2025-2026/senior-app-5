@@ -64,6 +64,26 @@ export class CommitteesController {
 
   @ApiBearerAuth('access-token')
   @ApiOperation({
+    operationId: 'getMyGradableGroups',
+    summary:
+      'Groups the caller can grade deliverables for (advisor or jury membership in a committee).',
+  })
+  @ApiOkResponse({ description: 'Gradable groups returned.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.Professor, Role.Coordinator, Role.Admin)
+  @Get('me/gradable-groups')
+  @HttpCode(HttpStatus.OK)
+  async getMyGradableGroups(@Request() req: RequestWithUser) {
+    const userId = req.user.userId ?? req.user.sub ?? req.user._id;
+    if (!userId) {
+      return { data: [] };
+    }
+    return this.committeesService.getMyGradableGroups(userId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
     operationId: 'listCommittees',
     summary: 'List committees with pagination (COORDINATOR only)',
   })

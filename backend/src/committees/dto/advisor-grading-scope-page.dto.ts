@@ -4,6 +4,12 @@ export class AdvisorGradingScopeItemDto {
   @ApiProperty({ description: 'ID of the group this advisor must grade' })
   groupId!: string;
 
+  @ApiPropertyOptional({
+    description: 'Display name of the group (joined from Group collection).',
+    nullable: true,
+  })
+  groupName?: string | null;
+
   @ApiProperty({ type: String, format: 'date-time', description: 'When the group was assigned to the committee' })
   assignedAt!: Date;
 

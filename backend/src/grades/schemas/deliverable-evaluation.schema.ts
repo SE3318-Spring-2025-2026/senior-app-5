@@ -81,8 +81,12 @@ export class DeliverableEvaluation {
 export const DeliverableEvaluationSchema =
   SchemaFactory.createForClass(DeliverableEvaluation);
 
-// Unique: one grade per group per deliverable.
+// Unique: one grade per (group, deliverable, grader). Multiple committee
+// members (advisors + jury) each contribute their own evaluation; the grade
+// pipeline averages rawGrade across all graders per (group, deliverable).
 DeliverableEvaluationSchema.index(
-  { groupId: 1, deliverableId: 1 },
+  { groupId: 1, deliverableId: 1, gradedBy: 1 },
   { unique: true },
 );
+// Non-unique lookup index for the average computation in step 8.4.
+DeliverableEvaluationSchema.index({ groupId: 1, deliverableId: 1 });

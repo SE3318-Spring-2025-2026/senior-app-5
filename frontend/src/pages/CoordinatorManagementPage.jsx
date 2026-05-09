@@ -126,6 +126,12 @@ function CoordinatorManagementPage() {
   const [assignStatus, setAssignStatus] = useState(emptyStatus())
   const [assignLoading, setAssignLoading] = useState(false)
 
+  // Grade calculation state
+  const [calcGroupId, setCalcGroupId] = useState('')
+  const [calcStatus, setCalcStatus] = useState(emptyStatus())
+  const [calcLoading, setCalcLoading] = useState(false)
+  const [calcResult, setCalcResult] = useState(null)
+
   const loadActiveSchedule = useCallback(async (phase) => {
     if (!phase) {
       setActiveSchedule(null)
@@ -392,6 +398,29 @@ function CoordinatorManagementPage() {
     }
   }
 
+  const onCalculateGrades = async (event) => {
+    event.preventDefault()
+    if (!calcGroupId.trim()) {
+      setCalcStatus({ message: '', error: 'Group is required.' })
+      return
+    }
+    setCalcStatus(emptyStatus())
+    setCalcResult(null)
+    setCalcLoading(true)
+    try {
+      const res = await apiClient.post(`/groups/${calcGroupId.trim()}/calculate`, { force: true })
+      setCalcResult(res.data)
+      setCalcStatus({ message: `Grades calculated. Team grade: ${res.data?.teamGrade ?? '—'}`, error: '' })
+    } catch (error) {
+      const status = error?.response?.status
+      const msg = error?.response?.data?.message
+      const normalized = Array.isArray(msg) ? msg.join(', ') : msg
+      setCalcStatus({ message: '', error: `(${status ?? 'N/A'}) ${normalized || error.message}` })
+    } finally {
+      setCalcLoading(false)
+    }
+  }
+
   const activeCollection = useMemo(() => {
     if (activeTab === 'jury') return juryMembers
     if (activeTab === 'advisors') return advisors
@@ -633,6 +662,33 @@ function CoordinatorManagementPage() {
           </div>
         </form>
         <StatusMessage status={assignStatus} />
+      </SectionCard>
+
+      <SectionCard title="Calculate Group Grades" subtitle="Trigger the full grade pipeline for a group (force-recalculates if grades already exist).">
+        <form className={styles.form} onSubmit={onCalculateGrades}>
+          <EntitySearchSelect
+            label="Group"
+            endpoint={apiConfig.endpoints.groups}
+            buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+            getItems={(res) => res?.data ?? []}
+            returnField="groupId"
+            displayField="groupName"
+            value={calcGroupId}
+            onChange={setCalcGroupId}
+            placeholder="Search group by name"
+          />
+          <div className={styles.inlineActions}>
+            <button type="submit" disabled={calcLoading}>
+              {calcLoading ? 'Calculating…' : 'Calculate Grades'}
+            </button>
+          </div>
+        </form>
+        <StatusMessage status={calcStatus} />
+        {calcResult && (
+          <div className={styles.infoPanel}>
+            <pre>{JSON.stringify(calcResult, null, 2)}</pre>
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard title="Committee Details" subtitle="Jury, advisors and groups management tabs.">

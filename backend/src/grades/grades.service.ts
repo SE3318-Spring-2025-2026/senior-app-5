@@ -48,9 +48,9 @@ import {
   SprintEvaluationType,
 } from '../sprint-evaluations/schemas/sprint-evaluation.schema';
 import {
-  SprintConfig,
-  SprintConfigDocument,
-} from '../story-points/schemas/sprint-config.schema';
+  SprintConfigEntry,
+  SprintConfigDocument as SprintConfigEntryDocument,
+} from '../sprint-configs/schemas/sprint-config.schema';
 import {
   StoryPointRecord,
   StoryPointRecordDocument,
@@ -83,8 +83,8 @@ export class GradesService {
     private readonly deliverableEvaluationModel: Model<DeliverableEvaluationDocument>,
     @InjectModel(SprintEvaluation.name)
     private readonly sprintEvaluationModel: Model<SprintEvaluationDocument>,
-    @InjectModel(SprintConfig.name)
-    private readonly sprintConfigModel: Model<SprintConfigDocument>,
+    @InjectModel(SprintConfigEntry.name)
+    private readonly sprintConfigEntryModel: Model<SprintConfigEntryDocument>,
     @InjectModel(StoryPointRecord.name)
     private readonly storyPointRecordModel: Model<StoryPointRecordDocument>,
     @InjectModel(Committee.name)
@@ -403,8 +403,14 @@ export class GradesService {
     );
 
     // ── Step 8.3: Compute per-deliverable team scalar ───────────────
-    const sprintConfigs = await this.sprintConfigModel
+    const sprintEvaluations = await this.sprintEvaluationModel
       .find({ groupId })
+      .lean()
+      .exec();
+
+    const evalSprintIds = [...new Set(sprintEvaluations.map((e) => e.sprintId))];
+    const sprintConfigs = await this.sprintConfigEntryModel
+      .find({ sprintId: { $in: evalSprintIds } })
       .lean()
       .exec();
 
@@ -417,11 +423,6 @@ export class GradesService {
         deliverableSprintMap.set(mapping.deliverableId, sprintIds);
       }
     }
-
-    const sprintEvaluations = await this.sprintEvaluationModel
-      .find({ groupId })
-      .lean()
-      .exec();
 
     // teamScalar per deliverable:
     //   scrum_avg  = AVG(Point_A / SCRUM evaluations for contributing sprints)
@@ -516,8 +517,9 @@ export class GradesService {
       const deliverable = deliverableConfigMap.get(
         deliverableEval.deliverableId,
       )!;
+      // Deliverables with no sprint mapping are not penalised — full scalar.
       const teamScalar =
-        deliverableScalarMap.get(deliverableEval.deliverableId) ?? 0;
+        deliverableScalarMap.get(deliverableEval.deliverableId) ?? 1.0;
       const scaledGrade =
         deliverableEval.rawGrade *
         teamScalar *

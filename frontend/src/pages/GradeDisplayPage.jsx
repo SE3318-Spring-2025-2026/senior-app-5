@@ -17,16 +17,20 @@ function GradeDisplayPage() {
   // Student-specific state
   const [studentGrade, setStudentGrade] = useState(null);
   const [studentStatus, setStudentStatus] = useState({ loading: false, error: '', notFound: false });
+  const [studentBreakdown, setStudentBreakdown] = useState(null);
 
   // Staff-specific state
   const [groupIdInput, setGroupIdInput] = useState('');
   const [groupGrade, setGroupGrade] = useState(null);
   const [groupStatus, setGroupStatus] = useState({ loading: false, error: '', notFound: false });
 
-  // Grade history state (Coordinator / Admin only)
+  // Grade history state (Coordinator / Admin / Student for own group)
   const [history, setHistory] = useState(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyStatus, setHistoryStatus] = useState({ loading: false, error: '', notFound: false });
+
+  // Deliverable name map (resolved lazily for breakdown display)
+  const [deliverableNameMap, setDeliverableNameMap] = useState({});
 
   // Expandable gradeComponents rows
   const [expandedRows, setExpandedRows] = useState(new Set());
@@ -50,8 +54,32 @@ function GradeDisplayPage() {
           const response = await apiClient.get(
             apiConfig.endpoints.studentFinalGrade(user.id),
           );
-          setStudentGrade(response.data);
+          const grade = response.data;
+          setStudentGrade(grade);
           setStudentStatus({ loading: false, error: '', notFound: false });
+
+          // Fetch deliverable names + grade breakdown for the student's group
+          if (grade?.groupId) {
+            const [histRes, delRes] = await Promise.allSettled([
+              apiClient.get(
+                apiConfig.endpoints.groupGradeHistory(grade.groupId),
+                { params: { page: 1, limit: 1 } },
+              ),
+              apiClient.get('/deliverables', { params: { limit: 100 } }),
+            ]);
+            if (histRes.status === 'fulfilled') {
+              const entries = histRes.value.data?.data ?? [];
+              setStudentBreakdown(entries[0] ?? null);
+            }
+            if (delRes.status === 'fulfilled') {
+              const dels = delRes.value.data?.data ?? delRes.value.data ?? [];
+              const map = {};
+              (Array.isArray(dels) ? dels : []).forEach((d) => {
+                map[d.deliverableId] = d.name ?? d.deliverableId;
+              });
+              setDeliverableNameMap(map);
+            }
+          }
         } catch (error) {
           if (error.response?.status === 404) {
             setStudentStatus({ loading: false, error: '', notFound: true });
@@ -76,6 +104,17 @@ function GradeDisplayPage() {
     setHistory(null);
     setExpandedRows(new Set());
     setStudentEmailMap({});
+    // Eagerly load deliverable names for the breakdown table
+    if (Object.keys(deliverableNameMap).length === 0) {
+      apiClient.get('/deliverables', { params: { limit: 100 } }).then((r) => {
+        const dels = r.data?.data ?? r.data ?? [];
+        const map = {};
+        (Array.isArray(dels) ? dels : []).forEach((d) => {
+          map[d.deliverableId] = d.name ?? d.deliverableId;
+        });
+        setDeliverableNameMap(map);
+      }).catch(() => {});
+    }
     setGroupStatus({ loading: true, error: '', notFound: false });
     setHistoryStatus({ loading: false, error: '', notFound: false });
 
@@ -195,10 +234,48 @@ function GradeDisplayPage() {
               </table>
             </div>
 
-            <p style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '-16px', marginBottom: '8px' }}>
+            <p style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '-16px', marginBottom: '24px' }}>
               Final Grade = Team Grade × Story Point Ratio.
               Story Point Ratio reflects your completed points vs the target across sprints.
             </p>
+
+            {studentBreakdown?.gradeComponents?.scaledDeliverableGrades?.length > 0 && (
+              <div>
+                <h2 style={{ color: '#f8fafc', marginBottom: '12px', fontSize: '0.95rem', fontWeight: 700 }}>
+                  Grade Breakdown
+                </h2>
+                <p style={{ color: '#64748b', fontSize: '0.78rem', marginBottom: '12px' }}>
+                  Team Grade: <span style={{ color: '#38bdf8', fontWeight: 600 }}>{studentBreakdown.teamGrade?.toFixed(2)}</span>
+                  {' · '}Formula: Raw × Sprint Scalar × Weight = Scaled
+                </p>
+                <div className={styles.tableWrapper}>
+                  <table className={styles.customTable}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left' }}>Deliverable</th>
+                        <th>Raw</th>
+                        <th>Sprint Scalar</th>
+                        <th>Weight</th>
+                        <th>Scaled</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentBreakdown.gradeComponents.scaledDeliverableGrades.map((d) => (
+                        <tr key={d.deliverableId}>
+                          <td style={{ textAlign: 'left', color: '#94a3b8' }}>
+                            {deliverableNameMap[d.deliverableId] ?? d.deliverableId.slice(-8)}
+                          </td>
+                          <td>{d.rawGrade}</td>
+                          <td style={{ color: '#7dd3fc' }}>{(d.teamScalar * 100).toFixed(1)}%</td>
+                          <td>{d.deliverablePercentage}%</td>
+                          <td style={{ color: '#34d399', fontWeight: 600 }}>{d.scaledGrade?.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -463,8 +540,8 @@ function GradeDisplayPage() {
                                     <tbody>
                                       {entry.gradeComponents.scaledDeliverableGrades.map((d) => (
                                         <tr key={d.deliverableId} style={{ borderBottom: '1px solid #1e293b' }}>
-                                          <td style={{ padding: '5px 8px', color: '#94a3b8', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                                            {d.deliverableId.slice(-8)}
+                                          <td style={{ padding: '5px 8px', color: '#94a3b8', fontSize: '0.75rem' }}>
+                                            {deliverableNameMap[d.deliverableId] ?? d.deliverableId.slice(-8)}
                                           </td>
                                           <td style={{ padding: '5px 8px', textAlign: 'right', color: '#cbd5e1' }}>{d.rawGrade}</td>
                                           <td style={{ padding: '5px 8px', textAlign: 'right', color: '#7dd3fc' }}>

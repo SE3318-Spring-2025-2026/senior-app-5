@@ -231,12 +231,23 @@ export class GradesController {
   @ApiInternalServerErrorResponse({
     description: 'Unexpected internal failure',
   })
-  @Roles(Role.Coordinator, Role.Admin)
+  @Roles(Role.Coordinator, Role.Admin, Role.Student, Role.TeamLeader)
   @Get('groups/:groupId/grade-history')
   async getGradeHistory(
     @Param('groupId', ParseUUIDPipe) groupId: string,
     @Query() query: ListGradeHistoryQueryDto,
+    @Req() req: RequestWithUser,
   ): Promise<PaginatedGradeHistoryDto> {
+    const role = (req.user.role ?? '').toLowerCase();
+    if (role === 'student' || role === 'teamleader') {
+      const ownGroupId =
+        (req.user as any).groupId ?? (req.user as any).teamId ?? null;
+      if (!ownGroupId || ownGroupId !== groupId) {
+        throw new ForbiddenException(
+          "Students may only view their own group's grade history.",
+        );
+      }
+    }
     return this.gradesService.getGradeHistory(groupId, query);
   }
 

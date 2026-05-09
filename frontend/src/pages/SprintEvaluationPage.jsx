@@ -22,7 +22,8 @@ const SprintEvaluationPage = () => {
   useEffect(() => {
     const load = async () => {
       const [reqRes, sprintRes] = await Promise.allSettled([
-        apiClient.get('/requests', { params: { status: 'APPROVED', limit: 100 } }),
+        // /groups auto-filters to advisor's own groups when called as Professor
+        apiClient.get('/groups', { params: { limit: 100 } }),
         apiClient.get('/schedules', { params: { phase: 'SPRINT' } }),
       ]);
 

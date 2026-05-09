@@ -18,6 +18,13 @@ const SprintEvaluationPage = () => {
   const [responses, setResponses] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [loadingRubric, setLoadingRubric] = useState(false);
+  const [gradesOverview, setGradesOverview] = useState({
+    loading: false,
+    error: '',
+    gradedSubmissions: [],
+    rubricEvaluations: [],
+    rubricByType: {},
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -62,6 +69,73 @@ const SprintEvaluationPage = () => {
     load();
   }, [evalType]);
 
+  useEffect(() => {
+    if (!selectedGroup) {
+      setGradesOverview({
+        loading: false,
+        error: '',
+        gradedSubmissions: [],
+        rubricEvaluations: [],
+        rubricByType: {},
+      });
+      return;
+    }
+
+    const loadGradesOverview = async () => {
+      setGradesOverview((prev) => ({ ...prev, loading: true, error: '' }));
+      const evaluationParams = { groupId: selectedGroup };
+      if (selectedSprint) {
+        evaluationParams.sprintId = selectedSprint;
+      }
+
+      const [submissionsRes, evaluationsRes, scrumRubricRes, codeReviewRubricRes] =
+        await Promise.allSettled([
+          apiClient.get('/submissions', { params: { groupId: selectedGroup } }),
+          apiClient.get('/sprint-evaluations', { params: evaluationParams }),
+          apiClient.get('/rubrics/sprint/SCRUM'),
+          apiClient.get('/rubrics/sprint/CODE_REVIEW'),
+        ]);
+
+      const nextError =
+        submissionsRes.status === 'rejected' && evaluationsRes.status === 'rejected'
+          ? 'Could not load graded submissions or rubric evaluations.'
+          : '';
+
+      const submissionsRaw =
+        submissionsRes.status === 'fulfilled'
+          ? submissionsRes.value.data?.data ?? submissionsRes.value.data ?? []
+          : [];
+      const submissions = Array.isArray(submissionsRaw) ? submissionsRaw : [];
+      const gradedSubmissions = submissions
+        .filter((submission) => Array.isArray(submission.grades) && submission.grades.length > 0)
+        .sort((a, b) => new Date(b.createdAt ?? b.submittedAt ?? 0) - new Date(a.createdAt ?? a.submittedAt ?? 0));
+
+      const evaluationsRaw =
+        evaluationsRes.status === 'fulfilled'
+          ? evaluationsRes.value.data?.data ?? evaluationsRes.value.data ?? []
+          : [];
+      const rubricEvaluations = Array.isArray(evaluationsRaw) ? evaluationsRaw : [];
+
+      const rubricByType = {};
+      if (scrumRubricRes.status === 'fulfilled') {
+        rubricByType.SCRUM = scrumRubricRes.value.data ?? null;
+      }
+      if (codeReviewRubricRes.status === 'fulfilled') {
+        rubricByType.CODE_REVIEW = codeReviewRubricRes.value.data ?? null;
+      }
+
+      setGradesOverview({
+        loading: false,
+        error: nextError,
+        gradedSubmissions,
+        rubricEvaluations,
+        rubricByType,
+      });
+    };
+
+    loadGradesOverview();
+  }, [selectedGroup, selectedSprint]);
+
   const handleGradeChange = (questionId, grade) => {
     setResponses((prev) => ({ ...prev, [questionId]: grade }));
   };
@@ -100,8 +174,23 @@ const SprintEvaluationPage = () => {
     }
   };
 
+  const sprintLabel = (sprintId) => {
+    const sprintIndex = sprints.findIndex((s) => s.scheduleId === sprintId);
+    if (sprintIndex < 0) return sprintId;
+    const sprint = sprints[sprintIndex];
+    const start = sprint.startDatetime ? new Date(sprint.startDatetime).toLocaleDateString() : '';
+    const end = sprint.endDatetime ? new Date(sprint.endDatetime).toLocaleDateString() : '';
+    return `Sprint ${sprintIndex + 1}${start ? ` (${start}${end ? ` – ${end}` : ''})` : ''}`;
+  };
+
+  const questionLabel = (evaluationType, questionId) => {
+    const typeRubric = gradesOverview.rubricByType[evaluationType];
+    const question = typeRubric?.questions?.find((q) => q.questionId === questionId);
+    return question?.criteriaName ?? questionId;
+  };
+
   return (
-    <div className="max-w-2xl mx-auto space-y-5 p-1">
+    <div className="mx-auto max-w-5xl space-y-5 p-1">
       <PageHeader title="Sprint Evaluation" subtitle="Grade a group's sprint performance" />
 
       <Card>
@@ -201,6 +290,126 @@ const SprintEvaluationPage = () => {
             {submitting ? 'Submitting…' : 'Submit Evaluation'}
           </button>
         </form>
+      </Card>
+
+      <Card>
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+              Grades Overview
+            </p>
+            <p className="text-sm text-slate-400">
+              Review graded submissions and rubric evaluations for the selected group.
+            </p>
+          </div>
+
+          {!selectedGroup ? (
+            <p className="text-sm text-slate-500">Select a group to see recorded grades.</p>
+          ) : (
+            <>
+              {gradesOverview.loading && (
+                <p className="text-sm text-slate-500">Loading grade overview…</p>
+              )}
+              {gradesOverview.error && (
+                <p className="text-sm text-red-400">{gradesOverview.error}</p>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section className="space-y-3 rounded-xl border border-[#1e293b] bg-[#0f172a]/40 p-4">
+                  <h3 className="text-sm font-semibold text-slate-200">Graded Submissions</h3>
+                  {gradesOverview.gradedSubmissions.length === 0 ? (
+                    <p className="text-sm text-slate-500">No submissions have jury grades yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {gradesOverview.gradedSubmissions.map((submission) => {
+                        const grades = Array.isArray(submission.grades) ? submission.grades : [];
+                        const average =
+                          grades.length > 0
+                            ? grades.reduce((sum, grade) => sum + Number(grade.gradeValue ?? 0), 0) / grades.length
+                            : null;
+                        return (
+                          <div key={submission._id} className="rounded-lg border border-[#23304a] bg-[#0b1220] p-3">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-slate-200">
+                                {submission.title ?? submission.type ?? submission._id}
+                              </span>
+                              {submission.type && (
+                                <span className="rounded border border-[#334155] px-2 py-0.5 text-[11px] text-slate-400">
+                                  {submission.type}
+                                </span>
+                              )}
+                              {average != null && (
+                                <span className="ml-auto text-xs font-semibold text-emerald-400">
+                                  Avg {average.toFixed(1)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              {grades.map((grade) => (
+                                <div
+                                  key={grade.gradeId ?? `${grade.graderUserId}-${grade.gradedAt}`}
+                                  className="flex items-center justify-between text-xs text-slate-400"
+                                >
+                                  <span className="font-mono">{grade.graderUserId}</span>
+                                  <span className="font-semibold text-slate-200">{grade.gradeValue}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+
+                <section className="space-y-3 rounded-xl border border-[#1e293b] bg-[#0f172a]/40 p-4">
+                  <h3 className="text-sm font-semibold text-slate-200">Rubric Evaluations</h3>
+                  {gradesOverview.rubricEvaluations.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      No rubric evaluations recorded{selectedSprint ? ' for this sprint' : ''}.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {gradesOverview.rubricEvaluations.map((evaluation) => (
+                        <div
+                          key={evaluation.evaluationId}
+                          className="rounded-lg border border-[#23304a] bg-[#0b1220] p-3"
+                        >
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-200">
+                              {evaluation.evaluationType === 'CODE_REVIEW' ? 'Code Review' : 'Scrum'}
+                            </span>
+                            <span className="rounded border border-[#334155] px-2 py-0.5 text-[11px] text-slate-400">
+                              {sprintLabel(evaluation.sprintId)}
+                            </span>
+                            <span className="ml-auto text-xs font-semibold text-blue-300">
+                              Avg {Number(evaluation.averageScore ?? 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {(evaluation.responses ?? []).map((response) => (
+                              <div
+                                key={response.questionId}
+                                className="flex items-center justify-between gap-2 text-xs"
+                              >
+                                <span className="text-slate-400">
+                                  {questionLabel(evaluation.evaluationType, response.questionId)}
+                                </span>
+                                <span className="rounded bg-blue-600 px-2 py-0.5 font-bold text-white">
+                                  {response.softGrade}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            </>
+          )}
+        </div>
       </Card>
     </div>
   );

@@ -368,15 +368,46 @@ export class GradesService {
       this.deliverableEvaluationModel.countDocuments(query).exec(),
     ]);
 
+    // Resolve grader names/emails (skip non-ObjectId IDs to avoid casts).
+    const graderIds = [
+      ...new Set(docs.map((d: any) => d.gradedBy).filter(Boolean) as string[]),
+    ];
+    const objectIdIds = graderIds.filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
+    const users = objectIdIds.length
+      ? await this.userModel
+          .find({ _id: { $in: objectIdIds } })
+          .select('_id firstName lastName name email')
+          .lean()
+          .exec()
+      : [];
+    const graderMap = new Map<string, { name: string | null; email: string | null }>(
+      (users as any[]).map((u) => [
+        String(u._id),
+        {
+          name:
+            [u.firstName, u.lastName].filter(Boolean).join(' ').trim() ||
+            (u.name as string | undefined) ||
+            null,
+          email: u.email ?? null,
+        },
+      ]),
+    );
+
     return {
-      data: docs.map((d) =>
-        this.toDeliverableEvaluationResponseDto(
+      data: docs.map((d) => {
+        const dto = this.toDeliverableEvaluationResponseDto(
           d as unknown as DeliverableEvaluation & {
             createdAt: Date;
             updatedAt: Date;
           },
-        ),
-      ),
+        );
+        const meta = graderMap.get(dto.gradedBy);
+        return {
+          ...dto,
+          gradedByName: meta?.name ?? null,
+          gradedByEmail: meta?.email ?? null,
+        };
+      }),
       total,
       page,
       limit,

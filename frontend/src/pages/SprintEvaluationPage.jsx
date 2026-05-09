@@ -18,6 +18,7 @@ const SprintEvaluationPage = () => {
   const [responses, setResponses] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [loadingRubric, setLoadingRubric] = useState(false);
+  const [existingEval, setExistingEval] = useState(null);
 
   useEffect(() => {
     const load = async () => {

@@ -47,12 +47,13 @@ const scoreToLetter = (score) => {
   return 'F';
 };
 
-function DeliverableCard({ deliverable, groupId }) {
+function DeliverableCard({ deliverable, groupId, currentUserId }) {
   const [open, setOpen] = useState(false);
   const [rubrics, setRubrics] = useState(null); // null = not loaded yet
   const [loadingRubrics, setLoadingRubrics] = useState(false);
   const [criteriaGrades, setCriteriaGrades] = useState({}); // { [questionId]: grade }
   const [submitting, setSubmitting] = useState(false);
+  const [existingEvals, setExistingEvals] = useState([]);
 
   const loadRubrics = useCallback(async () => {
     if (rubrics !== null) return;
@@ -71,10 +72,27 @@ function DeliverableCard({ deliverable, groupId }) {
     }
   }, [deliverable.deliverableId, rubrics]);
 
+  // Pull every committee member's existing grade for this (group, deliverable)
+  // pair so the professor can see what others have submitted before grading.
+  const loadExistingEvals = useCallback(async () => {
+    try {
+      const res = await apiClient.get(apiConfig.endpoints.deliverableEvaluations, {
+        params: { groupId, deliverableId: deliverable.deliverableId, limit: 100 },
+      });
+      const data = res.data?.data ?? res.data ?? [];
+      setExistingEvals(Array.isArray(data) ? data : []);
+    } catch {
+      setExistingEvals([]);
+    }
+  }, [deliverable.deliverableId, groupId]);
+
   const handleToggle = () => {
     const next = !open;
     setOpen(next);
-    if (next) loadRubrics();
+    if (next) {
+      loadRubrics();
+      loadExistingEvals();
+    }
   };
 
   // Use the active rubric; fall back to first rubric
@@ -123,6 +141,7 @@ function DeliverableCard({ deliverable, groupId }) {
         `Grade "${calculatedGrade}" submitted for ${deliverable.name ?? 'deliverable'}.`,
       );
       setCriteriaGrades({});
+      loadExistingEvals();
     } catch (err) {
       const msg = err?.response?.data?.message;
       toast.error(Array.isArray(msg) ? msg.join(', ') : (msg ?? 'Failed to submit grade.'));
@@ -164,6 +183,45 @@ function DeliverableCard({ deliverable, groupId }) {
       {/* Expanded body */}
       {open && (
         <div className="border-t border-[#1f1f23] px-5 py-4 space-y-4">
+          {/* Existing committee grades for this deliverable */}
+          {existingEvals.length > 0 && (
+            <div className="rounded-lg border border-[#1f1f23] bg-[#0a0a0b] p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Committee grades so far ({existingEvals.length})
+              </p>
+              <ul className="space-y-1.5">
+                {existingEvals.map((e) => {
+                  const isMe = e.gradedBy === currentUserId;
+                  const who = e.gradedByName || e.gradedByEmail || (isMe ? 'You' : 'Unknown');
+                  return (
+                    <li
+                      key={e.evaluationId}
+                      className="flex items-center justify-between text-[12px]"
+                    >
+                      <span className={isMe ? 'text-emerald-400 font-semibold' : 'text-zinc-300'}>
+                        {who}{isMe ? ' (you)' : ''}
+                      </span>
+                      <span
+                        className={`rounded border px-2 py-0.5 font-bold ${
+                          e.deliverableGrade === 'A'
+                            ? 'border-emerald-700 text-emerald-400'
+                            : e.deliverableGrade === 'F'
+                            ? 'border-rose-700 text-rose-400'
+                            : 'border-blue-700 text-blue-400'
+                        }`}
+                      >
+                        {e.deliverableGrade}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-2 text-[10px] text-zinc-600">
+                Final per-deliverable raw grade is the average of all committee members.
+              </p>
+            </div>
+          )}
+
           {loadingRubrics ? (
             <p className="text-[13px] text-zinc-600">Loading rubrics…</p>
           ) : rubrics?.length === 0 ? (
@@ -314,6 +372,14 @@ const DeliverableGradingPage = () => {
   const [groups, setGroups] = useState([]);
   const [deliverables, setDeliverables] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('');
+  const currentUserId = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') ?? 'null');
+      return u?.id ?? u?._id ?? u?.userId ?? null;
+    } catch {
+      return null;
+    }
+  })();
 
   useEffect(() => {
     const load = async () => {
@@ -389,6 +455,7 @@ const DeliverableGradingPage = () => {
                 key={d.deliverableId}
                 deliverable={d}
                 groupId={selectedGroup}
+                currentUserId={currentUserId}
               />
             ))
           )}

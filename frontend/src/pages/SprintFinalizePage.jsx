@@ -255,7 +255,7 @@ function SprintFinalizePage() {
             <tbody>
               {(result.gradeResults ?? []).map((g) => (
                 <tr key={g.groupId}>
-                  <td>{g.groupId}</td>
+                  <td>{g.groupName || g.groupId}</td>
                   <td>{g.ok ? g.teamGrade : '—'}</td>
                   <td
                     style={{

@@ -17,6 +17,12 @@ export class DeliverableEvaluationResponseDto {
   @ApiProperty({ format: 'uuid' })
   gradedBy!: string;
 
+  @ApiProperty({ nullable: true, description: 'Display name of the grader.' })
+  gradedByName?: string | null;
+
+  @ApiProperty({ nullable: true, description: 'Email of the grader.' })
+  gradedByEmail?: string | null;
+
   @ApiProperty({ format: 'date-time' })
   createdAt!: Date;
 

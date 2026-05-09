@@ -19,6 +19,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Team, TeamDocument } from './schemas/team.schema';
 import { User, UserDocument } from '../users/data/user.schema';
+import { Group, GroupDocument } from '../groups/group.entity';
 import { TeamLeaderGuard } from './guards/team-leader.guard';
 import { UpdateIntegrationsDto } from './dto/update-integrations.dto';
 import { JiraDiscoverDto } from './dto/jira-discover.dto';
@@ -38,6 +39,7 @@ export class TeamsController {
     private readonly gradesService: GradesService,
     @InjectModel(Team.name) private readonly teamModel: Model<TeamDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectModel(Group.name) private readonly groupModel: Model<GroupDocument>,
   ) {}
 
   @ApiBearerAuth('access-token')
@@ -272,18 +274,37 @@ export class TeamsController {
     const triggeredBy = req?.user?.userId ?? req?.user?.id ?? 'coordinator';
 
     const uniqueGroupIds = [...new Set(teamResults.filter((r) => r.ok).map((r) => r.groupId))];
-    const gradeResults: { groupId: string; ok: boolean; error?: string; teamGrade?: number }[] = [];
+    const groupDocs = uniqueGroupIds.length
+      ? await this.groupModel
+          .find({ groupId: { $in: uniqueGroupIds } })
+          .select('groupId groupName')
+          .lean()
+          .exec()
+      : [];
+    const groupNameMap = new Map(
+      (groupDocs as any[]).map((g) => [g.groupId, g.groupName as string]),
+    );
+
+    const gradeResults: {
+      groupId: string;
+      groupName: string | null;
+      ok: boolean;
+      error?: string;
+      teamGrade?: number;
+    }[] = [];
     for (const groupId of uniqueGroupIds) {
+      const groupName = groupNameMap.get(groupId) ?? null;
       try {
         const g = await this.gradesService.calculateGrade(
           groupId,
           { force: true },
           triggeredBy,
         );
-        gradeResults.push({ groupId, ok: true, teamGrade: g.teamGrade });
+        gradeResults.push({ groupId, groupName, ok: true, teamGrade: g.teamGrade });
       } catch (err: any) {
         gradeResults.push({
           groupId,
+          groupName,
           ok: false,
           error: err?.message ?? 'unknown error',
         });

@@ -427,10 +427,18 @@ function GroupsTab({ committeeId }) {
         <div className="divide-y divide-[#1e293b]">
           {items.map((item) => {
             const gid = item.groupId || item._id
+            const gname = item.groupName
             return (
               <div key={gid} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm font-mono text-slate-200">{gid}</p>
+                  {gname ? (
+                    <>
+                      <p className="text-sm font-semibold text-slate-100">{gname}</p>
+                      <p className="text-xs font-mono text-slate-500">{gid}</p>
+                    </>
+                  ) : (
+                    <p className="text-sm font-mono text-slate-200">{gid}</p>
+                  )}
                   <p className="mt-0.5 text-xs text-slate-500">
                     Assigned {new Date(item.assignedAt || item.createdAt).toLocaleString()}
                     {item.assignedBy ? ` · by ${item.assignedBy}` : ''}

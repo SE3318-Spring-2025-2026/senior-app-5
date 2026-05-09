@@ -26,10 +26,12 @@ function SectionLabel({ icon: Icon, children, action }) {
 const SprintConfigPage = () => {
   const [configs, setConfigs] = useState([]);
   const [deliverables, setDeliverables] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
   const [editingSprintId, setEditingSprintId] = useState(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [targetStoryPoints, setTargetStoryPoints] = useState('');
   const [mappings, setMappings] = useState([emptyMapping()]);
   const [submitting, setSubmitting] = useState(false);
@@ -55,10 +57,19 @@ const SprintConfigPage = () => {
         setDeliverables(Array.isArray(data) ? data : []);
       })
       .catch(() => setDeliverables([]));
+    apiClient.get('/schedules', { params: { phase: 'SPRINT', limit: 100 } })
+      .then((res) => {
+        const data = res.data?.data ?? res.data ?? [];
+        const arr = Array.isArray(data) ? data : [];
+        arr.sort((a, b) => new Date(a.startDatetime) - new Date(b.startDatetime));
+        setSchedules(arr);
+      })
+      .catch(() => setSchedules([]));
   }, []);
 
   const resetForm = () => {
     setEditingSprintId(null);
+    setSelectedScheduleId('');
     setTargetStoryPoints('');
     setMappings([emptyMapping()]);
     setShowForm(false);
@@ -95,6 +106,10 @@ const SprintConfigPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!editingSprintId && !selectedScheduleId) {
+      toast.error('Please select a sprint schedule.');
+      return;
+    }
     if (!targetStoryPoints || isNaN(parseInt(targetStoryPoints, 10))) {
       toast.error('Target story points must be a number.');
       return;
@@ -108,6 +123,7 @@ const SprintConfigPage = () => {
       }));
 
     const payload = {
+      ...(!editingSprintId && { sprintId: selectedScheduleId }),
       targetStoryPoints: parseInt(targetStoryPoints, 10),
       deliverableMappings: parsedMappings,
     };
@@ -158,8 +174,30 @@ const SprintConfigPage = () => {
           </SectionLabel>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {editingSprintId && (
+            {editingSprintId ? (
               <p className="text-xs text-slate-500 px-1">Editing existing sprint config</p>
+            ) : (
+              <div>
+                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Sprint schedule
+                </label>
+                <select
+                  value={selectedScheduleId}
+                  onChange={(e) => setSelectedScheduleId(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">Select a sprint window…</option>
+                  {schedules.map((s) => {
+                    const start = s.startDatetime ? new Date(s.startDatetime).toLocaleDateString() : '?';
+                    const end = s.endDatetime ? new Date(s.endDatetime).toLocaleDateString() : '?';
+                    return (
+                      <option key={s.scheduleId} value={s.scheduleId}>
+                        {start} – {end}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             )}
             <div>
               <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">

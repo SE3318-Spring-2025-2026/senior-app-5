@@ -23,9 +23,6 @@ export class SprintEvaluationResponseDto {
   @ApiProperty({ format: 'uuid' })
   sprintId!: string;
 
-  @ApiProperty({ format: 'uuid' })
-  deliverableId!: string;
-
   @ApiProperty({ enum: SprintEvaluationType })
   evaluationType!: SprintEvaluationType;
 

@@ -10,6 +10,7 @@ import {
   ActivityLog,
   ActivityLogDocument,
 } from './schemas/activity-log.schema';
+import { User, UserDocument } from '../users/data/user.schema';
 import { ListActivityLogsQueryDto } from './dto/list-activity-logs-query.dto';
 import { ActivityLogDto } from './dto/activity-log.dto';
 import { PaginatedActivityLogsDto } from './dto/paginated-activity-logs.dto';
@@ -41,6 +42,8 @@ export class ActivityLogsService {
   constructor(
     @InjectModel(ActivityLog.name)
     private readonly activityLogModel: Model<ActivityLogDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   redactMetadata<T>(value: T): T {
@@ -85,6 +88,19 @@ export class ActivityLogsService {
         `Failed to persist activity log: ${(err as Error).message}`,
       );
       throw new InternalServerErrorException('Failed to record activity');
+    }
+  }
+
+  /**
+   * Records an activity log without failing the caller if persistence fails.
+   */
+  async safeCreate(input: CreateActivityLogInput): Promise<void> {
+    try {
+      await this.create(input);
+    } catch (err) {
+      this.logger.warn(
+        `Activity log skipped for ${input.eventType}: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -141,12 +157,75 @@ export class ActivityLogsService {
       );
     }
 
+    const data = docs.map((d) => this.toDto(d));
+    await this.attachActorProfiles(data);
+
     return {
-      data: docs.map((d) => this.toDto(d)),
+      data,
       page,
       limit,
       total,
     };
+  }
+
+  private async attachActorProfiles(dtos: ActivityLogDto[]): Promise<void> {
+    const uniqueIds = [
+      ...new Set(
+        dtos
+          .map((d) => d.actorUserId)
+          .filter((id): id is string => typeof id === 'string' && !!id),
+      ),
+    ];
+    if (!uniqueIds.length) {
+      return;
+    }
+
+    let users: Array<{
+      _id: Types.ObjectId;
+      name?: string;
+      email?: string;
+    }>;
+    try {
+      users = await this.userModel
+        .find({
+          _id: {
+            $in: uniqueIds.map((id) => new Types.ObjectId(id)),
+          },
+        })
+        .select({ name: 1, email: 1 })
+        .lean()
+        .exec();
+    } catch (err) {
+      this.logger.warn(
+        `Could not resolve actor names for activity logs: ${(err as Error).message}`,
+      );
+      return;
+    }
+
+    const byId = new Map(
+      users.map((u) => {
+        const id = (u as { _id: Types.ObjectId })._id.toString();
+        return [
+          id,
+          {
+            name: (u as { name?: string }).name ?? null,
+            email: (u as { email?: string }).email ?? null,
+          },
+        ] as const;
+      }),
+    );
+
+    for (const d of dtos) {
+      if (!d.actorUserId) {
+        continue;
+      }
+      const profile = byId.get(d.actorUserId);
+      if (!profile) {
+        continue;
+      }
+      d.actorName = profile.name?.trim() ? profile.name.trim() : null;
+      d.actorEmail = profile.email ?? null;
+    }
   }
 
   private toDto(doc: ActivityLogDocument): ActivityLogDto {
@@ -159,6 +238,8 @@ export class ActivityLogsService {
       actorUserId: raw.actorUserId
         ? (raw.actorUserId as { toString(): string }).toString()
         : null,
+      actorName: null,
+      actorEmail: null,
       actorRole: (raw.actorRole as string | undefined) ?? null,
       targetType: (raw.targetType as string | undefined) ?? null,
       targetId: (raw.targetId as string | undefined) ?? null,

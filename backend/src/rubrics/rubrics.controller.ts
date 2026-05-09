@@ -6,7 +6,9 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
+  ParseEnumPipe,
   ParseUUIDPipe,
   Post,
   Query,
@@ -37,6 +39,7 @@ import {
   ListRubricsQueryDto,
 } from './dto/rubric-response.dto';
 import { RubricsService } from './rubrics.service';
+import { SprintRubricType } from './schemas/rubric.schema';
 
 interface RequestWithUser extends Request {
   user?: {
@@ -132,7 +135,7 @@ export class RubricsController {
   @Delete(':rubricId')
   @HttpCode(HttpStatus.OK)
   async deleteRubric(
-    @Param('deliverableId', new ParseUUIDPipe()) deliverableId: string,
+    @Param('deliverableId', new ParseUUIDPipe()) _deliverableId: string,
     @Param('rubricId', new ParseUUIDPipe()) rubricId: string,
     @Req() req: Request,
   ): Promise<void> {
@@ -140,5 +143,72 @@ export class RubricsController {
       rubricId,
       this.getCorrelationId(req),
     );
+  }
+}
+
+/* ── Sprint-level rubric endpoints ─────────────────────────────────────── */
+
+interface SprintRubricsRequest extends Request {
+  user?: { userId?: string; sub?: string; _id?: string; role?: string };
+}
+
+@ApiTags('Rubrics')
+@ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('rubrics/sprint')
+export class SprintRubricsController {
+  constructor(private readonly rubricsService: RubricsService) {}
+
+  private getCorrelationId(req: Request): string | undefined {
+    const v = req.headers['x-correlation-id'];
+    return typeof v === 'string' ? v : undefined;
+  }
+
+  @ApiOperation({
+    operationId: 'getActiveSprintRubric',
+    summary: 'Get the active rubric for a sprint evaluation type (SCRUM or CODE_REVIEW)',
+  })
+  @ApiOkResponse({ type: RubricResponseDto as never })
+  @ApiNotFoundResponse({ description: 'No active sprint rubric found for this type' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin, Role.Student)
+  @Get(':evaluationType')
+  @HttpCode(HttpStatus.OK)
+  async getActiveSprintRubric(
+    @Param('evaluationType', new ParseEnumPipe(SprintRubricType)) evaluationType: SprintRubricType,
+    @Req() req: Request,
+  ): Promise<RubricResponseDto> {
+    const rubric = await this.rubricsService.getActiveSprintRubric(
+      evaluationType,
+      this.getCorrelationId(req),
+    );
+    if (!rubric) {
+      throw new NotFoundException(
+        `No active rubric found for sprint evaluation type '${evaluationType}'.`,
+      );
+    }
+    return rubric.toObject() as unknown as RubricResponseDto;
+  }
+
+  @ApiOperation({
+    operationId: 'createSprintRubric',
+    summary: 'Create or replace the active rubric for a sprint evaluation type (Coordinator only)',
+  })
+  @ApiCreatedResponse({ type: RubricResponseDto as never })
+  @ApiBadRequestResponse({ description: 'Validation failed or weights do not sum to 1.0' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions' })
+  @ApiInternalServerErrorResponse({ description: 'Unexpected internal failure' })
+  @Roles(Role.Coordinator)
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async createSprintRubric(
+    @Body() body: CreateRubricDto,
+    @Req() req: SprintRubricsRequest,
+  ): Promise<RubricResponseDto> {
+    const actorId = req.user?.userId ?? req.user?.sub ?? req.user?._id ?? 'SYSTEM';
+    return this.rubricsService.createRubric(body, actorId, this.getCorrelationId(req));
   }
 }

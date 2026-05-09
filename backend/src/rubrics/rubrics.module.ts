@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { RubricsController } from './rubrics.controller';
+import { RubricsController, SprintRubricsController } from './rubrics.controller';
 import { RubricsService } from './rubrics.service';
 import { Rubric, RubricSchema } from './schemas/rubric.schema';
 import {
@@ -15,7 +15,7 @@ import {
       { name: SprintEvaluation.name, schema: SprintEvaluationSchema },
     ]),
   ],
-  controllers: [RubricsController],
+  controllers: [RubricsController, SprintRubricsController],
   providers: [RubricsService],
   exports: [RubricsService, MongooseModule],
 })

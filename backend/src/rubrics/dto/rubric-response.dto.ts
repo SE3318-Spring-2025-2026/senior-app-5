@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
-import { GradingType } from '../schemas/rubric.schema';
+import { GradingType, SprintRubricType } from '../schemas/rubric.schema';
 
 export class RubricQuestionResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -18,8 +18,11 @@ export class RubricResponseDto {
   @ApiProperty({ format: 'uuid' })
   rubricId!: string;
 
-  @ApiProperty({ format: 'uuid' })
-  deliverableId!: string;
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  deliverableId?: string | null;
+
+  @ApiPropertyOptional({ enum: SprintRubricType, nullable: true })
+  sprintEvaluationType?: SprintRubricType | null;
 
   @ApiProperty()
   name!: string;

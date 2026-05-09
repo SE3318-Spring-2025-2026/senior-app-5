@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Users, FileText, MessageSquare,
   UploadCloud, CheckCircle2, ArrowRight, Clock,
-  RefreshCw, BookOpen, Layers,
+  RefreshCw, BookOpen, Layers, BarChart2,
 } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import apiConfig from '../../config/api';
@@ -17,6 +17,9 @@ const surface = {
   hover:   'hover:bg-[#18181c] hover:border-[#2a2a30]',
   inset:   'bg-[#0a0a0b] border border-[#1c1c20]',
 };
+
+const SOFT_GRADE_LABEL = { A: 100, B: 80, C: 60, D: 50, F: 0 };
+const GRADE_COLOR = { A: '#34d399', B: '#7dd3fc', C: '#fbbf24', D: '#f97316', F: '#f87171' };
 
 const STATUS_META = {
   Pending:       { label: 'Pending',        dot: '#fbbf24' },
@@ -233,6 +236,122 @@ function QuickUpload({ submissions }) {
       >
         {state.loading ? 'Uploading…' : 'Upload'}
       </button>
+    </div>
+  );
+}
+
+/* ─── sprint grades card ─────────────────────────────────────────────── */
+function SprintGradesCard({ groupId }) {
+  const [evaluations, setEvaluations] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!groupId) return;
+    (async () => {
+      const [evalRes, schedRes] = await Promise.allSettled([
+        apiClient.get('/sprint-evaluations', { params: { groupId } }),
+        apiClient.get('/schedules', { params: { phase: 'SPRINT' } }),
+      ]);
+      if (evalRes.status === 'fulfilled') {
+        const data = evalRes.value.data?.data ?? evalRes.value.data ?? [];
+        setEvaluations(Array.isArray(data) ? data : []);
+      }
+      if (schedRes.status === 'fulfilled') {
+        const raw = schedRes.value.data?.data ?? schedRes.value.data ?? [];
+        const sorted = (Array.isArray(raw) ? raw : []).sort(
+          (a, b) => new Date(a.startDatetime) - new Date(b.startDatetime),
+        );
+        setSchedules(sorted);
+      }
+      setLoading(false);
+    })();
+  }, [groupId]);
+
+  const sprintLabel = (sprintId) => {
+    const idx = schedules.findIndex((s) => s.scheduleId === sprintId);
+    return idx >= 0 ? `Sprint ${idx + 1}` : sprintId?.slice(-6) ?? '—';
+  };
+
+  const byType = (type) => evaluations.filter((e) => e.evaluationType === type);
+  const scrum = byType('SCRUM');
+  const review = byType('CODE_REVIEW');
+
+  const renderRow = (evals, type) => {
+    if (evals.length === 0) {
+      return (
+        <tr key={type}>
+          <td className="py-2 pr-4 text-[11px] font-medium text-zinc-500">
+            {type === 'CODE_REVIEW' ? 'Code Review' : 'Scrum'}
+          </td>
+          {schedules.map((s) => (
+            <td key={s.scheduleId} className="py-2 px-2 text-center text-[11px] text-zinc-700">—</td>
+          ))}
+        </tr>
+      );
+    }
+    const bySprintId = Object.fromEntries(evals.map((e) => [e.sprintId, e]));
+    return (
+      <tr key={type}>
+        <td className="py-2 pr-4 text-[11px] font-medium text-zinc-400">
+          {type === 'CODE_REVIEW' ? 'Code Review' : 'Scrum'}
+        </td>
+        {schedules.map((s) => {
+          const ev = bySprintId[s.scheduleId];
+          const score = ev ? Math.round(ev.averageScore) : null;
+          const grade = ev
+            ? Object.entries(SOFT_GRADE_LABEL).find(([, v]) => v <= score)?.[0] ?? 'F'
+            : null;
+          return (
+            <td key={s.scheduleId} className="py-2 px-2 text-center">
+              {grade ? (
+                <span
+                  className="inline-block rounded-md px-2 py-0.5 text-[11px] font-bold"
+                  style={{ background: `${GRADE_COLOR[grade]}22`, color: GRADE_COLOR[grade] }}
+                >
+                  {grade}
+                </span>
+              ) : (
+                <span className="text-[11px] text-zinc-700">—</span>
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    );
+  };
+
+  return (
+    <div className={`rounded-2xl p-5 ${surface.card}`}>
+      <SectionLabel icon={BarChart2}>Sprint grades</SectionLabel>
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(2)].map((_, i) => <div key={i} className="h-8 rounded-lg bg-[#18181c] animate-pulse" />)}
+        </div>
+      ) : evaluations.length === 0 ? (
+        <p className="text-[13px] text-zinc-600">No sprint evaluations recorded yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#1f1f23]">
+                <th className="pb-2 pr-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                  Activity
+                </th>
+                {schedules.map((s) => (
+                  <th key={s.scheduleId} className="pb-2 px-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                    {sprintLabel(s.scheduleId)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {renderRow(scrum, 'SCRUM')}
+              {renderRow(review, 'CODE_REVIEW')}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -509,6 +628,9 @@ const StudentView = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* ── Sprint Grades ─────────────────────────────────── */}
+      <SprintGradesCard groupId={groupId} />
 
       <StoryPointsPanel canOverride />
     </div>

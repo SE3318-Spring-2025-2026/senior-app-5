@@ -22,6 +22,10 @@ const mockResponse: SprintConfigResponseDto = {
   deliverableMappings: [
     { deliverableId: DELIVERABLE_ID, contributionPercentage: 30 },
   ],
+  isFinalized: false,
+  name: null,
+  startDate: null,
+  endDate: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 };

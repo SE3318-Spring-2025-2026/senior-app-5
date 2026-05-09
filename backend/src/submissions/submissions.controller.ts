@@ -35,6 +35,7 @@ import { JurySubmissionResponseDto } from './dto/jury-submission-response.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_EXTENSIONS_REGEX =
   /\.(pdf|doc|docx|png|jpg|jpeg|md)$/i;
@@ -69,7 +70,10 @@ export function submissionsFileFilter(
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('submissions')
 export class SubmissionsController {
-  constructor(private readonly submissionsService: SubmissionsService) {}
+  constructor(
+    private readonly submissionsService: SubmissionsService,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
   private validateObjectIdFormat(value: string, fieldName = 'ID') {
     if (!value.match(/^[0-9a-fA-F]{24}$/)) {
@@ -89,7 +93,9 @@ export class SubmissionsController {
 
   @Get('me')
   @Roles(Role.Student, Role.TeamLeader)
-  @ApiOperation({ summary: 'Get submissions for current student or team leader user' })
+  @ApiOperation({
+    summary: 'Get submissions for current student or team leader user',
+  })
   async getMySubmissions(@Req() req: Request & { user: any }) {
     const userGroupId = req.user.groupId;
 
@@ -119,7 +125,24 @@ export class SubmissionsController {
       req.user,
       createSubmissionDto.groupId,
     );
-    return this.submissionsService.createSubmission(createSubmissionDto, req.user.role);
+    const created = await this.submissionsService.createSubmission(
+      createSubmissionDto,
+      req.user.role,
+    );
+    await this.activityLogsService.create({
+      eventType: 'SUBMISSION_CREATED',
+      summary: 'Submission created',
+      actorUserId: req.user?.userId,
+      actorRole: req.user?.role,
+      targetType: 'submission',
+      targetId: created._id?.toString?.(),
+      metadata: {
+        groupId: createSubmissionDto.groupId,
+        phaseId: createSubmissionDto.phaseId,
+        type: createSubmissionDto.type,
+      },
+    });
+    return created;
   }
 
   @Get(':submissionId/completeness')
@@ -164,15 +187,35 @@ export class SubmissionsController {
     this.validateUploadedFile(file);
     const validatedFile = file!;
 
-    return this.submissionsService.uploadDocument(
+    const uploaded = await this.submissionsService.uploadDocument(
       submissionId,
       validatedFile,
       req.submission,
     );
+    await this.activityLogsService.create({
+      eventType: 'SUBMISSION_DOCUMENT_UPLOADED',
+      summary: 'Submission document uploaded',
+      actorUserId: req.user?.userId,
+      actorRole: req.user?.role,
+      targetType: 'submission',
+      targetId: submissionId,
+      metadata: {
+        originalName: validatedFile.originalname,
+        mimeType: validatedFile.mimetype,
+        size: validatedFile.size,
+      },
+    });
+    return uploaded;
   }
 
   @Get(':submissionId/documents/:documentIndex')
-  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin)
+  @Roles(
+    Role.Student,
+    Role.TeamLeader,
+    Role.Professor,
+    Role.Coordinator,
+    Role.Admin,
+  )
   @ApiOperation({ summary: 'Download a submission document by index' })
   async downloadDocument(
     @Req() req: Request & { user: any; submission?: any },
@@ -191,13 +234,19 @@ export class SubmissionsController {
     if (userRole === Role.Student || userRole === Role.TeamLeader) {
       const submission = await this.submissionsService.findById(submissionId);
       if (!submission) throw new ForbiddenException('Submission not found.');
-      await this.submissionsService.assertAuthorizedGroupMember(req.user, submission.groupId);
+      await this.submissionsService.assertAuthorizedGroupMember(
+        req.user,
+        submission.groupId,
+      );
     }
     // Professor: must be the advisor or a jury member of the group
     if (userRole === Role.Professor) {
       const submission = await this.submissionsService.findById(submissionId);
       if (!submission) throw new ForbiddenException('Submission not found.');
-      await this.submissionsService.assertProfessorCanAccessSubmission(submission, req.user.userId);
+      await this.submissionsService.assertProfessorCanAccessSubmission(
+        submission,
+        req.user.userId,
+      );
     }
     // Coordinator, Admin: unrestricted
 
@@ -269,10 +318,11 @@ export class SubmissionsController {
           'Only professors can filter submissions by committee.',
         );
       }
-      const groupIds = await this.submissionsService.getCommitteeSubmissionGroupIds(
-        committeeId,
-        req.user.userId,
-      );
+      const groupIds =
+        await this.submissionsService.getCommitteeSubmissionGroupIds(
+          committeeId,
+          req.user.userId,
+        );
       return this.submissionsService.findAll(undefined, groupIds);
     }
 
@@ -288,7 +338,10 @@ export class SubmissionsController {
       if (groupId) {
         // Validate professor is authorized for the requested group
         const stub = { groupId } as any;
-        await this.submissionsService.assertProfessorCanAccessSubmission(stub, req.user.userId);
+        await this.submissionsService.assertProfessorCanAccessSubmission(
+          stub,
+          req.user.userId,
+        );
         return this.submissionsService.findAll(groupId);
       }
       // No groupId filter: return all submissions the professor can access
@@ -299,7 +352,13 @@ export class SubmissionsController {
   }
 
   @Get(':id')
-  @Roles(Role.Student, Role.TeamLeader, Role.Professor, Role.Coordinator, Role.Admin) 
+  @Roles(
+    Role.Student,
+    Role.TeamLeader,
+    Role.Professor,
+    Role.Coordinator,
+    Role.Admin,
+  )
   @ApiOperation({ summary: 'Get submission details by ID' })
   async findOne(@Req() req: Request & { user: any }, @Param('id') id: string) {
     this.validateObjectIdFormat(id);
@@ -349,7 +408,6 @@ export class SubmissionsController {
     this.validateObjectIdFormat(submissionId, 'submissionId');
     return this.submissionsService.getSubmissionForJury(userId, submissionId);
   }
-  
 
   @Post(':submissionId/comments')
   @Roles(Role.Professor)
@@ -362,7 +420,23 @@ export class SubmissionsController {
   ) {
     this.validateObjectIdFormat(submissionId, 'submissionId');
     const userId = req.user.userId || req.user.sub || req.user._id;
-    return this.submissionsService.addComment(userId, submissionId, dto);
+    const comment = await this.submissionsService.addComment(
+      userId,
+      submissionId,
+      dto,
+    );
+    await this.activityLogsService.create({
+      eventType: 'SUBMISSION_COMMENT_ADDED',
+      summary: 'Committee review comment added',
+      actorUserId: userId,
+      actorRole: req.user?.role,
+      targetType: 'submission',
+      targetId: submissionId,
+      metadata: {
+        commentLength: dto.commentText?.length ?? 0,
+      },
+    });
+    return comment;
   }
 
   @Get(':submissionId/comments')
@@ -388,8 +462,22 @@ export class SubmissionsController {
   ) {
     this.validateObjectIdFormat(submissionId, 'submissionId');
     const userId = req.user.userId || req.user.sub || req.user._id;
-    return this.submissionsService.createRevisionRequest(userId, submissionId, dto);
+    const revisionRequest = await this.submissionsService.createRevisionRequest(
+      userId,
+      submissionId,
+      dto,
+    );
+    await this.activityLogsService.create({
+      eventType: 'SUBMISSION_REVISION_REQUESTED',
+      summary: 'Revision requested for submission',
+      actorUserId: userId,
+      actorRole: req.user?.role,
+      targetType: 'submission',
+      targetId: submissionId,
+      metadata: {
+        revisionDueDatetime: dto.revisionDueDatetime,
+      },
+    });
+    return revisionRequest;
   }
-
-
 }

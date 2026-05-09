@@ -4,6 +4,8 @@ import { BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { MailService } from '../mail/mail.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -22,6 +24,12 @@ describe('AuthService', () => {
   const mockJwtService = {
     signAsync: jest.fn(),
   } as any;
+  const mockMailService = {
+    sendPasswordReset: jest.fn(),
+  } as any;
+  const mockActivityLogsService = {
+    create: jest.fn(),
+  } as any;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -36,6 +44,14 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: MailService,
+          useValue: mockMailService,
+        },
+        {
+          provide: ActivityLogsService,
+          useValue: mockActivityLogsService,
         },
       ],
     }).compile();

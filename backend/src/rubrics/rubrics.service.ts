@@ -15,7 +15,7 @@ import {
   RubricResponseDto,
   PaginatedRubricsDto,
 } from './dto/rubric-response.dto';
-import { Rubric, RubricDocument } from './schemas/rubric.schema';
+import { Rubric, RubricDocument, SprintRubricType } from './schemas/rubric.schema';
 import {
   SprintEvaluation,
   SprintEvaluationDocument,
@@ -89,9 +89,10 @@ export class RubricsService {
   }
 
   /**
-   * Create a new rubric for a deliverable.
+   * Create a new rubric for a deliverable or sprint evaluation type.
    * Deactivates the previous active rubric, then creates the new one.
    * Validates that question weights sum to exactly 1.0.
+   * Exactly one of deliverableId or sprintEvaluationType must be provided.
    */
   async createRubric(
     dto: CreateRubricDto,
@@ -99,6 +100,17 @@ export class RubricsService {
     correlationId?: string,
   ): Promise<RubricResponseDto> {
     try {
+      if (!dto.deliverableId && !dto.sprintEvaluationType) {
+        throw new BadRequestException(
+          'Either deliverableId or sprintEvaluationType must be provided.',
+        );
+      }
+      if (dto.deliverableId && dto.sprintEvaluationType) {
+        throw new BadRequestException(
+          'Only one of deliverableId or sprintEvaluationType may be provided, not both.',
+        );
+      }
+
       const weightSum = dto.questions.reduce(
         (sum, q) => sum + q.criteriaWeight,
         0,
@@ -109,16 +121,18 @@ export class RubricsService {
         );
       }
 
+      const deactivateFilter = dto.sprintEvaluationType
+        ? { sprintEvaluationType: dto.sprintEvaluationType, isActive: true }
+        : { deliverableId: dto.deliverableId, isActive: true };
+
       await this.rubricModel
-        .updateMany(
-          { deliverableId: dto.deliverableId, isActive: true },
-          { $set: { isActive: false } },
-        )
+        .updateMany(deactivateFilter, { $set: { isActive: false } })
         .exec();
 
       const [rubric] = await this.rubricModel.create([
         {
-          deliverableId: dto.deliverableId,
+          ...(dto.deliverableId ? { deliverableId: dto.deliverableId } : {}),
+          ...(dto.sprintEvaluationType ? { sprintEvaluationType: dto.sprintEvaluationType } : {}),
           name: dto.name.trim(),
           gradingType: dto.gradingType,
           isActive: true,
@@ -130,7 +144,8 @@ export class RubricsService {
         JSON.stringify({
           event: 'rubric.created',
           rubricId: rubric.rubricId,
-          deliverableId: dto.deliverableId,
+          deliverableId: dto.deliverableId ?? null,
+          sprintEvaluationType: dto.sprintEvaluationType ?? null,
           actorId,
           correlationId: correlationId ?? null,
         }),
@@ -178,6 +193,46 @@ export class RubricsService {
       );
       throw new InternalServerErrorException(
         'Failed to retrieve active rubric due to an unexpected error.',
+      );
+    }
+  }
+
+  /**
+   * Retrieve the active rubric for a sprint evaluation type (SCRUM or CODE_REVIEW).
+   * Returns null if no active sprint rubric exists for that type.
+   */
+  async getActiveSprintRubric(
+    sprintEvaluationType: SprintRubricType,
+    correlationId?: string,
+  ): Promise<RubricDocument | null> {
+    try {
+      const rubric = await this.rubricModel
+        .findOne({ sprintEvaluationType, isActive: true })
+        .exec();
+
+      if (!rubric) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'rubric.sprint_active_not_found',
+            sprintEvaluationType,
+            correlationId: correlationId ?? null,
+          }),
+        );
+        return null;
+      }
+
+      return rubric;
+    } catch (error) {
+      this.logger.error(
+        JSON.stringify({
+          event: 'rubric.sprint_read_failed',
+          sprintEvaluationType,
+          correlationId: correlationId ?? null,
+          error: (error as Error).message,
+        }),
+      );
+      throw new InternalServerErrorException(
+        'Failed to retrieve active sprint rubric due to an unexpected error.',
       );
     }
   }
@@ -242,7 +297,8 @@ export class RubricsService {
   private toResponseDto(rubric: Rubric): RubricResponseDto {
     return {
       rubricId: rubric.rubricId,
-      deliverableId: rubric.deliverableId,
+      deliverableId: rubric.deliverableId ?? null,
+      sprintEvaluationType: rubric.sprintEvaluationType ?? null,
       name: rubric.name,
       isActive: rubric.isActive,
       gradingType: rubric.gradingType,

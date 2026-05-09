@@ -5,9 +5,13 @@ import { Model } from 'mongoose';
 import { Team, TeamDocument } from './schemas/team.schema';
 import { TeamsSyncService } from './teams-sync.service';
 import {
-  SprintConfig,
-  SprintConfigDocument,
-} from '../story-points/schemas/sprint-config.schema';
+  SprintConfigEntry,
+  SprintConfigDocument as SprintConfigEntryDocument,
+} from '../sprint-configs/schemas/sprint-config.schema';
+import {
+  Schedule,
+  ScheduleDocument,
+} from '../advisors/schemas/schedule.schema';
 
 @Injectable()
 export class TeamsCronService implements OnApplicationBootstrap {
@@ -15,8 +19,10 @@ export class TeamsCronService implements OnApplicationBootstrap {
 
   constructor(
     @InjectModel(Team.name) private teamModel: Model<TeamDocument>,
-    @InjectModel(SprintConfig.name)
-    private sprintConfigModel: Model<SprintConfigDocument>,
+    @InjectModel(SprintConfigEntry.name)
+    private sprintConfigModel: Model<SprintConfigEntryDocument>,
+    @InjectModel(Schedule.name)
+    private scheduleModel: Model<ScheduleDocument>,
     private readonly teamsSyncService: TeamsSyncService,
   ) {}
 
@@ -76,31 +82,50 @@ export class TeamsCronService implements OnApplicationBootstrap {
   }
 
   /**
-   * Marks any SprintConfig whose end date has passed as finalized so further
-   * sync runs cannot mutate its issues. Per-student point computation still
-   * runs through the manual finalize endpoint where team↔group linkage is
-   * supplied by the coordinator.
+   * Auto-finalizes any sprint whose Schedule.endDatetime has passed. Sprint
+   * configs are global, so we run finalize for every team that has JIRA wired
+   * up — each team's per-student StoryPointRecords are scoped by its own
+   * groupId.
    */
   private async autoFinalizeOverdueSprints(): Promise<void> {
     const now = new Date();
-    const overdue = await this.sprintConfigModel
-      .find({ isFinalized: false, endDate: { $lt: now } })
+
+    const candidates = await this.sprintConfigModel
+      .find({ isFinalized: false })
       .exec();
+    if (candidates.length === 0) return;
+
+    const overdue: typeof candidates = [];
+    for (const sprint of candidates) {
+      const schedule = await this.scheduleModel
+        .findOne({ scheduleId: sprint.sprintId })
+        .lean()
+        .exec();
+      if (schedule && schedule.endDatetime && schedule.endDatetime < now) {
+        overdue.push(sprint);
+      }
+    }
 
     if (overdue.length === 0) return;
 
-    for (const sprint of overdue) {
-      const teams = await this.teamModel
-        .find({ groupId: sprint.groupId })
-        .select('_id groupId')
-        .lean()
-        .exec();
+    const teams = await this.teamModel
+      .find({
+        jiraDomain: { $exists: true, $ne: '' },
+        jiraApiToken: { $exists: true, $ne: '' },
+        jiraProjectKey: { $exists: true, $ne: '' },
+        jiraEmail: { $exists: true, $ne: '' },
+        groupId: { $exists: true, $ne: '' },
+      })
+      .select('_id groupId')
+      .lean()
+      .exec();
 
+    for (const sprint of overdue) {
       if (teams.length === 0) {
         sprint.isFinalized = true;
         await sprint.save();
         this.logger.warn(
-          `Auto-finalized sprint ${sprint.sprintId} but no team had groupId=${sprint.groupId}; per-student points were not computed.`,
+          `Auto-finalized sprint ${sprint.sprintId} but no JIRA-configured team exists; per-student points were not computed.`,
         );
         continue;
       }
@@ -110,7 +135,6 @@ export class TeamsCronService implements OnApplicationBootstrap {
           await this.teamsSyncService.finalizeSprintSync(
             (team._id as any).toString(),
             sprint.sprintId,
-            sprint.groupId,
           );
           this.logger.log(
             `Auto-finalized sprint ${sprint.sprintId} for team ${(team._id as any).toString()}.`,
@@ -122,9 +146,6 @@ export class TeamsCronService implements OnApplicationBootstrap {
         }
       }
 
-      // finalizeSprintSync flips isFinalized on the first team that wins the
-      // race; reload to confirm and otherwise force the lock so subsequent
-      // runs are no-ops.
       const fresh = await this.sprintConfigModel.findById(sprint._id).exec();
       if (fresh && !fresh.isFinalized) {
         fresh.isFinalized = true;

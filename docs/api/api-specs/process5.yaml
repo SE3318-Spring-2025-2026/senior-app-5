@@ -7,6 +7,7 @@ info:
     Rules: no committee type on API; no PATCH for rename/retype; advisor links have no assignment source;
     remove group with DELETE /committees/{committeeId}/groups/{groupId} using path parameter.
     Nested assignment objects omit committeeId in responses (context from path or parent Committee.id).
+    This specification is kept aligned with active backend behavior for release readiness.
 
     Cross-service dependency: This service relies on the Advisor Assignment API (Process 4)
     for schedule window management. Specifically, POST /committees/{committeeId}/groups returns

@@ -87,7 +87,7 @@ function SprintBuilderPage() {
   const [creating, setCreating] = useState(false)
 
   const [editingWindowId, setEditingWindowId] = useState(null)
-  const [editWindowForm, setEditWindowForm] = useState({ startDatetime: '', endDatetime: '' })
+  const [editWindowForm, setEditWindowForm] = useState({ startDatetime: '', endDatetime: '', targetStoryPoints: '' })
 
   const [savingDeliverable, setSavingDeliverable] = useState(null)
   // mappings[deliverableId][sprintId] = { checked: boolean, pct: string }
@@ -173,10 +173,12 @@ function SprintBuilderPage() {
   }
 
   const startEditWindow = (sch) => {
+    const cfg = sprintConfigs.find((c) => c.sprintId === sch.scheduleId)
     setEditingWindowId(sch.scheduleId)
     setEditWindowForm({
       startDatetime: toDatetimeLocal(sch.startDatetime),
       endDatetime: toDatetimeLocal(sch.endDatetime),
+      targetStoryPoints: cfg ? String(cfg.targetStoryPoints) : '0',
     })
   }
 
@@ -186,6 +188,10 @@ function SprintBuilderPage() {
         startDatetime: new Date(editWindowForm.startDatetime).toISOString(),
         endDatetime: new Date(editWindowForm.endDatetime).toISOString(),
       })
+      const newTarget = parseInt(editWindowForm.targetStoryPoints, 10)
+      if (!isNaN(newTarget) && newTarget >= 0) {
+        await apiClient.patch(`/sprints/${scheduleId}`, { targetStoryPoints: newTarget })
+      }
       toast.success('Sprint window updated.')
       setEditingWindowId(null)
       await load()
@@ -463,6 +469,18 @@ function SprintBuilderPage() {
                                 className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-xs text-slate-200"
                               />
                             </div>
+                          </div>
+                          <div className="max-w-48">
+                            <label className="block text-xs text-slate-500 mb-1">Target Story Points</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editWindowForm.targetStoryPoints}
+                              onChange={(e) =>
+                                setEditWindowForm((p) => ({ ...p, targetStoryPoints: e.target.value }))
+                              }
+                              className="w-full rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-2 text-xs text-slate-200"
+                            />
                           </div>
                           <div className="flex gap-2">
                             <button

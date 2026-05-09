@@ -590,10 +590,12 @@ export class GradesService {
     // Per-sprint individual ratio per student
     const sprintRatioMap = new Map<string, Map<string, number>>();
     for (const record of storyPointRecords) {
+      // When targetPoints is 0 (sprint target not configured), treat as full
+      // participation (1.0) so missing config doesn't zero-out student grades.
       const ratio =
         record.targetPoints > 0
           ? Math.min(1, record.completedPoints / record.targetPoints)
-          : 0;
+          : 1.0;
       const byStudent = sprintRatioMap.get(record.sprintId) ?? new Map<string, number>();
       byStudent.set(record.studentId, ratio);
       sprintRatioMap.set(record.sprintId, byStudent);

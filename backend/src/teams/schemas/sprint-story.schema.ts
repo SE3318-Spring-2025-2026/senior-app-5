@@ -82,6 +82,32 @@ export class SprintStory {
   @Prop({ type: String, default: null })
   prAuthorLogin!: string | null;
 
+  /** GitHub PR number (only set when a PR was found). */
+  @Prop({ type: Number, default: null })
+  prNumber!: number | null;
+
+  /**
+   * AI-evaluated review quality. Set after a merged PR is found and the AI
+   * service is reachable. Null = not yet evaluated or AI unavailable.
+   */
+  @Prop({
+    type: {
+      hasMeaningfulReview: { type: Boolean, default: false },
+      score: { type: Number, default: 0 },
+      reasoning: { type: String, default: '' },
+      evaluatedAt: { type: Date, default: null },
+      prUpdatedAt: { type: String, default: null },
+    },
+    default: null,
+  })
+  reviewQuality!: {
+    hasMeaningfulReview: boolean;
+    score: number;
+    reasoning: string;
+    evaluatedAt: Date | null;
+    prUpdatedAt: string | null;
+  } | null;
+
   /** True when resolution=Done AND githubStatus=verified */
   @Prop({ type: Boolean, default: false })
   isComplete!: boolean;

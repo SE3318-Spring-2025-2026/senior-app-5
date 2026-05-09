@@ -94,13 +94,14 @@ function StudentCard({ student }) {
               <th>Points</th>
               <th>Resolution</th>
               <th>GitHub Status</th>
+              <th>AI Review</th>
               <th>Verified At</th>
             </tr>
           </thead>
           <tbody>
             {student.completedIssues.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={7} style={{ textAlign: 'center', color: '#64748b' }}>
                   No issues assigned
                 </td>
               </tr>
@@ -118,6 +119,39 @@ function StudentCard({ student }) {
                   </td>
                   <td>
                     <GithubBadge status={issue.githubStatus} />
+                  </td>
+                  <td style={{ maxWidth: 320 }}>
+                    {issue.reviewQuality ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span
+                          style={{
+                            color: issue.reviewQuality.hasMeaningfulReview ? '#22c55e' : '#f59e0b',
+                            fontSize: '0.85rem',
+                          }}
+                        >
+                          {issue.reviewQuality.hasMeaningfulReview ? '✓' : '⚠'}{' '}
+                          <span style={{ color: '#94a3b8' }}>{issue.reviewQuality.score}</span>
+                        </span>
+                        {issue.reviewQuality.reasoning && (
+                          <span
+                            title={issue.reviewQuality.reasoning}
+                            style={{
+                              fontSize: '0.72rem',
+                              color: '#64748b',
+                              lineHeight: 1.3,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {issue.reviewQuality.reasoning}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ color: '#475569' }}>—</span>
+                    )}
                   </td>
                   <td style={{ color: '#64748b', fontSize: '0.8rem' }}>
                     {issue.verifiedAt ? new Date(issue.verifiedAt).toLocaleDateString() : '—'}

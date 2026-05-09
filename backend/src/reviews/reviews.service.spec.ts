@@ -1,5 +1,4 @@
 import {
-  ConflictException,
   ForbiddenException,
   HttpException,
   NotFoundException,
@@ -137,17 +136,22 @@ describe('ReviewsService', () => {
     expect(sub.save).toHaveBeenCalled();
   });
 
-  it('rejects duplicate reviews for the same reviewer and submission', async () => {
+  it('returns the existing review for the same reviewer and submission', async () => {
     mockSubmissionModel.findById.mockReturnValue(execResult(submission()));
     mockCommitteeModel.findOne.mockReturnValue(execResult(committee()));
-    mockReviewModel.findOne.mockReturnValue(execResult(review()));
+    const existing = review();
+    mockReviewModel.findOne.mockReturnValue(execResult(existing));
 
     await expect(
       service.createReview(
         { submissionId: 'sub-1', committeeId: 'committee-1' },
         { userId: 'prof-1' },
       ),
-    ).rejects.toThrow(ConflictException);
+    ).resolves.toMatchObject({
+      reviewId: existing.reviewId,
+      submissionId: existing.submissionId,
+      reviewerUserId: existing.reviewerUserId,
+    });
   });
 
   it('adds a comment for the owning reviewer', async () => {

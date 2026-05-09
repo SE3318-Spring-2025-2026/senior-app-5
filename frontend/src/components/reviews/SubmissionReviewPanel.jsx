@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import { FileText, MessageSquare, GitPullRequest, Star, Trash2 } from 'lucide-react'
 import apiConfig from '../../config/api'
@@ -16,7 +16,13 @@ import { Badge } from '../ui'
 const getId = (value) => value?._id || value?.id || value?.reviewId || value?.commentId
 
 const getAuthorId = (comment) =>
-  comment?.authorUserId || comment?.userId || comment?.createdByUserId || comment?.author?.userId || comment?.author?.id
+  comment?.authorUserId ||
+  comment?.userId ||
+  comment?.createdByUserId ||
+  comment?.createdBy?.userId ||
+  comment?.author?.userId ||
+  comment?.author?.id ||
+  comment?.author?._id
 
 const getAuthorName = (comment) =>
   comment?.authorName || comment?.author?.name || comment?.author?.email || getAuthorId(comment) || 'Committee member'
@@ -57,9 +63,14 @@ const SubmissionReviewPanel = ({ submission, committeeId, currentUser }) => {
   const [gradingWindow, setGradingWindow] = useState({ isOpen: false })
   const [status, setStatus] = useState({ loading: true, message: '', error: '' })
   const [saving, setSaving] = useState(false)
+  const reviewIdCacheRef = useRef(new Map())
 
   const submissionId = submission?._id || submission?.id || submission?.submissionId
-  const existingReviewId = submission?.reviewId || submission?.review?._id || submission?.review?.id
+  const existingReviewId =
+    submission?.reviewId ||
+    submission?.review?.reviewId ||
+    submission?.review?._id ||
+    submission?.review?.id
   const userId = currentUser?.userId || currentUser?.id || currentUser?._id
   const isSubmitted = review?.status === 'Submitted' || review?.grade !== undefined
 
@@ -78,14 +89,26 @@ const SubmissionReviewPanel = ({ submission, committeeId, currentUser }) => {
     if (!submissionId || !committeeId) return
     setStatus({ loading: true, message: '', error: '' })
     try {
-      const data = existingReviewId
-        ? await getReview(existingReviewId)
+      const cachedReviewId = reviewIdCacheRef.current.get(String(submissionId))
+      const resolvedReviewId = existingReviewId || cachedReviewId
+      const data = resolvedReviewId
+        ? await getReview(resolvedReviewId)
         : await createReview(submissionId, committeeId)
+      const dataReviewId = getId(data)
+      if (dataReviewId) {
+        reviewIdCacheRef.current.set(String(submissionId), dataReviewId)
+      }
       setReview(normalizeReview(data))
       setGrade(data?.grade ?? '')
       setStatus({ loading: false, message: '', error: '' })
     } catch (error) {
-      setStatus({ loading: false, message: '', error: error.message || 'Unable to load review.' })
+      setStatus({
+        loading: false,
+        message: '',
+        error:
+          error.message ||
+          'Unable to load review. Refresh the queue if this submission was already reviewed.',
+      })
     }
   }, [committeeId, existingReviewId, submissionId])
 
@@ -100,6 +123,9 @@ const SubmissionReviewPanel = ({ submission, committeeId, currentUser }) => {
   const refreshReview = async (nextReviewId = getId(review)) => {
     if (!nextReviewId) return
     const data = await getReview(nextReviewId)
+    if (submissionId && nextReviewId) {
+      reviewIdCacheRef.current.set(String(submissionId), String(nextReviewId))
+    }
     setReview(normalizeReview(data))
     setGrade(data?.grade ?? '')
   }

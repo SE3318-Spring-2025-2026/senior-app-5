@@ -174,7 +174,7 @@ const CoordinatorView = ({ user }) => {
             icon={TrendingUp}   label="View All Grades"    description="Monitor academic performance" />
           <ActionCard to="/advisor/requests"
             icon={FileText}     label="Advisor Requests"   description="Review team advisor request submissions" />
-          <ActionCard to="/coordinator/advisor-schedule"
+          <ActionCard to="/coordinator-management"
             icon={CalendarClock} label="Advisor Selection Schedule" description="Set the window for team leaders to submit requests" />
         </div>
       </div>

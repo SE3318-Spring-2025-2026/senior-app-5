@@ -467,7 +467,7 @@ function CoordinatorManagementPage() {
                 <option value="" disabled>Select a phase...</option>
                 <option value="ADVISOR_SELECTION">Advisor Selection</option>
                 <option value="COMMITTEE_ASSIGNMENT">Committee Assignment</option>
-                <option value="SPRINT">Sprint</option>
+                <option value="GRADING">Grading</option>
               </select>
             </label>
             <label htmlFor="startAtInput">
@@ -491,9 +491,13 @@ function CoordinatorManagementPage() {
               />
             </label>
             
-            {/* 🔥 UX İYİLEŞTİRMESİ: Kullanıcıya ISO 8601 uyarısı eklendi */}
             <p className={styles.meta} style={{ marginTop: '-5px', marginBottom: '10px' }}>
                * Dates are securely converted to UTC (ISO 8601) format before saving.
+            </p>
+            <p className={styles.meta} style={{ marginBottom: '10px' }}>
+              Sprint schedules are managed in{' '}
+              <a href="/coordinator/sprint-builder" className={styles.link}>Sprint Builder</a>
+              {' '}(creates schedule + story point config atomically).
             </p>
 
             <div className={styles.inlineActions}>

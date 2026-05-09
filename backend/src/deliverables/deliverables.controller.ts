@@ -75,7 +75,7 @@ export class DeliverablesController {
   @ApiInternalServerErrorResponse({
     description: 'Unexpected internal failure',
   })
-  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin, Role.Student)
   @Get()
   @HttpCode(HttpStatus.OK)
   async listDeliverables(

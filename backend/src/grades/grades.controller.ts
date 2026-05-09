@@ -71,7 +71,7 @@ export class GradesController {
   ): void {
     const jwtStudentId = this.getJwtStudentId(req);
 
-    if (req.user.role !== Role.Student) {
+    if (req.user.role !== Role.Student && req.user.role !== Role.TeamLeader) {
       return;
     }
 
@@ -209,7 +209,7 @@ export class GradesController {
   @ApiInternalServerErrorResponse({
     description: 'Unexpected internal failure',
   })
-  @Roles(Role.Coordinator, Role.Professor, Role.Admin, Role.Student)
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin, Role.Student, Role.TeamLeader)
   @Get('students/:studentId/final-grade')
   async getStudentFinalGrade(
     @Param('studentId') studentId: string,
@@ -280,7 +280,7 @@ export class GradesController {
     return this.gradesService.aggregateCommitteeGrades(committeeId);
   }
 
-  @Roles(Role.Coordinator)
+  @Roles(Role.Coordinator, Role.Professor, Role.Admin)
   @HttpCode(HttpStatus.OK)
   @Post('groups/:groupId/calculate')
   async calculateGrade(

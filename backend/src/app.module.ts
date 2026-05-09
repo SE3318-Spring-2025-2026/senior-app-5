@@ -22,6 +22,7 @@ import { DeliverablesModule } from './deliverables/deliverables.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SprintConfigsModule } from './sprint-configs/sprint-configs.module';
 import { DocumentsModule } from './documents/documents.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { DocumentsModule } from './documents/documents.module';
     RubricsModule,
     SprintConfigsModule,
     DocumentsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

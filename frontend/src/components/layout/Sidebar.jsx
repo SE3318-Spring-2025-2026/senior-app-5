@@ -17,6 +17,8 @@ import {
   Package,
   Activity,
   Lock,
+  GraduationCap,
+  BarChart2,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -82,6 +84,8 @@ export const Sidebar = () => {
             <SideNavLink to="/groups" icon={Users} label="My Group" />
             <SideNavLink to="/my-submissions" icon={FileText} label="My Submissions" />
             <SideNavLink to="/documents" icon={FileText} label="Upload Document" />
+            <SideNavLink to="/documents" icon={FileText} label="My Documents" />
+            <SideNavLink to="/grades" icon={BarChart2} label="My Grades" />
           </>
         )}
 
@@ -97,6 +101,7 @@ export const Sidebar = () => {
             <SectionHeader label="Professor" />
             <SideNavLink to="/review" icon={ClipboardCheck} label="Review" />
             <SideNavLink to="/professor/submissions" icon={FileText} label="Submissions" />
+            <SideNavLink to="/professor/deliverable-grading" icon={GraduationCap} label="Deliverable Grading" />
             <SideNavLink to="/advisor/sprint-evaluation" icon={Star} label="Sprint Evaluation" />
             <SideNavLink to="/advisor/sprint-panel" icon={Activity} label="Sprint Panel" />
           </>

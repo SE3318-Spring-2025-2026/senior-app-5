@@ -98,8 +98,8 @@ const RubricManagementPage = () => {
   const handleCreateRubric = async (e) => {
     e.preventDefault();
     if (!rubricName.trim()) { toast.error('Rubric name is required.'); return; }
-    if (Math.abs(totalWeight - 1.0) > 0.001) {
-      toast.error(`Question weights must sum to 1.0 (current: ${totalWeight.toFixed(3)}).`);
+    if (Math.abs(totalWeight - 100) > 0.1) {
+      toast.error(`Question weights must sum to 100% (current: ${totalWeight.toFixed(1)}%).`);
       return;
     }
 
@@ -109,7 +109,7 @@ const RubricManagementPage = () => {
       gradingType,
       questions: questions.map((q) => ({
         criteriaName: q.criteriaName.trim(),
-        criteriaWeight: parseFloat(q.criteriaWeight),
+        criteriaWeight: parseFloat(q.criteriaWeight) / 100,
       })),
     };
 
@@ -243,10 +243,10 @@ const RubricManagementPage = () => {
                   </p>
                   <span
                     className={`text-[11px] font-medium tabular-nums ${
-                      Math.abs(totalWeight - 1.0) > 0.001 ? 'text-rose-400' : 'text-emerald-400'
+                      Math.abs(totalWeight - 100) > 0.1 ? 'text-rose-400' : 'text-emerald-400'
                     }`}
                   >
-                    Total: {totalWeight.toFixed(3)}
+                    Total: {totalWeight.toFixed(1)}%
                   </span>
                 </div>
                 {questions.map((q, idx) => (
@@ -258,16 +258,19 @@ const RubricManagementPage = () => {
                       onChange={(e) => handleQuestionChange(idx, 'criteriaName', e.target.value)}
                       className={`${inputCls} flex-1`}
                     />
-                    <input
-                      type="number"
-                      placeholder="0–1"
-                      step="0.01"
-                      min="0"
-                      max="1"
-                      value={q.criteriaWeight}
-                      onChange={(e) => handleQuestionChange(idx, 'criteriaWeight', e.target.value)}
-                      className={`${inputCls} w-28`}
-                    />
+                    <div className="relative flex w-28 items-center">
+                      <input
+                        type="number"
+                        placeholder="0–100"
+                        step="1"
+                        min="0"
+                        max="100"
+                        value={q.criteriaWeight}
+                        onChange={(e) => handleQuestionChange(idx, 'criteriaWeight', e.target.value)}
+                        className={`${inputCls} pr-7`}
+                      />
+                      <span className="pointer-events-none absolute right-3 text-[12px] text-zinc-500">%</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeQuestion(idx)}

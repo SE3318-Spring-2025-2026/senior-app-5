@@ -39,6 +39,7 @@ import RubricManagementPage from './pages/RubricManagementPage';
 import SprintBuilderPage from './pages/SprintBuilderPage';
 import ScrumManagementPage from './pages/ScrumManagementPage';
 import DeliverableManagementPage from './pages/DeliverableManagementPage';
+import DeliverableGradingPage from './pages/DeliverableGradingPage';
 import AdvisorSprintPanel from './pages/AdvisorSprintPanel';
 import SprintFinalizePage from './pages/SprintFinalizePage';
 
@@ -90,6 +91,14 @@ function App() {
             <Route path="/scrum" element={<ScrumManagementPage />} />
             <Route path="/advisor/requests" element={<AdvisorRequestsPage />} />
             <Route path="/advisor/sprint-evaluation" element={<SprintEvaluationPage />} />
+            <Route
+              path="/professor/deliverable-grading"
+              element={
+                <ProtectedRoute requiredRole="Professor">
+                  <DeliverableGradingPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/advisor/sprint-panel" element={<AdvisorSprintPanel />} />
             <Route
               path="/coordinator/sprint-finalize"

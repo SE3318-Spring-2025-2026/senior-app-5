@@ -373,6 +373,7 @@ function ScrumManagementPage() {
                         <th className="px-4 py-2.5">Branch</th>
                         <th className="px-4 py-2.5">PR</th>
                         <th className="px-4 py-2.5">GitHub</th>
+                        <th className="px-4 py-2.5">AI Review</th>
                         <th className="px-4 py-2.5">Complete</th>
                       </tr>
                     </thead>
@@ -427,6 +428,32 @@ function ScrumManagementPage() {
                               <span className="ml-2 text-zinc-300">{prFound ? 'Yes' : 'No'}</span>
                             </td>
                             <td className={`px-4 py-2.5 ${ghLabel.color}`}>{ghLabel.text}</td>
+                            <td className="px-4 py-2.5 max-w-[320px]">
+                              {issue.reviewQuality ? (
+                                <div className="flex flex-col gap-1">
+                                  <span
+                                    className={
+                                      issue.reviewQuality.hasMeaningfulReview
+                                        ? 'text-emerald-400'
+                                        : 'text-amber-400'
+                                    }
+                                  >
+                                    {issue.reviewQuality.hasMeaningfulReview ? '✓' : '⚠'}{' '}
+                                    <span className="text-zinc-400">{issue.reviewQuality.score}</span>
+                                  </span>
+                                  {issue.reviewQuality.reasoning && (
+                                    <span
+                                      title={issue.reviewQuality.reasoning}
+                                      className="text-[11px] text-zinc-500 leading-tight line-clamp-2"
+                                    >
+                                      {issue.reviewQuality.reasoning}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-zinc-600">—</span>
+                              )}
+                            </td>
                             <td className={`px-4 py-2.5 ${complete ? 'text-emerald-400 font-bold' : 'text-zinc-500'}`}>
                               {complete ? '✓ YES' : 'no'}
                             </td>

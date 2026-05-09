@@ -394,6 +394,142 @@
         ]
       }
     },
+    "/api/v1/auth/users/{userId}/integrations/jira": {
+      "put": {
+        "operationId": "AuthController_setJiraAccount",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetJiraAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JIRA accountId saved"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Set or update the user’s JIRA Cloud accountId",
+        "tags": [
+          "Auth"
+        ]
+      },
+      "get": {
+        "operationId": "AuthController_getJiraAccount",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the saved JIRA accountId"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get the user’s JIRA accountId",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/teams": {
+      "get": {
+        "operationId": "TeamsController_listTeams",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List teams for dropdown selection (Coordinator/Admin see all; Professor sees only teams of groups they advise)",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/mine": {
+      "get": {
+        "operationId": "TeamsController_getMyTeam",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get the Team owned by the current TeamLeader, creating one on first call",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/jira/discover": {
+      "post": {
+        "operationId": "TeamsController_jiraDiscover",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JiraDiscoverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Discover JIRA configuration (boards, story points field, accountId) without persisting anything. Used by the wizard to auto-fill the integration form.",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
     "/api/v1/teams/{teamId}/integrations": {
       "put": {
         "operationId": "TeamsController_updateIntegrations",
@@ -427,9 +563,830 @@
             "access-token": []
           }
         ],
-        "summary": "Update team integrations for Jira and GitHub",
+        "summary": "Update team integrations for JIRA and GitHub",
         "tags": [
           "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{teamId}/integrations/status": {
+      "get": {
+        "operationId": "TeamsController_getIntegrationStatus",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Live integration health check (JIRA + GitHub) for the team",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{teamId}/sync": {
+      "post": {
+        "operationId": "TeamsController_syncStories",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Manually trigger JIRA/GitHub sync for Sprint Stories (TeamLeader of this team, Coordinator, Admin, or the Professor advising the team)",
+        "tags": [
+          "Teams"
+        ]
+      },
+      "get": {
+        "operationId": "TeamsController_getSyncResults",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get latest sprint story sync records",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{teamId}/finalize-sprint": {
+      "post": {
+        "operationId": "TeamsController_finalizeSprintSync",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizeSprintDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Finalize sprint: run last sync, lock stories, compute StoryPointRecords",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/finalize-sprint-all": {
+      "post": {
+        "operationId": "TeamsController_finalizeSprintForAllTeams",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Coordinator: finalize a sprint for ALL JIRA-configured teams and recalculate grades for each affected group.",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{teamId}/story-points": {
+      "get": {
+        "operationId": "TeamsController_getStoryPointsSummary",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Story points summary for the team (completed vs total)",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/teams/{teamId}/advisor-panel": {
+      "get": {
+        "operationId": "TeamsController_getAdvisorPanel",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Advisor panel: live per-student sprint issue data with GitHub status",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/v1/deliverable-evaluations": {
+      "post": {
+        "operationId": "recordDeliverableEvaluation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliverableEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableEvaluationResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error, missing deliverable, or group not ASSIGNED"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "409": {
+            "description": "Evaluation already exists for the same group and deliverable"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Record final deliverable evaluation for a group",
+        "tags": [
+          "Grades"
+        ]
+      },
+      "get": {
+        "operationId": "listDeliverableEvaluations",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deliverableId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deliverable evaluations returned successfully."
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List deliverable evaluations with optional filters",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/deliverable-evaluations/{evaluationId}": {
+      "get": {
+        "operationId": "getDeliverableEvaluation",
+        "parameters": [
+          {
+            "name": "evaluationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableEvaluationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Evaluation not found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get deliverable evaluation by ID",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/final-grade": {
+      "get": {
+        "operationId": "getGroupFinalGrade",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupFinalGradeDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "No final grade calculated yet"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get stored final grade for a group",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/students/{studentId}/final-grade": {
+      "get": {
+        "operationId": "getStudentFinalGrade",
+        "parameters": [
+          {
+            "name": "studentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentFinalGradeDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "No final grade calculated yet"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get stored final grade for a student",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/grade-history": {
+      "get": {
+        "operationId": "getGradeHistory",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedGradeHistoryDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "No grade history found"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get grade history snapshots for a group",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/committees/{committeeId}/grades": {
+      "get": {
+        "operationId": "calculateGrade",
+        "parameters": [
+          {
+            "name": "committeeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committee grade aggregation returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeCalculationResultDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT\n\nMissing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions\n\nInsufficient permissions"
+          },
+          "404": {
+            "description": "Committee not found"
+          },
+          "409": {
+            "description": "Final grade already exists and force=false"
+          },
+          "422": {
+            "description": "Missing preconditions (evaluations not complete, config missing, etc)"
+          },
+          "500": {
+            "description": "Unexpected internal failure\n\nUnexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Calculate and persist final grades for a group",
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/groups/{groupId}/calculate": {
+      "post": {
+        "operationId": "GradesController_calculateGrade",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculateGradeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "tags": [
+          "Grades"
+        ]
+      }
+    },
+    "/api/v1/deliverables": {
+      "get": {
+        "operationId": "listDeliverables",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page index",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedDeliverablesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List deliverables with pagination",
+        "tags": [
+          "Deliverables"
+        ]
+      },
+      "post": {
+        "operationId": "createDeliverable",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "409": {
+            "description": "Deliverable name already exists"
+          },
+          "422": {
+            "description": "Deliverable percentage total would exceed 100"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a deliverable",
+        "tags": [
+          "Deliverables"
+        ]
+      }
+    },
+    "/api/v1/deliverables/{deliverableId}": {
+      "patch": {
+        "operationId": "updateDeliverableWeights",
+        "parameters": [
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeliverableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverableResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Deliverable not found"
+          },
+          "422": {
+            "description": "Deliverable percentage total would exceed 100"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update deliverable weights",
+        "tags": [
+          "Deliverables"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteDeliverable",
+        "parameters": [
+          {
+            "name": "deliverableId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Deliverable not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete a deliverable",
+        "tags": [
+          "Deliverables"
         ]
       }
     },
@@ -524,8 +1481,145 @@
     },
     "/api/v1/admin/activity": {
       "get": {
-        "operationId": "AdminController_getActivityLogs",
-        "parameters": [],
+        "operationId": "getAdminActivityLogs",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Object"
+            }
+          },
+          {
+            "name": "eventType",
+            "required": false,
+            "in": "query",
+            "description": "Exact-match event type filter",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorUserId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by actor user id (Mongo ObjectId)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive lower bound (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Inclusive upper bound (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Substring filter on action summary",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedActivityLogsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List admin activity logs (paginated, filterable)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{userId}/send-password-reset": {
+      "post": {
+        "operationId": "AdminController_sendPasswordReset",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a password reset link to a specific user",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{userId}/role": {
+      "patch": {
+        "operationId": "AdminController_updateUserRole",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRoleDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": ""
@@ -536,6 +1630,7 @@
             "bearer": []
           }
         ],
+        "summary": "Update a user's role",
         "tags": [
           "Admin"
         ]
@@ -555,7 +1650,7 @@
             "bearer": []
           }
         ],
-        "summary": "List groups with optional name filter (Admin, Coordinator)",
+        "summary": "List groups. Admin/Coordinator see all; Professor sees groups they advise; TeamLeader/Student see only their own group.",
         "tags": [
           "Groups"
         ]
@@ -836,7 +1931,7 @@
         ]
       }
     },
-    "/api/v1/groups/{groupId}/validate-sow": {
+    "/api/v1/groups/{groupId}/validate-statement-of-work": {
       "get": {
         "operationId": "GroupsController_validateSow",
         "parameters": [
@@ -859,7 +1954,7 @@
             "bearer": []
           }
         ],
-        "summary": "Check SoW status and eligibility for a group",
+        "summary": "Check SoW status for a group",
         "tags": [
           "Groups"
         ]
@@ -2103,6 +3198,111 @@
         ]
       }
     },
+    "/api/v1/submissions/{submissionId}/comments": {
+      "post": {
+        "operationId": "SubmissionsController_addComment",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment created successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a review comment to a submission",
+        "tags": [
+          "Submissions"
+        ]
+      },
+      "get": {
+        "operationId": "SubmissionsController_listComments",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List review comments for a submission",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
+    "/api/v1/submissions/{submissionId}/revision-requests": {
+      "post": {
+        "operationId": "SubmissionsController_createRevisionRequest",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRevisionRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Revision requested successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request a revision for a submission",
+        "tags": [
+          "Submissions"
+        ]
+      }
+    },
     "/api/v1/phases": {
       "get": {
         "operationId": "PhasesController_listPhases",
@@ -2440,6 +3640,27 @@
         "tags": [
           "Schedules"
         ]
+      },
+      "get": {
+        "operationId": "SchedulesController_listSchedules",
+        "parameters": [
+          {
+            "name": "phase",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Schedules"
+        ]
       }
     },
     "/api/v1/schedules/active": {
@@ -2448,6 +3669,60 @@
         "parameters": [],
         "responses": {
           "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Schedules"
+        ]
+      }
+    },
+    "/api/v1/schedules/{scheduleId}": {
+      "patch": {
+        "operationId": "SchedulesController_updateSchedule",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScheduleTimesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Schedules"
+        ]
+      },
+      "delete": {
+        "operationId": "SchedulesController_deleteSchedule",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
             "description": ""
           }
         },
@@ -2617,7 +3892,7 @@
         },
         "responses": {
           "200": {
-            "description": "Story point record updated with COORDINATOR_OVERRIDE",
+            "description": "Story point record target updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -2630,7 +3905,7 @@
             "description": "Missing or invalid JWT"
           },
           "403": {
-            "description": "Requires COORDINATOR role"
+            "description": "Requires STUDENT or TEAM_LEADER role"
           },
           "404": {
             "description": "Sprint config or student record not found"
@@ -2641,587 +3916,9 @@
             "bearer": []
           }
         ],
-        "summary": "Override story points for a student (COORDINATOR only)",
+        "summary": "Override target story points for a student (Student and TeamLeader)",
         "tags": [
           "Story Points"
-        ]
-      }
-    },
-    "/api/v1/deliverable-evaluations": {
-      "post": {
-        "operationId": "recordDeliverableEvaluation",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateDeliverableEvaluationDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeliverableEvaluationResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation error, missing deliverable, or group not ASSIGNED"
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "409": {
-            "description": "Evaluation already exists for the same group and deliverable"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Record final deliverable evaluation for a group",
-        "tags": [
-          "Grades"
-        ]
-      },
-      "get": {
-        "operationId": "listDeliverableEvaluations",
-        "parameters": [
-          {
-            "name": "groupId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "deliverableId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deliverable evaluations returned successfully."
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "List deliverable evaluations with optional filters",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/deliverable-evaluations/{evaluationId}": {
-      "get": {
-        "operationId": "getDeliverableEvaluation",
-        "parameters": [
-          {
-            "name": "evaluationId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeliverableEvaluationResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "404": {
-            "description": "Evaluation not found"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Get deliverable evaluation by ID",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/groups/{groupId}/final-grade": {
-      "get": {
-        "operationId": "getGroupFinalGrade",
-        "parameters": [
-          {
-            "name": "groupId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GroupFinalGradeDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "404": {
-            "description": "No final grade calculated yet"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Get stored final grade for a group",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/students/{studentId}/final-grade": {
-      "get": {
-        "operationId": "getStudentFinalGrade",
-        "parameters": [
-          {
-            "name": "studentId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StudentFinalGradeDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "404": {
-            "description": "No final grade calculated yet"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Get stored final grade for a student",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/groups/{groupId}/grade-history": {
-      "get": {
-        "operationId": "getGradeHistory",
-        "parameters": [
-          {
-            "name": "groupId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/Object"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/Object"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedGradeHistoryDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "404": {
-            "description": "No grade history found"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Get grade history snapshots for a group",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/committees/{committeeId}/grades": {
-      "get": {
-        "operationId": "calculateGrade",
-        "parameters": [
-          {
-            "name": "committeeId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Committee grade aggregation returned successfully.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GradeCalculationResultDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT\n\nMissing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions\n\nInsufficient permissions"
-          },
-          "404": {
-            "description": "Committee not found"
-          },
-          "409": {
-            "description": "Final grade already exists and force=false"
-          },
-          "422": {
-            "description": "Missing preconditions (evaluations not complete, config missing, etc)"
-          },
-          "500": {
-            "description": "Unexpected internal failure\n\nUnexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Calculate and persist final grades for a group",
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/groups/{groupId}/calculate": {
-      "post": {
-        "operationId": "GradesController_calculateGrade",
-        "parameters": [
-          {
-            "name": "groupId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalculateGradeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "tags": [
-          "Grades"
-        ]
-      }
-    },
-    "/api/v1/deliverables": {
-      "get": {
-        "operationId": "listDeliverables",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "description": "1-based page index",
-            "schema": {
-              "$ref": "#/components/schemas/Object"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "description": "Page size",
-            "schema": {
-              "$ref": "#/components/schemas/Object"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedDeliverablesDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "List deliverables with pagination",
-        "tags": [
-          "Deliverables"
-        ]
-      },
-      "post": {
-        "operationId": "createDeliverable",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateDeliverableDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeliverableResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "409": {
-            "description": "Deliverable name already exists"
-          },
-          "422": {
-            "description": "Deliverable percentage total would exceed 100"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Create a deliverable",
-        "tags": [
-          "Deliverables"
-        ]
-      }
-    },
-    "/api/v1/deliverables/{deliverableId}": {
-      "patch": {
-        "operationId": "updateDeliverableWeights",
-        "parameters": [
-          {
-            "name": "deliverableId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateDeliverableDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeliverableResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid JWT"
-          },
-          "403": {
-            "description": "Insufficient permissions"
-          },
-          "404": {
-            "description": "Deliverable not found"
-          },
-          "422": {
-            "description": "Deliverable percentage total would exceed 100"
-          },
-          "500": {
-            "description": "Unexpected internal failure"
-          }
-        },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "Update deliverable weights",
-        "tags": [
-          "Deliverables"
         ]
       }
     },
@@ -3275,6 +3972,68 @@
           }
         ],
         "summary": "Record a sprint evaluation for a group",
+        "tags": [
+          "Sprint Evaluations"
+        ]
+      },
+      "get": {
+        "operationId": "listSprintEvaluations",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sprintId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "evaluationType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sprint evaluations returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SprintEvaluationResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Authenticated but insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List sprint evaluations for a group",
         "tags": [
           "Sprint Evaluations"
         ]
@@ -3489,6 +4248,103 @@
           }
         ],
         "summary": "Delete a rubric",
+        "tags": [
+          "Rubrics"
+        ]
+      }
+    },
+    "/api/v1/rubrics/sprint/{evaluationType}": {
+      "get": {
+        "operationId": "getActiveSprintRubric",
+        "parameters": [
+          {
+            "name": "evaluationType",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "No active sprint rubric found for this type"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get the active rubric for a sprint evaluation type (SCRUM or CODE_REVIEW)",
+        "tags": [
+          "Rubrics"
+        ]
+      }
+    },
+    "/api/v1/rubrics/sprint": {
+      "post": {
+        "operationId": "createSprintRubric",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRubricDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or weights do not sum to 1.0"
+          },
+          "401": {
+            "description": "Missing or invalid JWT"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "500": {
+            "description": "Unexpected internal failure"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create or replace the active rubric for a sprint evaluation type (Coordinator only)",
         "tags": [
           "Rubrics"
         ]
@@ -3919,7 +4775,7 @@
             "access-token": []
           }
         ],
-        "summary": "List all sprint configurations (Coordinator only)",
+        "summary": "List all sprint configurations (Coordinator and Professor)",
         "tags": [
           "Sprint Configs"
         ]
@@ -4029,7 +4885,7 @@
             "access-token": []
           }
         ],
-        "summary": "Get a sprint configuration by sprintId (Coordinator only)",
+        "summary": "Get a sprint configuration by sprintId (Coordinator and Professor)",
         "tags": [
           "Sprint Configs"
         ]
@@ -4071,6 +4927,135 @@
         "summary": "Delete a sprint configuration (Coordinator only)",
         "tags": [
           "Sprint Configs"
+        ]
+      }
+    },
+    "/api/v1/documents/markdown": {
+      "post": {
+        "operationId": "createMarkdownDocument",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMarkdownDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Markdown document created."
+          },
+          "400": {
+            "description": "Invalid payload."
+          },
+          "401": {
+            "description": "Unauthorized."
+          },
+          "403": {
+            "description": "Forbidden ownership/role."
+          },
+          "404": {
+            "description": "Submission not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create or upsert a markdown document for a submission",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/markdown/{documentId}": {
+      "get": {
+        "operationId": "getMarkdownDocument",
+        "parameters": [
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Markdown document."
+          },
+          "401": {
+            "description": "Unauthorized."
+          },
+          "403": {
+            "description": "Forbidden ownership/role."
+          },
+          "404": {
+            "description": "Document not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a markdown document by id",
+        "tags": [
+          "Documents"
+        ]
+      },
+      "put": {
+        "operationId": "updateMarkdownDocument",
+        "parameters": [
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMarkdownDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Markdown document updated."
+          },
+          "400": {
+            "description": "Invalid payload."
+          },
+          "401": {
+            "description": "Unauthorized."
+          },
+          "403": {
+            "description": "Forbidden ownership/role."
+          },
+          "404": {
+            "description": "Document not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a markdown document; section map is regenerated on save",
+        "tags": [
+          "Documents"
         ]
       }
     }
@@ -4217,6 +5202,45 @@
           "code"
         ]
       },
+      "SetJiraAccountDto": {
+        "type": "object",
+        "properties": {
+          "jiraAccountId": {
+            "type": "string",
+            "example": "5b10a2844c20165700ede21g",
+            "description": "JIRA Cloud accountId. Pass empty string to unlink."
+          }
+        },
+        "required": [
+          "jiraAccountId"
+        ]
+      },
+      "JiraDiscoverDto": {
+        "type": "object",
+        "properties": {
+          "jiraDomain": {
+            "type": "string",
+            "example": "mycompany.atlassian.net"
+          },
+          "jiraEmail": {
+            "type": "string",
+            "example": "leader@mycompany.com"
+          },
+          "jiraApiToken": {
+            "type": "string",
+            "example": "ATATT3xFfGF0..."
+          },
+          "jiraProjectKey": {
+            "type": "string",
+            "example": "TES"
+          }
+        },
+        "required": [
+          "jiraDomain",
+          "jiraEmail",
+          "jiraApiToken"
+        ]
+      },
       "UpdateIntegrationsDto": {
         "type": "object",
         "properties": {
@@ -4243,7 +5267,27 @@
           "githubRepositoryId": {
             "type": "string",
             "example": "my-github-repo",
-            "description": "GitHub repository ID for the team"
+            "description": "GitHub repository ID in owner/repo format"
+          },
+          "githubToken": {
+            "type": "string",
+            "example": "ghp_xxxxxxxxxxxxxxxxxxxx",
+            "description": "GitHub Personal Access Token (PAT) with read:repo access. Required for branch/PR verification."
+          },
+          "jiraBoardId": {
+            "type": "string",
+            "example": "42",
+            "description": "Numeric JIRA board id. When set, the system uses /rest/agile/1.0/board/{boardId}/sprint?state=active to resolve the team's active sprint instead of JQL search."
+          },
+          "groupId": {
+            "type": "string",
+            "example": "a3f1c8de-...-uuid",
+            "description": "Cohort/group id this team belongs to. Required for the auto-finalize cron to compute per-student points without manual coordinator action."
+          },
+          "jiraStoryPointsField": {
+            "type": "string",
+            "example": "customfield_10016",
+            "description": "Custom field id Jira uses for Story Points on this team's instance. Defaults to customfield_10016 (Jira Cloud default)."
           }
         },
         "required": [
@@ -4253,6 +5297,448 @@
           "jiraApiToken",
           "githubRepositoryId"
         ]
+      },
+      "FinalizeSprintDto": {
+        "type": "object",
+        "properties": {
+          "sprintId": {
+            "type": "string",
+            "description": "Internal sprintId from SprintConfig"
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Internal groupId linking to SprintConfig"
+          }
+        },
+        "required": [
+          "sprintId",
+          "groupId"
+        ]
+      },
+      "CreateDeliverableEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableGrade": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ]
+          },
+          "gradedBy": {
+            "type": "string",
+            "readOnly": true,
+            "description": "Must not be provided by client. It is extracted from JWT."
+          }
+        },
+        "required": [
+          "groupId",
+          "deliverableId",
+          "deliverableGrade"
+        ]
+      },
+      "DeliverableEvaluationResponseDto": {
+        "type": "object",
+        "properties": {
+          "evaluationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliverableGrade": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ]
+          },
+          "gradedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evaluationId",
+          "groupId",
+          "deliverableId",
+          "deliverableGrade",
+          "gradedBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "StudentFinalGradeDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Student identifier for the stored final grade"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Group identifier associated with this grade"
+          },
+          "individualAllowanceRatio": {
+            "type": "number",
+            "example": 0.9,
+            "description": "Completed-to-target story point allowance ratio"
+          },
+          "finalGrade": {
+            "type": "number",
+            "example": 70.56,
+            "description": "Stored individual final grade for the student"
+          },
+          "calculatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Timestamp when the final grade was calculated"
+          }
+        },
+        "required": [
+          "studentId",
+          "groupId",
+          "individualAllowanceRatio",
+          "finalGrade",
+          "calculatedAt"
+        ]
+      },
+      "GroupFinalGradeDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Group identifier for the stored final grade"
+          },
+          "teamGrade": {
+            "type": "number",
+            "example": 78.4,
+            "description": "Stored final team grade from D4"
+          },
+          "individualGrades": {
+            "description": "Individual stored grades for students in the group",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentFinalGradeDto"
+            }
+          },
+          "calculatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Timestamp when this final grade was calculated"
+          }
+        },
+        "required": [
+          "groupId",
+          "teamGrade",
+          "individualGrades",
+          "calculatedAt"
+        ]
+      },
+      "Object": {
+        "type": "object",
+        "properties": {}
+      },
+      "GradeHistoryEntryDto": {
+        "type": "object",
+        "properties": {
+          "gradeChangeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamGrade": {
+            "type": "number",
+            "example": 78.4
+          },
+          "gradeComponents": {
+            "type": "object"
+          },
+          "triggeredBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "gradeChangeId",
+          "groupId",
+          "teamGrade",
+          "gradeComponents",
+          "triggeredBy",
+          "changedAt"
+        ]
+      },
+      "PaginatedGradeHistoryDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "description": "Grade history entries for the requested group page",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GradeHistoryEntryDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of grade history entries"
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page number"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Requested page size"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "ScaledDeliverableGradeDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Deliverable identifier"
+          },
+          "rawGrade": {
+            "type": "number",
+            "example": 80,
+            "description": "Raw numeric grade from committee evaluation (100/80/60/50/0)"
+          },
+          "teamScalar": {
+            "type": "number",
+            "example": 0.8,
+            "description": "Team scalar [0–1]: average of all sprint evaluation scores for sprints mapped to this deliverable, divided by 100"
+          },
+          "deliverablePercentage": {
+            "type": "number",
+            "example": 35,
+            "description": "Contribution percentage of this deliverable toward the final grade (0–100)"
+          },
+          "scaledGrade": {
+            "type": "number",
+            "example": 22.4,
+            "description": "Scaled grade: rawGrade × teamScalar × (deliverablePercentage / 100)"
+          }
+        },
+        "required": [
+          "deliverableId",
+          "rawGrade",
+          "teamScalar",
+          "deliverablePercentage",
+          "scaledGrade"
+        ]
+      },
+      "GradeCalculationResultDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Group identifier"
+          },
+          "teamGrade": {
+            "type": "number",
+            "example": 74.88,
+            "description": "Sum of all scaled deliverable grades, capped at 100"
+          },
+          "teamScalar": {
+            "type": "number",
+            "example": 0.815,
+            "description": "Overall team scalar: average of per-deliverable scalars"
+          },
+          "scaledDeliverableGrades": {
+            "description": "Breakdown of scaled grades per deliverable",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScaledDeliverableGradeDto"
+            }
+          },
+          "individualGrades": {
+            "description": "Final grades per student (teamGrade × individualAllowanceRatio)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentFinalGradeDto"
+            }
+          },
+          "triggeredBy": {
+            "type": "string",
+            "format": "uuid",
+            "description": "userId of the coordinator who triggered the calculation"
+          },
+          "calculatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Timestamp of calculation"
+          }
+        },
+        "required": [
+          "groupId",
+          "teamGrade",
+          "teamScalar",
+          "scaledDeliverableGrades",
+          "individualGrades",
+          "triggeredBy",
+          "calculatedAt"
+        ]
+      },
+      "CalculateGradeDto": {
+        "type": "object",
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "When false (default), returns 409 if a final grade already exists. When true, recalculates and overwrites D4; a new snapshot is always appended to D5.",
+            "default": false
+          }
+        },
+        "required": [
+          "force"
+        ]
+      },
+      "DeliverableResponseDto": {
+        "type": "object",
+        "properties": {
+          "deliverableId": {
+            "type": "string",
+            "description": "UUID of the deliverable"
+          },
+          "name": {
+            "type": "string",
+            "description": "Unique deliverable name"
+          },
+          "deliverablePercentage": {
+            "type": "number",
+            "description": "Contribution percentage toward the final grade (0–100)"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Creation timestamp"
+          },
+          "updatedAt": {
+            "type": "object",
+            "description": "Last update timestamp",
+            "nullable": true
+          }
+        },
+        "required": [
+          "deliverableId",
+          "name",
+          "deliverablePercentage",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PaginatedDeliverablesDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliverableResponseDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Total number of matching deliverables"
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page index (1-based)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Page size"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "CreateDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique deliverable name",
+            "example": "Statement of Work"
+          },
+          "deliverablePercentage": {
+            "type": "number",
+            "description": "Contribution percentage toward the final grade (0–100). Must not cause the total across all deliverables to exceed 100.",
+            "example": 35,
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "name",
+          "deliverablePercentage"
+        ]
+      },
+      "UpdateDeliverableDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Updated deliverable name.",
+            "example": "Statement of Work"
+          },
+          "deliverablePercentage": {
+            "type": "number",
+            "description": "Updated contribution percentage toward the final grade (0–100). Total across all deliverables must not exceed 100.",
+            "example": 35,
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
       },
       "MoveStudentDto": {
         "type": "object",
@@ -4277,6 +5763,104 @@
         },
         "required": [
           "sanitizationRunDateTime"
+        ]
+      },
+      "ActivityLogDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "object",
+            "nullable": true
+          },
+          "actorName": {
+            "type": "object",
+            "nullable": true,
+            "description": "Resolved from User.name when actorUserId is set"
+          },
+          "actorEmail": {
+            "type": "object",
+            "nullable": true,
+            "description": "Resolved from User.email when actorUserId is set"
+          },
+          "actorRole": {
+            "type": "object",
+            "nullable": true
+          },
+          "targetType": {
+            "type": "object",
+            "nullable": true
+          },
+          "targetId": {
+            "type": "object",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "timestamp",
+          "eventType",
+          "summary"
+        ]
+      },
+      "PaginatedActivityLogsDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityLogDto"
+            }
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "page",
+          "limit",
+          "total"
+        ]
+      },
+      "UpdateUserRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "Student",
+              "Coordinator",
+              "Admin",
+              "Professor",
+              "TeamLeader"
+            ]
+          }
+        },
+        "required": [
+          "role"
         ]
       },
       "CreateMyTeamDto": {
@@ -4358,11 +5942,13 @@
           },
           "name": {
             "type": "string"
+          },
+          "email": {
+            "type": "string"
           }
         },
         "required": [
-          "userId",
-          "name"
+          "userId"
         ]
       },
       "CommitteeAdvisorResponse": {
@@ -4373,11 +5959,13 @@
           },
           "name": {
             "type": "string"
+          },
+          "email": {
+            "type": "string"
           }
         },
         "required": [
-          "userId",
-          "name"
+          "userId"
         ]
       },
       "CommitteeGroupResponse": {
@@ -4515,10 +6103,6 @@
           "status"
         ]
       },
-      "Object": {
-        "type": "object",
-        "properties": {}
-      },
       "CommitteeListItemDto": {
         "type": "object",
         "properties": {
@@ -4597,8 +6181,11 @@
         "properties": {
           "advisorUserId": {
             "type": "string",
-            "description": "User ID of the advisor",
-            "format": "uuid"
+            "description": "User ID of the advisor"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address of the advisor"
           },
           "assignedAt": {
             "type": "string",
@@ -4646,6 +6233,11 @@
           "groupId": {
             "type": "string",
             "description": "UUID of the assigned group"
+          },
+          "groupName": {
+            "type": "object",
+            "description": "Display name of the group (joined from Group collection).",
+            "nullable": true
           },
           "assignedAt": {
             "type": "string",
@@ -4697,8 +6289,7 @@
         "properties": {
           "userId": {
             "type": "string",
-            "description": "ID of the user to assign as jury member",
-            "format": "uuid"
+            "description": "MongoDB ObjectId of the user to assign as jury member"
           },
           "assignedAt": {
             "type": "string",
@@ -4717,6 +6308,10 @@
             "type": "string",
             "description": "User ID of the jury member",
             "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address of the jury member"
           },
           "assignedAt": {
             "type": "string",
@@ -4822,8 +6417,7 @@
         "properties": {
           "advisorId": {
             "type": "string",
-            "description": "User ID of the advisor to assign",
-            "format": "uuid"
+            "description": "User ID of the advisor to assign"
           },
           "assignmentSource": {
             "type": "string",
@@ -4992,6 +6586,40 @@
           "documents"
         ]
       },
+      "AddCommentDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Reviewer comment text",
+            "example": "Please clarify the methodology section.",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "CreateRevisionRequestDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Revision instructions for the student team",
+            "example": "Please upload a revised proposal with the missing risk analysis."
+          },
+          "dueDatetime": {
+            "type": "string",
+            "description": "ISO-8601 deadline for the requested revision",
+            "example": "2026-06-01T12:00:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "description",
+          "dueDatetime"
+        ]
+      },
       "CreatePhaseDto": {
         "type": "object",
         "properties": {
@@ -5009,10 +6637,12 @@
         "type": "object",
         "properties": {
           "submissionStart": {
-            "type": "string"
+            "type": "string",
+            "format": "date-time"
           },
           "submissionEnd": {
-            "type": "string"
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -5056,6 +6686,10 @@
         "properties": {}
       },
       "SetScheduleDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateScheduleTimesDto": {
         "type": "object",
         "properties": {}
       },
@@ -5129,477 +6763,15 @@
       "OverrideStoryPointsDto": {
         "type": "object",
         "properties": {
-          "completedPoints": {
+          "targetPoints": {
             "type": "number",
-            "description": "Override completed story points (must be >= 0)",
+            "description": "Override target story points (must be >= 0)",
             "minimum": 0
           }
         },
         "required": [
-          "completedPoints"
+          "targetPoints"
         ]
-      },
-      "CreateDeliverableEvaluationDto": {
-        "type": "object",
-        "properties": {
-          "groupId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "deliverableId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "deliverableGrade": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B",
-              "C",
-              "D",
-              "F"
-            ]
-          },
-          "gradedBy": {
-            "type": "string",
-            "readOnly": true,
-            "description": "Must not be provided by client. It is extracted from JWT."
-          }
-        },
-        "required": [
-          "groupId",
-          "deliverableId",
-          "deliverableGrade"
-        ]
-      },
-      "DeliverableEvaluationResponseDto": {
-        "type": "object",
-        "properties": {
-          "evaluationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "groupId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "deliverableId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "deliverableGrade": {
-            "type": "string",
-            "enum": [
-              "A",
-              "B",
-              "C",
-              "D",
-              "F"
-            ]
-          },
-          "gradedBy": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "evaluationId",
-          "groupId",
-          "deliverableId",
-          "deliverableGrade",
-          "gradedBy",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "StudentFinalGradeDto": {
-        "type": "object",
-        "properties": {
-          "studentId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Student identifier for the stored final grade"
-          },
-          "groupId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Group identifier associated with this grade"
-          },
-          "individualAllowanceRatio": {
-            "type": "number",
-            "example": 0.9,
-            "description": "Completed-to-target story point allowance ratio"
-          },
-          "finalGrade": {
-            "type": "number",
-            "example": 70.56,
-            "description": "Stored individual final grade for the student"
-          },
-          "calculatedAt": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Timestamp when the final grade was calculated"
-          }
-        },
-        "required": [
-          "studentId",
-          "groupId",
-          "individualAllowanceRatio",
-          "finalGrade",
-          "calculatedAt"
-        ]
-      },
-      "GroupFinalGradeDto": {
-        "type": "object",
-        "properties": {
-          "groupId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Group identifier for the stored final grade"
-          },
-          "teamGrade": {
-            "type": "number",
-            "example": 78.4,
-            "description": "Stored final team grade from D4"
-          },
-          "individualGrades": {
-            "description": "Individual stored grades for students in the group",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StudentFinalGradeDto"
-            }
-          },
-          "calculatedAt": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Timestamp when this final grade was calculated"
-          }
-        },
-        "required": [
-          "groupId",
-          "teamGrade",
-          "individualGrades",
-          "calculatedAt"
-        ]
-      },
-      "GradeHistoryEntryDto": {
-        "type": "object",
-        "properties": {
-          "gradeChangeId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "groupId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "teamGrade": {
-            "type": "number",
-            "example": 78.4
-          },
-          "gradeComponents": {
-            "type": "object"
-          },
-          "triggeredBy": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "changedAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "gradeChangeId",
-          "groupId",
-          "teamGrade",
-          "gradeComponents",
-          "triggeredBy",
-          "changedAt"
-        ]
-      },
-      "PaginatedGradeHistoryDto": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "description": "Grade history entries for the requested group page",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GradeHistoryEntryDto"
-            }
-          },
-          "total": {
-            "type": "number",
-            "description": "Total number of grade history entries"
-          },
-          "page": {
-            "type": "number",
-            "description": "Current page number"
-          },
-          "limit": {
-            "type": "number",
-            "description": "Requested page size"
-          }
-        },
-        "required": [
-          "data",
-          "total",
-          "page",
-          "limit"
-        ]
-      },
-      "ScaledDeliverableGradeDto": {
-        "type": "object",
-        "properties": {
-          "deliverableId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Deliverable identifier"
-          },
-          "rawGrade": {
-            "type": "number",
-            "example": 80,
-            "description": "Raw numeric grade from committee evaluation (100/80/60/50/0)"
-          },
-          "teamScalar": {
-            "type": "number",
-            "example": 0.8,
-            "description": "Team scalar [0–1]: average of all sprint evaluation scores for sprints mapped to this deliverable, divided by 100"
-          },
-          "categoryWeight": {
-            "type": "number",
-            "example": 0.5,
-            "description": "Category weight from D1 deliverable config"
-          },
-          "subWeight": {
-            "type": "number",
-            "example": 0.35,
-            "description": "Sub-weight from D1 deliverable config"
-          },
-          "scaledGrade": {
-            "type": "number",
-            "example": 22.4,
-            "description": "Scaled grade: rawGrade × teamScalar × categoryWeight × subWeight"
-          }
-        },
-        "required": [
-          "deliverableId",
-          "rawGrade",
-          "teamScalar",
-          "categoryWeight",
-          "subWeight",
-          "scaledGrade"
-        ]
-      },
-      "GradeCalculationResultDto": {
-        "type": "object",
-        "properties": {
-          "groupId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Group identifier"
-          },
-          "teamGrade": {
-            "type": "number",
-            "example": 74.88,
-            "description": "Sum of all scaled deliverable grades, capped at 100"
-          },
-          "teamScalar": {
-            "type": "number",
-            "example": 0.815,
-            "description": "Overall team scalar: average of per-deliverable scalars"
-          },
-          "scaledDeliverableGrades": {
-            "description": "Breakdown of scaled grades per deliverable",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScaledDeliverableGradeDto"
-            }
-          },
-          "individualGrades": {
-            "description": "Final grades per student (teamGrade × individualAllowanceRatio)",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StudentFinalGradeDto"
-            }
-          },
-          "triggeredBy": {
-            "type": "string",
-            "format": "uuid",
-            "description": "userId of the coordinator who triggered the calculation"
-          },
-          "calculatedAt": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Timestamp of calculation"
-          }
-        },
-        "required": [
-          "groupId",
-          "teamGrade",
-          "teamScalar",
-          "scaledDeliverableGrades",
-          "individualGrades",
-          "triggeredBy",
-          "calculatedAt"
-        ]
-      },
-      "CalculateGradeDto": {
-        "type": "object",
-        "properties": {
-          "force": {
-            "type": "boolean",
-            "description": "When false (default), returns 409 if a final grade already exists. When true, recalculates and overwrites D4; a new snapshot is always appended to D5.",
-            "default": false
-          }
-        },
-        "required": [
-          "force"
-        ]
-      },
-      "DeliverableResponseDto": {
-        "type": "object",
-        "properties": {
-          "deliverableId": {
-            "type": "string",
-            "description": "UUID of the deliverable"
-          },
-          "name": {
-            "type": "string",
-            "description": "Unique deliverable name"
-          },
-          "categoryWeight": {
-            "type": "number",
-            "description": "Top-level category weight"
-          },
-          "subWeight": {
-            "type": "number",
-            "description": "Deliverable weight within its category"
-          },
-          "deliverablePercentage": {
-            "type": "number",
-            "description": "Overall contribution percentage"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Creation timestamp"
-          },
-          "updatedAt": {
-            "type": "object",
-            "description": "Last update timestamp",
-            "nullable": true
-          }
-        },
-        "required": [
-          "deliverableId",
-          "name",
-          "categoryWeight",
-          "subWeight",
-          "deliverablePercentage",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "PaginatedDeliverablesDto": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DeliverableResponseDto"
-            }
-          },
-          "total": {
-            "type": "number",
-            "description": "Total number of matching deliverables"
-          },
-          "page": {
-            "type": "number",
-            "description": "Current page index (1-based)"
-          },
-          "limit": {
-            "type": "number",
-            "description": "Page size"
-          }
-        },
-        "required": [
-          "data",
-          "total",
-          "page",
-          "limit"
-        ]
-      },
-      "CreateDeliverableDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Unique deliverable name",
-            "example": "Statement of Work"
-          },
-          "categoryWeight": {
-            "type": "number",
-            "description": "Top-level category weight in the final grade formula",
-            "example": 0.5,
-            "minimum": 0,
-            "maximum": 1
-          },
-          "subWeight": {
-            "type": "number",
-            "description": "Deliverable weight within its category",
-            "example": 0.35,
-            "minimum": 0,
-            "maximum": 1
-          },
-          "deliverablePercentage": {
-            "type": "number",
-            "description": "Overall contribution percentage of the deliverable",
-            "example": 17.5,
-            "minimum": 0,
-            "maximum": 100
-          }
-        },
-        "required": [
-          "name",
-          "categoryWeight",
-          "subWeight",
-          "deliverablePercentage"
-        ]
-      },
-      "UpdateDeliverableDto": {
-        "type": "object",
-        "properties": {
-          "categoryWeight": {
-            "type": "number",
-            "description": "Top-level category weight in the final grade formula",
-            "example": 0.5,
-            "minimum": 0,
-            "maximum": 1
-          },
-          "subWeight": {
-            "type": "number",
-            "description": "Deliverable weight within its category",
-            "example": 0.35,
-            "minimum": 0,
-            "maximum": 1
-          },
-          "deliverablePercentage": {
-            "type": "number",
-            "description": "Overall contribution percentage of the deliverable",
-            "example": 17.5,
-            "minimum": 0,
-            "maximum": 100
-          }
-        }
       },
       "CreateSprintEvaluationResponseItemDto": {
         "type": "object",
@@ -5635,10 +6807,6 @@
             "type": "string",
             "format": "uuid"
           },
-          "deliverableId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "evaluationType": {
             "type": "string",
             "enum": [
@@ -5656,7 +6824,6 @@
         "required": [
           "groupId",
           "sprintId",
-          "deliverableId",
           "evaluationType",
           "responses"
         ]
@@ -5696,10 +6863,6 @@
             "format": "uuid"
           },
           "sprintId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "deliverableId": {
             "type": "string",
             "format": "uuid"
           },
@@ -5744,7 +6907,6 @@
           "evaluationId",
           "groupId",
           "sprintId",
-          "deliverableId",
           "evaluationType",
           "rubricId",
           "responses",
@@ -5783,14 +6945,30 @@
             "format": "uuid"
           },
           "deliverableId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sprintEvaluationType": {
             "type": "string",
-            "format": "uuid"
+            "enum": [
+              "SCRUM",
+              "CODE_REVIEW"
+            ],
+            "nullable": true
           },
           "name": {
             "type": "string"
           },
           "isActive": {
             "type": "boolean"
+          },
+          "gradingType": {
+            "type": "string",
+            "enum": [
+              "binary",
+              "soft"
+            ]
           },
           "questions": {
             "type": "array",
@@ -5810,9 +6988,9 @@
         },
         "required": [
           "rubricId",
-          "deliverableId",
           "name",
           "isActive",
+          "gradingType",
           "questions",
           "createdAt",
           "updatedAt"
@@ -5868,13 +7046,30 @@
         "properties": {
           "deliverableId": {
             "type": "string",
-            "description": "The deliverable this rubric evaluates",
+            "description": "The deliverable this rubric evaluates (mutually exclusive with sprintEvaluationType)",
             "format": "uuid"
+          },
+          "sprintEvaluationType": {
+            "type": "string",
+            "description": "Sprint evaluation type this rubric applies to (mutually exclusive with deliverableId)",
+            "enum": [
+              "SCRUM",
+              "CODE_REVIEW"
+            ]
           },
           "name": {
             "type": "string",
             "description": "Human-readable name for this rubric version",
-            "example": "Sprint 1 SCRUM Evaluation"
+            "example": "Sprint SCRUM Evaluation"
+          },
+          "gradingType": {
+            "type": "string",
+            "description": "Grading scale applied to all questions in this rubric",
+            "enum": [
+              "binary",
+              "soft"
+            ],
+            "example": "soft"
           },
           "questions": {
             "description": "Array of evaluation criteria questions",
@@ -5885,8 +7080,8 @@
           }
         },
         "required": [
-          "deliverableId",
           "name",
+          "gradingType",
           "questions"
         ]
       },
@@ -6026,40 +7221,6 @@
           "revisionRequests"
         ]
       },
-      "AddCommentDto": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "description": "Reviewer comment text",
-            "example": "Please clarify the methodology section.",
-            "maxLength": 2000
-          }
-        },
-        "required": [
-          "text"
-        ]
-      },
-      "CreateRevisionRequestDto": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": "string",
-            "description": "Revision instructions for the student team",
-            "example": "Please upload a revised proposal with the missing risk analysis."
-          },
-          "dueDatetime": {
-            "type": "string",
-            "description": "ISO-8601 deadline for the requested revision",
-            "example": "2026-06-01T12:00:00.000Z",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "description",
-          "dueDatetime"
-        ]
-      },
       "SubmitGradeDto": {
         "type": "object",
         "properties": {
@@ -6141,7 +7302,7 @@
             "description": "Target story points for this sprint"
           },
           "deliverableMappings": {
-            "minItems": 1,
+            "minItems": 0,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DeliverableMappingDto"
@@ -6185,6 +7346,23 @@
               "$ref": "#/components/schemas/SprintDeliverableMappingResponseDto"
             }
           },
+          "isFinalized": {
+            "type": "boolean",
+            "description": "True once the sprint has been finalized."
+          },
+          "name": {
+            "type": "object",
+            "description": "Friendly label derived from the linked Schedule date range.",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "object",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "object",
+            "nullable": true
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -6198,6 +7376,10 @@
           "sprintId",
           "targetStoryPoints",
           "deliverableMappings",
+          "isFinalized",
+          "name",
+          "startDate",
+          "endDate",
           "createdAt",
           "updatedAt"
         ]
@@ -6230,6 +7412,14 @@
             }
           }
         }
+      },
+      "CreateMarkdownDocumentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateMarkdownDocumentDto": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

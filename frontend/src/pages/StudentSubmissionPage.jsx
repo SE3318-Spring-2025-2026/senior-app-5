@@ -26,6 +26,8 @@ function Step({ number, title, active, done }) {
 export default function StudentSubmissionPage() {
   const fileInputRef = useRef(null);
 
+  const [deliverables, setDeliverables] = useState([]);
+
   const [group, setGroup] = useState({ loading: true, id: '', error: '' });
   const [phases, setPhases] = useState([]);
   const [selectedPhase, setSelectedPhase] = useState(null);
@@ -41,6 +43,15 @@ export default function StudentSubmissionPage() {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
+
+  useEffect(() => {
+    apiClient.get(apiConfig.endpoints.deliverables, { params: { limit: 100 } })
+      .then((r) => {
+        const data = r.data?.data ?? r.data ?? [];
+        setDeliverables(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setDeliverables([]));
+  }, []);
 
   useEffect(() => {
     apiClient.get(apiConfig.endpoints.auth.me)
@@ -130,6 +141,21 @@ export default function StudentSubmissionPage() {
         <h1 className="text-2xl font-bold text-slate-100">Submit Document</h1>
         <p className="text-sm text-slate-400">Upload files for your project phase.</p>
       </div>
+
+      {/* Deliverable Weights */}
+      {deliverables.length > 0 && (
+        <div className="rounded-xl border border-[#1e293b] bg-[#111827] p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Deliverable Weights</p>
+          <div className="divide-y divide-[#1e293b]">
+            {deliverables.map((d) => (
+              <div key={d.deliverableId} className="flex items-center justify-between py-2">
+                <span className="text-sm text-slate-300">{d.name ?? d.deliverableId}</span>
+                <span className="text-sm font-semibold text-indigo-400">{d.percentage != null ? `${d.percentage}%` : '—'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 rounded-xl border border-[#1e293b] bg-[#111827] px-5 py-4">
         <Step number={1} title="Select Phase" active={activeStep === 1} done={step1Done} />

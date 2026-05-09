@@ -594,7 +594,7 @@ export class TeamsSyncService {
 
       const individualRatio = targetPoints > 0
         ? Math.min(1, completedPoints / targetPoints)
-        : 0;
+        : 1.0;
 
       students.push({
         studentId,

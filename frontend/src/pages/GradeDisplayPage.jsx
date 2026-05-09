@@ -32,13 +32,18 @@ function GradeDisplayPage() {
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [studentEmailMap, setStudentEmailMap] = useState({});
 
+  // Calculate grades state (Coordinator only)
+  const [calcGroupInput, setCalcGroupInput] = useState('');
+  const [calcForce, setCalcForce] = useState(false);
+  const [calcStatus, setCalcStatus] = useState({ loading: false, error: '', result: null });
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
 
-    if (user.role === 'Student') {
+    if (user.role === 'Student' || user.role === 'TeamLeader') {
       const fetchStudentGrade = async () => {
         setStudentStatus({ loading: true, error: '', notFound: false });
         try {
@@ -145,7 +150,7 @@ function GradeDisplayPage() {
   if (!user) return null;
 
   // ── STUDENT VIEW ────────────────────────────────────────────────────────────
-  if (user.role === 'Student') {
+  if (user.role === 'Student' || user.role === 'TeamLeader') {
     return (
       <div className={styles.pageContainer}>
         <div className={styles.headerSection}>
@@ -204,12 +209,96 @@ function GradeDisplayPage() {
 
   const totalHistoryPages = history ? Math.ceil(history.total / HISTORY_LIMIT) : 1;
 
+  const handleCalculateGrades = async (e) => {
+    e.preventDefault();
+    const gId = calcGroupInput.trim();
+    if (!gId) return;
+    setCalcStatus({ loading: true, error: '', result: null });
+    try {
+      const res = await apiClient.post(
+        apiConfig.endpoints.groupCalculate(gId),
+        { force: calcForce },
+      );
+      setCalcStatus({ loading: false, error: '', result: res.data });
+    } catch (err) {
+      const msg = err?.response?.data?.message;
+      setCalcStatus({
+        loading: false,
+        error: Array.isArray(msg) ? msg.join(', ') : (msg ?? 'Failed to calculate grades.'),
+        result: null,
+      });
+    }
+  };
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.headerSection}>
         <h1 className={styles.title}>GRADE DISPLAY</h1>
         <p className={styles.description}>View final grades and history for a group.</p>
       </div>
+
+      {/* Calculate Grades — Coordinator only */}
+      {user.role === 'Coordinator' && (
+        <section style={{ marginBottom: '32px' }}>
+          <h2 style={{ color: '#f8fafc', marginBottom: '12px', fontSize: '1rem', fontWeight: 700 }}>Calculate Grades</h2>
+          <form
+            onSubmit={handleCalculateGrades}
+            style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}
+          >
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <EntitySearchSelect
+                endpoint={apiConfig.endpoints.groups}
+                buildParams={(q) => ({ name: q, page: 1, limit: 20 })}
+                getItems={(res) => res.data}
+                returnField="groupId"
+                displayField="groupName"
+                value={calcGroupInput}
+                onChange={setCalcGroupInput}
+                placeholder="Search group by name"
+                required
+              />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                checked={calcForce}
+                onChange={(ev) => setCalcForce(ev.target.checked)}
+              />
+              Force recalculate
+            </label>
+            <button
+              type="submit"
+              disabled={calcStatus.loading}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '6px',
+                background: '#22c55e',
+                color: '#0f172a',
+                fontWeight: 700,
+                border: 'none',
+                cursor: calcStatus.loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {calcStatus.loading ? 'Calculating…' : 'Calculate Grades'}
+            </button>
+          </form>
+
+          {calcStatus.error && (
+            <div className={styles.errorBox} style={{ marginTop: '12px' }}>{calcStatus.error}</div>
+          )}
+
+          {calcStatus.result && (
+            <div className={styles.infoBox} style={{ marginTop: '12px' }}>
+              <p style={{ color: '#22c55e', fontWeight: 600 }}>
+                Grades calculated successfully.
+                {calcStatus.result.teamGrade != null && (
+                  <> Team grade: <strong>{calcStatus.result.teamGrade.toFixed(2)}</strong></>
+                )}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Group lookup form */}
       <form

@@ -24,7 +24,7 @@ export class TeamLeaderGuard implements CanActivate {
       );
     }
 
-    const team = await this.teamModel.findOne({ groupId: teamId });
+    const team = await this.teamModel.findById(teamId).exec();
     if (!team) {
       throw new NotFoundException('Team not found.');
     }

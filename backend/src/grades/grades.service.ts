@@ -61,6 +61,8 @@ import {
   Committee,
   CommitteeDocument,
 } from '../committees/schemas/committee.schema';
+import { User, UserDocument } from '../users/data/user.schema';
+import { Role } from '../auth/enums/role.enum';
 
 @Injectable()
 export class GradesService {
@@ -87,6 +89,8 @@ export class GradesService {
     private readonly storyPointRecordModel: Model<StoryPointRecordDocument>,
     @InjectModel(Committee.name)
     private readonly committeeModel: Model<CommitteeDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   // ────────────────────────────────────────────────────────────────
@@ -271,39 +275,28 @@ export class GradesService {
       );
     }
 
-    try {
-      const created = await this.deliverableEvaluationModel.create({
-        groupId: dto.groupId,
-        deliverableId: dto.deliverableId,
-        deliverableGrade: dto.deliverableGrade,
-        rawGrade: deliverableGradeValue(dto.deliverableGrade),
-        status: DeliverableEvaluationStatus.GRADED,
-        gradedBy,
-      });
-
-      return this.toDeliverableEvaluationResponseDto(
-        created.toObject() as unknown as DeliverableEvaluation & {
-          createdAt: Date;
-          updatedAt: Date;
+    const upserted = await this.deliverableEvaluationModel
+      .findOneAndUpdate(
+        { groupId: dto.groupId, deliverableId: dto.deliverableId },
+        {
+          $set: {
+            deliverableGrade: dto.deliverableGrade,
+            rawGrade: deliverableGradeValue(dto.deliverableGrade),
+            status: DeliverableEvaluationStatus.GRADED,
+            gradedBy,
+          },
         },
-      );
-    } catch (error) {
-      const isDuplicateKey =
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as { code?: number }).code === 11000;
+        { upsert: true, new: true },
+      )
+      .lean()
+      .exec();
 
-      if (isDuplicateKey) {
-        throw new ConflictException(
-          `Evaluation already exists for group '${dto.groupId}' and deliverable '${dto.deliverableId}'.`,
-        );
-      }
-
-      throw new InternalServerErrorException(
-        'Failed to record deliverable evaluation due to an unexpected error.',
-      );
-    }
+    return this.toDeliverableEvaluationResponseDto(
+      upserted as unknown as DeliverableEvaluation & {
+        createdAt: Date;
+        updatedAt: Date;
+      },
+    );
   }
 
   async listDeliverableEvaluations(
@@ -566,11 +559,22 @@ export class GradesService {
       .lean()
       .exec();
 
+    // When no story point records exist yet, fall back to group members with ratio = 1.0
+    // so that deliverable-only grading still produces a student grade record.
+    let fallbackStudentIds: string[] = [];
     if (storyPointRecords.length === 0) {
-      throw new UnprocessableEntityException(
-        `No story point records found for group ${groupId}. ` +
-          'Story points must be verified for all sprints before calculation.',
-      );
+      const groupMembers = await this.userModel
+        .find({ teamId: groupId })
+        .select('_id')
+        .lean()
+        .exec();
+      if (groupMembers.length > 0) {
+        fallbackStudentIds = groupMembers.map((u) => String((u as any)._id));
+      } else {
+        // Last resort: use the group leader
+        const grp = await this.groupModel.findOne({ groupId }).lean().exec();
+        if (grp?.leaderUserId) fallbackStudentIds = [grp.leaderUserId];
+      }
     }
 
     // Build sprint → deliverable weight map from SprintConfig deliverableMappings
@@ -595,8 +599,10 @@ export class GradesService {
       sprintRatioMap.set(record.sprintId, byStudent);
     }
 
-    // Collect all unique student IDs
-    const allStudentIds = [...new Set(storyPointRecords.map((r) => r.studentId))];
+    // Collect all unique student IDs (fallback when no story points)
+    const allStudentIds = storyPointRecords.length > 0
+      ? [...new Set(storyPointRecords.map((r) => r.studentId))]
+      : fallbackStudentIds;
 
     // Per-student per-deliverable individual ratio
     // studentDeliverableRatioMap: studentId → deliverableId → ratio
@@ -619,11 +625,18 @@ export class GradesService {
 
     // Fallback aggregate ratio (used when no deliverable mapping exists for a sprint)
     const studentTotals = new Map<string, { completed: number; target: number }>();
-    for (const record of storyPointRecords) {
-      const totals = studentTotals.get(record.studentId) ?? { completed: 0, target: 0 };
-      totals.completed += record.completedPoints;
-      totals.target += record.targetPoints;
-      studentTotals.set(record.studentId, totals);
+    if (storyPointRecords.length > 0) {
+      for (const record of storyPointRecords) {
+        const totals = studentTotals.get(record.studentId) ?? { completed: 0, target: 0 };
+        totals.completed += record.completedPoints;
+        totals.target += record.targetPoints;
+        studentTotals.set(record.studentId, totals);
+      }
+    } else {
+      // No story points: seed fallback students with full ratio (target === 0 → ratio = 1.0 below)
+      for (const sid of fallbackStudentIds) {
+        studentTotals.set(sid, { completed: 0, target: 0 });
+      }
     }
 
     this.logger.log(
@@ -661,8 +674,9 @@ export class GradesService {
             : 0;
         } else {
           // Fallback: aggregate ratio across all sprints
+          // target === 0 means no story point data → treat as full participation (1.0)
           individualAllowanceRatio =
-            totals.target > 0 ? Math.min(1, totals.completed / totals.target) : 0;
+            totals.target > 0 ? Math.min(1, totals.completed / totals.target) : 1.0;
         }
 
         const finalGrade = Number(

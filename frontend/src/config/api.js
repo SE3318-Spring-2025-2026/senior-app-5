@@ -95,6 +95,11 @@ export const apiConfig = {
     teamMine: '/teams/mine',
     teamJiraDiscover: '/teams/jira/discover',
     teamStoryPoints: (teamId) => `/teams/${teamId}/story-points`,
+    markdownDocuments: {
+      create: '/documents/markdown',
+      get: (documentId) => `/documents/markdown/${documentId}`,
+      update: (documentId) => `/documents/markdown/${documentId}`,
+    },
   },
 };
 

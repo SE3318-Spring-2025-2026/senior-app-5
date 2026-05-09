@@ -36,7 +36,7 @@ import { AddCommentDto } from './dto/add-comment.dto';
 import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_EXTENSIONS_REGEX =
-  /\.(pdf|doc|docx|png|jpg|jpeg)$/i;
+  /\.(pdf|doc|docx|png|jpg|jpeg|md)$/i;
 
 type UploadedSubmissionFile = {
   originalname: string;
@@ -53,7 +53,7 @@ export function submissionsFileFilter(
   if (!ALLOWED_UPLOAD_EXTENSIONS_REGEX.test(file.originalname)) {
     callback(
       new BadRequestException(
-        'Only PDF, DOC, DOCX, PNG, JPG, and JPEG files are allowed.',
+        'Only PDF, DOC, DOCX, PNG, JPG, JPEG, and MD files are allowed.',
       ) as unknown as Error,
       false,
     );

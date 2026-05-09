@@ -213,25 +213,73 @@ function GradeDisplayPage() {
 
         {studentGrade && (
           <>
-            <div className={styles.tableWrapper} style={{ marginBottom: '24px' }}>
-              <table className={styles.customTable}>
-                <thead>
-                  <tr>
-                    <th>Final Grade</th>
-                    <th>Story Point Ratio</th>
-                    <th>Calculated At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={{ fontSize: '1.25rem', fontWeight: 700, color: '#38bdf8' }}>
-                      {studentGrade.finalGrade?.toFixed(2)}
-                    </td>
-                    <td>{(studentGrade.individualAllowanceRatio * 100).toFixed(0)}%</td>
-                    <td>{new Date(studentGrade.calculatedAt).toLocaleString()}</td>
-                  </tr>
-                </tbody>
-              </table>
+            {/* Big summary cards: My Grade + Team Grade side by side */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 16,
+                marginBottom: 24,
+              }}
+            >
+              <div
+                style={{
+                  background: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: 8,
+                  padding: 20,
+                }}
+              >
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  My Final Grade
+                </div>
+                <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: '2rem', marginTop: 4 }}>
+                  {studentGrade.finalGrade?.toFixed(2)}
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 4 }}>
+                  Calculated {new Date(studentGrade.calculatedAt).toLocaleString()}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: 8,
+                  padding: 20,
+                }}
+              >
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Team Grade
+                </div>
+                <div style={{ color: '#34d399', fontWeight: 800, fontSize: '2rem', marginTop: 4 }}>
+                  {studentBreakdown?.teamGrade != null
+                    ? studentBreakdown.teamGrade.toFixed(2)
+                    : '—'}
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 4 }}>
+                  Shared by all team members
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: 8,
+                  padding: 20,
+                }}
+              >
+                <div style={{ color: '#94a3b8', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  My Story Point Ratio
+                </div>
+                <div style={{ color: '#7dd3fc', fontWeight: 800, fontSize: '2rem', marginTop: 4 }}>
+                  {(studentGrade.individualAllowanceRatio * 100).toFixed(0)}%
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 4 }}>
+                  Completed pts ÷ Target pts
+                </div>
+              </div>
             </div>
 
             <p style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '-16px', marginBottom: '24px' }}>

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install *)",
       "Bash(cd /Users/aanilince/local/Documents/GitHub/senior-app-5/backend && npx tsc --noEmit 2>&1 | grep -v \"groups.controller.spec\\\\|phases.service.spec\\\\|rubrics.controller.spec\\\\|submissions.boundary\"  | head; echo \"---\"; cd ../frontend && npx eslint src/components/TeamIntegrationsForm.jsx src/pages/IntegrationsPage.jsx 2>&1 | head -20)",
-      "Read(//Users/aanilince/local/Documents/GitHub/**)"
+      "Read(//Users/aanilince/local/Documents/GitHub/**)",
+      "Bash(docker exec great_hamilton mongosh --quiet --eval ' *)"
     ]
   }
 }

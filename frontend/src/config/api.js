@@ -89,6 +89,7 @@ export const apiConfig = {
     teamSync: (teamId) => `/teams/${teamId}/sync`,
     teamAdvisorPanel: (teamId) => `/teams/${teamId}/advisor-panel`,
     teamFinalizeSprintSync: (teamId) => `/teams/${teamId}/finalize-sprint`,
+    finalizeSprintForAllTeams: '/teams/finalize-sprint-all',
     teamIntegrations: (teamId) => `/teams/${teamId}/integrations`,
     teamIntegrationsStatus: (teamId) => `/teams/${teamId}/integrations/status`,
     teamsList: '/teams',

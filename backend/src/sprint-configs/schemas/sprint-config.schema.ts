@@ -27,6 +27,9 @@ export class SprintConfigEntry {
 
   @Prop({ type: [SprintDeliverableMappingSchema], default: [] })
   deliverableMappings!: SprintDeliverableMapping[];
+
+  @Prop({ type: Boolean, default: false })
+  isFinalized!: boolean;
 }
 
 export const SprintConfigEntrySchema =

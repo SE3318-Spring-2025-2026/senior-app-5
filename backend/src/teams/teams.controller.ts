@@ -14,6 +14,11 @@ import {
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import { TeamsSyncService } from './teams-sync.service';
+import { GradesService } from '../grades/grades.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Team, TeamDocument } from './schemas/team.schema';
+import { User, UserDocument } from '../users/data/user.schema';
 import { TeamLeaderGuard } from './guards/team-leader.guard';
 import { UpdateIntegrationsDto } from './dto/update-integrations.dto';
 import { JiraDiscoverDto } from './dto/jira-discover.dto';
@@ -30,6 +35,9 @@ export class TeamsController {
   constructor(
     private readonly teamsService: TeamsService,
     private readonly teamsSyncService: TeamsSyncService,
+    private readonly gradesService: GradesService,
+    @InjectModel(Team.name) private readonly teamModel: Model<TeamDocument>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
   @ApiBearerAuth('access-token')
@@ -158,6 +166,131 @@ export class TeamsController {
     @Body() dto: FinalizeSprintDto,
   ) {
     return this.teamsSyncService.finalizeSprintSync(teamId, dto.sprintId, dto.groupId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary:
+      'Coordinator: finalize a sprint for ALL JIRA-configured teams and recalculate grades for each affected group.',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Coordinator)
+  @Post('finalize-sprint-all')
+  @HttpCode(HttpStatus.OK)
+  async finalizeSprintForAllTeams(
+    @Body() body: { sprintId: string },
+    @Request() req: any,
+  ) {
+    const sprintId = body?.sprintId;
+    if (!sprintId) {
+      throw new ForbiddenException('sprintId is required.');
+    }
+
+    const teams = await this.teamModel
+      .find({
+        jiraDomain: { $exists: true, $ne: '' },
+        jiraApiToken: { $exists: true, $ne: '' },
+        jiraProjectKey: { $exists: true, $ne: '' },
+        jiraEmail: { $exists: true, $ne: '' },
+        groupId: { $exists: true, $ne: '' },
+      })
+      .select('_id name groupId')
+      .lean()
+      .exec();
+
+    const teamResults: {
+      teamId: string;
+      teamName: string;
+      groupId: string;
+      ok: boolean;
+      error?: string;
+      lockedCount?: number;
+      studentRecords?: { studentId: string; completedPoints: number; targetPoints: number }[];
+    }[] = [];
+
+    for (const team of teams) {
+      const teamId = (team._id as any).toString();
+      try {
+        const r = await this.teamsSyncService.finalizeSprintSync(teamId, sprintId);
+        teamResults.push({
+          teamId,
+          teamName: (team as any).name,
+          groupId: (team as any).groupId,
+          ok: true,
+          lockedCount: r.lockedCount,
+          studentRecords: r.studentRecords,
+        });
+      } catch (err: any) {
+        teamResults.push({
+          teamId,
+          teamName: (team as any).name,
+          groupId: (team as any).groupId,
+          ok: false,
+          error: err?.message ?? 'unknown error',
+        });
+      }
+    }
+
+    // Resolve student names/emails for every studentId returned across all teams.
+    const allStudentIds = [
+      ...new Set(
+        teamResults
+          .filter((r) => r.ok && r.studentRecords)
+          .flatMap((r) => r.studentRecords!.map((s) => s.studentId)),
+      ),
+    ];
+
+    if (allStudentIds.length > 0) {
+      const users = await this.userModel
+        .find({ _id: { $in: allStudentIds } })
+        .select('_id firstName lastName name email')
+        .lean()
+        .exec();
+      const userMap = new Map<string, { name: string | null; email: string | null }>(
+        (users as any[]).map((u) => [
+          String(u._id),
+          {
+            name:
+              [u.firstName, u.lastName].filter(Boolean).join(' ').trim() ||
+              (u.name as string | undefined) ||
+              null,
+            email: u.email ?? null,
+          },
+        ]),
+      );
+      for (const r of teamResults) {
+        if (r.ok && r.studentRecords) {
+          (r as any).studentRecords = r.studentRecords.map((s) => ({
+            ...s,
+            studentName: userMap.get(s.studentId)?.name ?? null,
+            studentEmail: userMap.get(s.studentId)?.email ?? null,
+          }));
+        }
+      }
+    }
+
+    const triggeredBy = req?.user?.userId ?? req?.user?.id ?? 'coordinator';
+
+    const uniqueGroupIds = [...new Set(teamResults.filter((r) => r.ok).map((r) => r.groupId))];
+    const gradeResults: { groupId: string; ok: boolean; error?: string; teamGrade?: number }[] = [];
+    for (const groupId of uniqueGroupIds) {
+      try {
+        const g = await this.gradesService.calculateGrade(
+          groupId,
+          { force: true },
+          triggeredBy,
+        );
+        gradeResults.push({ groupId, ok: true, teamGrade: g.teamGrade });
+      } catch (err: any) {
+        gradeResults.push({
+          groupId,
+          ok: false,
+          error: err?.message ?? 'unknown error',
+        });
+      }
+    }
+
+    return { sprintId, teamResults, gradeResults };
   }
 
   @ApiBearerAuth('access-token')

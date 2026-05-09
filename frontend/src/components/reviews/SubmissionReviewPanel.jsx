@@ -7,6 +7,7 @@ import {
   createReview,
   deleteComment,
   getReview,
+  listProfessorReviewSubmissions,
   requestRevision,
   submitGrade,
 } from '../../utils/reviewService'
@@ -36,6 +37,10 @@ const getDocumentHref = (submissionId, document, index) => {
 }
 
 const normalizeReview = (review) => ({ comments: [], revisionRequests: [], ...review })
+const isReviewConflict = (error) =>
+  error?.status === 409 || /already exists/i.test(String(error?.message || ''))
+const getSubmissionId = (submission) =>
+  String(submission?._id || submission?.id || submission?.submissionId || '')
 
 const sectionClass = 'border-t border-[#1e293b] pt-5 mt-5'
 const sectionHeadClass = 'mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500'
@@ -76,12 +81,39 @@ const SubmissionReviewPanel = ({ submission, committeeId, currentUser }) => {
   }, [])
 
   const loadReview = useCallback(async () => {
-    if (!submissionId || !committeeId) return
+    if (!submissionId || (!committeeId && !existingReviewId)) {
+      setReview(null)
+      setStatus({
+        loading: false,
+        message: '',
+        error: 'Unable to locate a committee review context for this submission.',
+      })
+      return
+    }
     setStatus({ loading: true, message: '', error: '' })
     try {
-      const data = existingReviewId
-        ? await getReview(existingReviewId)
-        : await createReview(submissionId, committeeId)
+      let data = null
+      if (existingReviewId) {
+        data = await getReview(existingReviewId)
+      } else {
+        try {
+          data = await createReview(submissionId, committeeId)
+        } catch (error) {
+          if (!isReviewConflict(error)) throw error
+          const queue = await listProfessorReviewSubmissions()
+          const queueItemsRaw = queue?.data || queue || []
+          const queueItems = Array.isArray(queueItemsRaw) ? queueItemsRaw : []
+          const matchedSubmission = queueItems.find(
+            (item) => getSubmissionId(item) === String(submissionId),
+          )
+          const reviewIdFromQueue =
+            matchedSubmission?.reviewId ||
+            matchedSubmission?.review?._id ||
+            matchedSubmission?.review?.id
+          if (!reviewIdFromQueue) throw error
+          data = await getReview(reviewIdFromQueue)
+        }
+      }
       setReview(normalizeReview(data))
       setGrade(data?.grade ?? '')
       setStatus({ loading: false, message: '', error: '' })

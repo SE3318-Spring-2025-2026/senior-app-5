@@ -77,7 +77,7 @@ function App() {
             <Route path="/documents" element={<StudentSubmissionPage />} />
             <Route path="/my-submissions" element={<DocumentsPage />} />
             <Route path="/grades" element={<GradeDisplayPage />} />
-            <Route path="/professor/submissions" element={<DocumentsPage />} />
+            <Route path="/professor/submissions" element={<Navigate to="/review" replace />} />
             <Route
               path="/review"
               element={
@@ -142,22 +142,6 @@ function App() {
             <Route path="/phases" element={<Navigate to="/phases/schedule" replace />} />
             <Route path="/committees" element={<Navigate to="/admin/committees" replace />} />
             <Route path="/advisors" element={<Navigate to="/admin/advisors" replace />} />
-            <Route
-              path="/committees"
-              element={
-                <ProtectedRoute requiredRole="Coordinator">
-                  <CommitteesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/phases"
-              element={
-                <ProtectedRoute requiredRole="Coordinator">
-                  <PhaseSchedulingPage />
-                </ProtectedRoute>
-              }
-            />
             <Route
               path="/phases/schedule"
               element={

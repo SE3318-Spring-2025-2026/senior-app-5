@@ -8,6 +8,8 @@ import {
 import apiClient from '../utils/apiClient'
 import apiConfig from '../config/api'
 import { PageHeader, Badge } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+import { normalizeRole } from '../utils/roleUtils'
 
 const normalizeList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -31,6 +33,12 @@ const STATUS_COLOR = {
 const statusColor = (status) => STATUS_COLOR[normalizeStatusClass(status)] || 'slate'
 
 const getCommitteeId = (committee) => committee?.id || committee?.committeeId || committee?._id
+const getSubmissionGroupId = (submission) =>
+  submission?.groupId ||
+  submission?.group?.groupId ||
+  submission?.group?.id ||
+  submission?.group?._id ||
+  ''
 
 const includesProfessor = (members, userId) =>
   Array.isArray(members) &&
@@ -50,17 +58,17 @@ const findProfessorCommittee = (committees, user) => {
   )
 }
 
-const getStoredUser = () => {
-  try {
-    const raw = localStorage.getItem('user')
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
 const ReviewPage = () => {
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
+  const fallbackUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('user')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+  const effectiveUser = user ?? fallbackUser
   const [committee, setCommittee] = useState(null)
   const [committeeFromGroup, setCommitteeFromGroup] = useState(null)
   const [submissions, setSubmissions] = useState([])
@@ -78,10 +86,7 @@ const ReviewPage = () => {
   )
 
   const loadReviewQueue = useCallback(async () => {
-    const localUser = getStoredUser()
-    setUser(localUser)
-
-    if (!localUser) {
+    if (!effectiveUser) {
       setStatus({ loading: false, error: 'User session not found. Please sign in again.' })
       return
     }
@@ -90,15 +95,15 @@ const ReviewPage = () => {
       setStatus({ loading: true, error: '' })
 
       const directCommitteeId =
-        localUser.committeeId ||
-        localUser.assignedCommitteeId ||
-        localUser.committee?.id ||
-        localUser.committee?._id
+        effectiveUser.committeeId ||
+        effectiveUser.assignedCommitteeId ||
+        effectiveUser.committee?.id ||
+        effectiveUser.committee?._id
 
       let professorCommittee = null
       if (directCommitteeId) {
         professorCommittee = await getCommittee(directCommitteeId)
-      } else if (String(localUser.role || '').toLowerCase() === 'professor') {
+      } else if (normalizeRole(effectiveUser.role) === 'professor') {
         const queue = normalizeList(await listProfessorReviewSubmissions())
         setCommittee(null)
         setCommitteeFromGroup(null)
@@ -110,7 +115,7 @@ const ReviewPage = () => {
         return
       } else {
         const committees = normalizeList(await listCommittees({ page: 1, limit: 100 }))
-        professorCommittee = findProfessorCommittee(committees, localUser) || null
+        professorCommittee = findProfessorCommittee(committees, effectiveUser) || null
       }
 
       const committeeId = getCommitteeId(professorCommittee)
@@ -134,7 +139,7 @@ const ReviewPage = () => {
         error: error.message || 'Unable to load review queue.',
       })
     }
-  }, [])
+  }, [effectiveUser])
 
   useEffect(() => {
     const task = window.setTimeout(loadReviewQueue, 0)
@@ -142,7 +147,7 @@ const ReviewPage = () => {
   }, [loadReviewQueue])
 
   useEffect(() => {
-    const groupId = selectedSubmission?.groupId
+    const groupId = getSubmissionGroupId(selectedSubmission)
     if (!groupId) {
       setCommitteeFromGroup(null)
       return
@@ -163,7 +168,13 @@ const ReviewPage = () => {
     }
   }, [selectedSubmission])
 
-  const committeeId = getCommitteeId(committee) || committeeFromGroup?.id || ''
+  const selectedSubmissionCommitteeId =
+    selectedSubmission?.committeeId ||
+    selectedSubmission?.committee?.id ||
+    selectedSubmission?.committee?._id ||
+    ''
+  const committeeId =
+    getCommitteeId(committee) || committeeFromGroup?.id || selectedSubmissionCommitteeId
 
   return (
     <div className="space-y-6">
@@ -234,7 +245,7 @@ const ReviewPage = () => {
           <div className="flex-1">
             <SubmissionReviewPanel
               committeeId={committeeId}
-              currentUser={user}
+              currentUser={effectiveUser}
               submission={selectedSubmission}
             />
           </div>

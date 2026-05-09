@@ -212,9 +212,7 @@ export class ReviewsService {
       .findOne({ submissionId: dto.submissionId, reviewerUserId })
       .exec();
     if (existing) {
-      throw new ConflictException(
-        'Review already exists for this reviewer and submission.',
-      );
+      return this.toReviewResponse(existing);
     }
 
     const review = new this.reviewModel({

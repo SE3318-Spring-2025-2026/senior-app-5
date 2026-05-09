@@ -83,6 +83,21 @@ export class Submission {
     status: string;
     createdAt: Date;
   }>;
+
+  @Prop([
+    {
+      gradeId: { type: String, default: () => randomUUID() },
+      graderUserId: { type: String, required: true },
+      gradeValue: { type: Number, required: true },
+      gradedAt: { type: Date, default: Date.now },
+    },
+  ])
+  grades?: Array<{
+    gradeId: string;
+    graderUserId: string;
+    gradeValue: number;
+    gradedAt: Date;
+  }>;
 }
 
 export const SubmissionSchema = SchemaFactory.createForClass(Submission);

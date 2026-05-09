@@ -46,9 +46,6 @@ export class SprintEvaluation {
   @Prop({ type: String, required: true })
   sprintId!: string;
 
-  @Prop({ type: String, required: true })
-  deliverableId!: string;
-
   @Prop({
     type: String,
     required: true,
@@ -77,6 +74,6 @@ export class SprintEvaluation {
 export const SprintEvaluationSchema =
   SchemaFactory.createForClass(SprintEvaluation);
 SprintEvaluationSchema.index(
-  { groupId: 1, sprintId: 1, deliverableId: 1, evaluationType: 1 },
+  { groupId: 1, sprintId: 1, evaluationType: 1 },
   { unique: true },
 );

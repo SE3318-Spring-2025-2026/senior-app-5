@@ -155,7 +155,7 @@ function GradeDisplayPage() {
       <div className={styles.pageContainer}>
         <div className={styles.headerSection}>
           <h1 className={styles.title}>MY GRADE</h1>
-          <p className={styles.description}>Your individual final grade.</p>
+          <p className={styles.description}>Your individual final grade and contribution breakdown.</p>
         </div>
 
         {studentStatus.loading && (
@@ -168,29 +168,38 @@ function GradeDisplayPage() {
 
         {studentStatus.notFound && (
           <div className={styles.infoBox}>
-            <p>No grade available yet. Grade has not been calculated.</p>
+            <p>No grade available yet. Grade calculation has not been triggered.</p>
           </div>
         )}
 
         {studentGrade && (
-          <div className={styles.tableWrapper}>
-            <table className={styles.customTable}>
-              <thead>
-                <tr>
-                  <th>Final Grade</th>
-                  <th>Allowance Ratio</th>
-                  <th>Calculated At</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>{studentGrade.finalGrade?.toFixed(2)}</td>
-                  <td>{(studentGrade.individualAllowanceRatio * 100).toFixed(0)}%</td>
-                  <td>{new Date(studentGrade.calculatedAt).toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className={styles.tableWrapper} style={{ marginBottom: '24px' }}>
+              <table className={styles.customTable}>
+                <thead>
+                  <tr>
+                    <th>Final Grade</th>
+                    <th>Story Point Ratio</th>
+                    <th>Calculated At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ fontSize: '1.25rem', fontWeight: 700, color: '#38bdf8' }}>
+                      {studentGrade.finalGrade?.toFixed(2)}
+                    </td>
+                    <td>{(studentGrade.individualAllowanceRatio * 100).toFixed(0)}%</td>
+                    <td>{new Date(studentGrade.calculatedAt).toLocaleString()}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '-16px', marginBottom: '8px' }}>
+              Final Grade = Team Grade × Story Point Ratio.
+              Story Point Ratio reflects your completed points vs the target across sprints.
+            </p>
+          </>
         )}
       </div>
     );
@@ -435,19 +444,50 @@ function GradeDisplayPage() {
                         </tr>
                         {expandedRows.has(entry.gradeChangeId) && (
                           <tr key={`${entry.gradeChangeId}-detail`}>
-                            <td colSpan={4}>
-                              <pre
-                                style={{
-                                  background: '#1e293b',
-                                  padding: '10px',
-                                  borderRadius: '6px',
-                                  color: '#94a3b8',
-                                  fontSize: '0.8rem',
-                                  overflow: 'auto',
-                                }}
-                              >
-                                {JSON.stringify(entry.gradeComponents, null, 2)}
-                              </pre>
+                            <td colSpan={4} style={{ padding: '0 0 12px 0' }}>
+                              <div style={{ background: '#0f172a', borderRadius: '8px', padding: '12px', marginTop: '4px' }}>
+                                <p style={{ color: '#64748b', fontSize: '0.75rem', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                  Deliverable Breakdown
+                                </p>
+                                {entry.gradeComponents?.scaledDeliverableGrades?.length > 0 ? (
+                                  <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                      <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                                        <th style={{ textAlign: 'left', padding: '4px 8px', color: '#475569', fontWeight: 600 }}>Deliverable</th>
+                                        <th style={{ textAlign: 'right', padding: '4px 8px', color: '#475569', fontWeight: 600 }}>Raw</th>
+                                        <th style={{ textAlign: 'right', padding: '4px 8px', color: '#475569', fontWeight: 600 }}>Scalar</th>
+                                        <th style={{ textAlign: 'right', padding: '4px 8px', color: '#475569', fontWeight: 600 }}>Weight</th>
+                                        <th style={{ textAlign: 'right', padding: '4px 8px', color: '#475569', fontWeight: 600 }}>Scaled</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {entry.gradeComponents.scaledDeliverableGrades.map((d) => (
+                                        <tr key={d.deliverableId} style={{ borderBottom: '1px solid #1e293b' }}>
+                                          <td style={{ padding: '5px 8px', color: '#94a3b8', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                            {d.deliverableId.slice(-8)}
+                                          </td>
+                                          <td style={{ padding: '5px 8px', textAlign: 'right', color: '#cbd5e1' }}>{d.rawGrade}</td>
+                                          <td style={{ padding: '5px 8px', textAlign: 'right', color: '#7dd3fc' }}>
+                                            {(d.teamScalar * 100).toFixed(1)}%
+                                          </td>
+                                          <td style={{ padding: '5px 8px', textAlign: 'right', color: '#cbd5e1' }}>
+                                            {d.deliverablePercentage}%
+                                          </td>
+                                          <td style={{ padding: '5px 8px', textAlign: 'right', color: '#34d399', fontWeight: 600 }}>
+                                            {d.scaledGrade?.toFixed(2)}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <p style={{ color: '#475569', fontSize: '0.8rem' }}>No deliverable breakdown available.</p>
+                                )}
+                                <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '8px' }}>
+                                  Overall team scalar: <span style={{ color: '#7dd3fc' }}>{(entry.gradeComponents?.teamScalar * 100)?.toFixed(1)}%</span>
+                                  {' · '}Formula: Raw × Scalar × Weight = Scaled
+                                </p>
+                              </div>
                             </td>
                           </tr>
                         )}

@@ -94,7 +94,7 @@ export class SchedulesController {
   }
 
   @Get()
-  @Roles(Role.Coordinator)
+  @Roles(Role.Coordinator, Role.Professor, Role.Student)
   async listSchedules(@Query('phase') phase: SchedulePhase) {
     if (!phase) {
       throw new NotFoundException('phase query parameter is required.');

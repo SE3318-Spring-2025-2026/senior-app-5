@@ -148,7 +148,7 @@ export class GroupsService {
     const [docs, total] = await Promise.all([
       this.groupModel
         .find(filter)
-        .select('groupId groupName leaderUserId advisorUserId status assignmentStatus -_id')
+        .select('groupId groupName leaderUserId advisorUserId assignedAdvisorId status assignmentStatus -_id')
         .sort({ groupName: 1 })
         .skip(skip)
         .limit(limit)

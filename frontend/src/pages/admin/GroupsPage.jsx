@@ -91,7 +91,7 @@ function GroupsPage() {
   const handleTransfer = async () => {
     if (!transferModal || !newAdvisorId) return
     const groupId = transferModal.groupId || transferModal.id
-    const currentAdvisorId = transferModal.advisorUserId || transferModal.advisorId
+    const currentAdvisorId = transferModal.assignedAdvisorId || transferModal.advisorUserId || transferModal.advisorId
 
     setTransferState({ loading: true, message: '', error: '' })
     try {
@@ -194,9 +194,11 @@ function GroupsPage() {
                   {groups.map((group) => {
                     const groupId = group.groupId || group.id
                     const name = group.groupName || group.name || `Group ${groupId}`
-                    const status = String(group.status || '').toUpperCase()
-                    const isAssigned = status === 'ASSIGNED'
-                    const isUnassigned = status === 'UNASSIGNED'
+                    const isDisbanded = String(group.status || '').toUpperCase() === 'DISBANDED'
+                    const assignmentStatus = String(group.assignmentStatus || '').toUpperCase()
+                    const isAssigned = !isDisbanded && assignmentStatus === 'ASSIGNED'
+                    const isUnassigned = !isDisbanded && assignmentStatus === 'UNASSIGNED'
+                    const badgeStatus = isDisbanded ? 'DISBANDED' : group.assignmentStatus
 
                     return (
                       <tr key={groupId} className="border-t border-[#1f1f23] hover:bg-[#18181c]">
@@ -209,7 +211,7 @@ function GroupsPage() {
                           </button>
                         </td>
                         <td className="px-4 py-3 text-zinc-300">
-                          <StatusBadge status={group.status} />
+                          <StatusBadge status={badgeStatus} />
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">

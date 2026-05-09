@@ -4,6 +4,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { ActivityLogsService } from './activity-logs.service';
 import { ActivityLog } from './schemas/activity-log.schema';
+import { User } from '../users/data/user.schema';
 import { ListActivityLogsQueryDto } from './dto/list-activity-logs-query.dto';
 
 describe('ActivityLogsService', () => {
@@ -27,12 +28,23 @@ describe('ActivityLogsService', () => {
     countDocuments: jest.fn(() => mockCountChain),
   };
 
+  const mockUserModel = {
+    find: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    }),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ActivityLogsService,
         { provide: getModelToken(ActivityLog.name), useValue: mockModel },
+        { provide: getModelToken(User.name), useValue: mockUserModel },
       ],
     }).compile();
 

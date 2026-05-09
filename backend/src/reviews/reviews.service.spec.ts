@@ -15,6 +15,7 @@ import {
 } from '../submissions/schemas/submission.schema';
 import { Review, ReviewStatus } from './schemas/review.schema';
 import { ReviewsService } from './reviews.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 const execResult = (value: unknown) => ({
   exec: jest.fn().mockResolvedValue(value),
@@ -67,6 +68,10 @@ describe('ReviewsService', () => {
         { provide: getModelToken(Submission.name), useValue: mockSubmissionModel },
         { provide: getModelToken(Committee.name), useValue: mockCommitteeModel },
         { provide: getModelToken(Schedule.name), useValue: mockScheduleModel },
+        {
+          provide: ActivityLogsService,
+          useValue: { safeCreate: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { Role } from '../auth/enums/role.enum';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 describe('AdminController - RBAC Matrix Validation', () => {
   let controller: AdminController;
@@ -11,7 +12,10 @@ describe('AdminController - RBAC Matrix Validation', () => {
     adminService = { getActivityLogs: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AdminController],
-      providers: [{ provide: AdminService, useValue: adminService }],
+      providers: [
+        { provide: AdminService, useValue: adminService },
+        { provide: ActivityLogsService, useValue: { create: jest.fn() } },
+      ],
     }).compile();
 
     controller = module.get<AdminController>(AdminController);

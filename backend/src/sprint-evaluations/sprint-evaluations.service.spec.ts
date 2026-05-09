@@ -13,6 +13,7 @@ import { Group } from '../groups/group.entity';
 import { Schedule } from '../advisors/schemas/schedule.schema';
 import { RubricsService } from '../rubrics/rubrics.service';
 import { SprintEvaluationsService } from './sprint-evaluations.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import {
   SprintEvaluation,
   SprintEvaluationStatus,
@@ -54,6 +55,10 @@ describe('SprintEvaluationsService', () => {
         {
           provide: RubricsService,
           useValue: mockRubricsService,
+        },
+        {
+          provide: ActivityLogsService,
+          useValue: { safeCreate: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();

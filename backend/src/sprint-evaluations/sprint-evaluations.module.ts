@@ -9,9 +9,11 @@ import {
   SprintEvaluation,
   SprintEvaluationSchema,
 } from './schemas/sprint-evaluation.schema';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
   imports: [
+    ActivityLogsModule,
     RubricsModule,
     MongooseModule.forFeature([
       { name: Group.name, schema: GroupSchema },

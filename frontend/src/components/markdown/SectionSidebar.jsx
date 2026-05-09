@@ -20,7 +20,7 @@ function scrollEditorToHeading(editor, section) {
   editor.chain().focus().setTextSelection(targetPos).scrollIntoView().run();
 }
 
-export function SectionSidebar({ sections, editor }) {
+export function SectionSidebar({ sections, editor, activeSectionId }) {
   const ordered = [...(sections || [])].sort((a, b) => a.order - b.order);
 
   return (
@@ -32,19 +32,27 @@ export function SectionSidebar({ sections, editor }) {
         </p>
       ) : (
         <ul className="space-y-0.5">
-          {ordered.map((s) => (
-            <li key={s.sectionId}>
-              <button
-                type="button"
-                onClick={() => scrollEditorToHeading(editor, s)}
-                style={{ paddingLeft: `${(s.level - 1) * 12 + 8}px` }}
-                className="block w-full truncate rounded-md py-1.5 pr-2 text-left text-[13px] text-zinc-300 hover:bg-[#1f1f23] hover:text-zinc-100"
-                title={s.heading}
-              >
-                {s.heading}
-              </button>
-            </li>
-          ))}
+          {ordered.map((s) => {
+            const isActive = s.sectionId === activeSectionId;
+            return (
+              <li key={s.sectionId}>
+                <button
+                  type="button"
+                  onClick={() => scrollEditorToHeading(editor, s)}
+                  style={{ paddingLeft: `${(s.level - 1) * 12 + 8}px` }}
+                  className={
+                    'block w-full truncate rounded-md border-l-2 py-1.5 pr-2 text-left text-[13px] transition-colors ' +
+                    (isActive
+                      ? 'border-zinc-300 bg-[#1f1f23] text-zinc-100'
+                      : 'border-transparent text-zinc-400 hover:bg-[#1f1f23] hover:text-zinc-100')
+                  }
+                  title={s.heading}
+                >
+                  {s.heading}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -62,6 +70,7 @@ SectionSidebar.propTypes = {
     }),
   ),
   editor: PropTypes.object,
+  activeSectionId: PropTypes.string,
 };
 
 export default SectionSidebar;

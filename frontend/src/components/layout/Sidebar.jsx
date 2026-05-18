@@ -76,7 +76,6 @@ export const Sidebar = () => {
       <nav className="flex flex-col gap-0.5">
         <SectionHeader label="General" />
         <SideNavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
-        <SideNavLink to="/integrations" icon={Link2} label="Integrations" />
 
         {(role === 'Student' || role === 'TeamLeader') && (
           <>
@@ -86,6 +85,7 @@ export const Sidebar = () => {
             <SideNavLink to="/documents" icon={FileText} label="Upload Document" />
             <SideNavLink to="/documents" icon={FileText} label="My Documents" />
             <SideNavLink to="/grades" icon={BarChart2} label="My Grades" />
+            <SideNavLink to="/integrations" icon={Link2} label="Integrations" />
           </>
         )}
 
